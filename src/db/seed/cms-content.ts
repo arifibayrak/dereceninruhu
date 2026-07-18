@@ -30,6 +30,7 @@ export const coachContent = {
     "3+ yıl KPSS / YKS / LGS koçluğu",
   ],
   subjects: ["KPSS", "YKS", "LGS"] as SeedExam[],
+  photoUrl: "/ahmet-hakan.jpg",
 } as const;
 
 /** Marka düzeyi sosyal kanıt — Gigbi kaynaklı; tablo değil sabit. */

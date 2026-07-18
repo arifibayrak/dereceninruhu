@@ -154,7 +154,7 @@ export async function getPublicCoach(): Promise<PublicCoach> {
   return {
     displayName: coachContent.displayName,
     bio: coachContent.bio,
-    photoUrl: null,
+    photoUrl: coachContent.photoUrl,
     subjects: [...coachContent.subjects],
     achievements: [...coachContent.credentials],
   };

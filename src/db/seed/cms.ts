@@ -94,6 +94,7 @@ function seedCms(db: SeedDb): Record<string, Counts> {
           userId: coachUser.id,
           displayName: coachContent.displayName,
           bio: coachContent.bio,
+          photoUrl: coachContent.photoUrl,
           subjects: JSON.stringify(coachContent.subjects),
           achievements: JSON.stringify(coachContent.credentials),
           sortOrder: 0,
