@@ -22,6 +22,7 @@ import {
 import { coachContent, coachStats } from "@/db/seed/cms-content";
 import { formatKurus } from "@/lib/format";
 import { CtaBand } from "@/components/marketing/cta-band";
+import { ExamCountdown } from "@/components/marketing/exam-countdown";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { HeroVisual } from "@/components/marketing/hero-visual";
 import { ProofStrip } from "@/components/marketing/proof-strip";
@@ -330,6 +331,26 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* -------------------------------- Sayaç ------------------------------ */}
+      <section className="flex flex-col gap-8">
+        <SectionHeading
+          eyebrow="Sayaç"
+          title="Sınava kaç gün kaldı?"
+          description="LGS, YKS ve KPSS için geri sayım. Tarihler ÖSYM/MEB takvimine göredir."
+          align="center"
+          className="items-center"
+        />
+        <ExamCountdown />
+        <Button
+          variant="link"
+          className="self-center"
+          render={<Link href="/sayac" />}
+        >
+          Tüm sınav tarihleri
+          <ArrowRightIcon data-icon="inline-end" />
+        </Button>
       </section>
 
       {/* ------------------------------ Fiyat teaser ------------------------- */}

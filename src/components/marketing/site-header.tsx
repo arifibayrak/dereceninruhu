@@ -21,6 +21,7 @@ const NAV = [
   { href: "/nasil-calisir", label: "Nasıl Çalışır" },
   { href: "/koclar", label: "Koçlar" },
   { href: "/fiyatlar", label: "Fiyatlar" },
+  { href: "/sayac", label: "Sayaç" },
   { href: "/blog", label: "Blog" },
   { href: "/basarilar", label: "Başarılar" },
   { href: "/sss", label: "SSS" },
