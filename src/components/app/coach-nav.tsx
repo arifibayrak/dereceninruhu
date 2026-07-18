@@ -23,6 +23,8 @@ type NavLink = {
   label: string;
   icon: LucideIcon;
   exact: boolean;
+  /** Yalnız yönetici görür (koçlarda gizli). */
+  adminOnly?: boolean;
 };
 
 const LINKS: NavLink[] = [
@@ -38,17 +40,23 @@ const LINKS: NavLink[] = [
   { href: "/koc/muhasebe", label: "Muhasebe", icon: WalletIcon, exact: false },
   { href: "/koc/icerik", label: "İçerik", icon: LibraryIcon, exact: false },
   { href: "/koc/blog", label: "Blog", icon: NewspaperIcon, exact: false },
-  { href: "/koc/site", label: "Site", icon: MegaphoneIcon, exact: false },
+  // Pazarlama sitesi (yorum/paket/SSS/koç profili) tek marka → yalnız yönetici.
+  {
+    href: "/koc/site",
+    label: "Site",
+    icon: MegaphoneIcon,
+    exact: false,
+    adminOnly: true,
+  },
+  {
+    href: "/koc/yonetim",
+    label: "Yönetim",
+    icon: ShieldCheckIcon,
+    exact: false,
+    adminOnly: true,
+  },
   { href: "/koc/ayarlar", label: "Ayarlar", icon: SettingsIcon, exact: false },
 ];
-
-/** Yalnız yöneticinin gördüğü Yönetim bağlantısı (Ayarlar'dan önce). */
-const ADMIN_LINK: NavLink = {
-  href: "/koc/yonetim",
-  label: "Yönetim",
-  icon: ShieldCheckIcon,
-  exact: false,
-};
 
 /** Koç üst gezinmesi — aktif bağlantı vurgulu; Yönetim yalnız yöneticide. */
 export function CoachNav({
@@ -59,9 +67,7 @@ export function CoachNav({
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
-  const links = isAdmin
-    ? [...LINKS.slice(0, -1), ADMIN_LINK, LINKS[LINKS.length - 1]]
-    : LINKS;
+  const links = LINKS.filter((l) => isAdmin || !l.adminOnly);
 
   return (
     <nav

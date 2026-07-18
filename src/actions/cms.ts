@@ -22,12 +22,14 @@ import {
   actionError,
   fieldErrorsOf,
   guarded,
+  requireAdmin,
   requireCoach,
   type ActionResult,
 } from "@/actions/_guard";
 
 /**
- * Hafif CMS CRUD — hepsi requireCoach + Zod. Public sayfalar force-dynamic
+ * Hafif CMS CRUD + Zod. Pazarlama içeriği (yorum/paket/SSS/koç profili) tek
+ * markadır → requireAdmin; blog ise requireCoach. Public sayfalar force-dynamic
  * olduğu için revalidatePath çağrıları esasen client router cache'ini tazeler.
  */
 
@@ -47,7 +49,7 @@ export async function upsertTestimonial(
   input: unknown,
 ): Promise<ActionResult<{ id: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    await requireAdmin();
     const parsed = upsertTestimonialSchema.safeParse(input);
     if (!parsed.success) {
       return actionError(
@@ -83,7 +85,7 @@ export async function deleteTestimonial(
   input: unknown,
 ): Promise<ActionResult<void>> {
   return guarded(async () => {
-    await requireCoach();
+    await requireAdmin();
     const id = idParam(input);
     if (!id) return actionError("Geçersiz kayıt.");
     const db = getDb();
@@ -99,7 +101,7 @@ export async function upsertPackage(
   input: unknown,
 ): Promise<ActionResult<{ id: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    await requireAdmin();
     const parsed = upsertPackageSchema.safeParse(input);
     if (!parsed.success) {
       return actionError(
@@ -134,7 +136,7 @@ export async function upsertPackage(
 
 export async function deletePackage(input: unknown): Promise<ActionResult<void>> {
   return guarded(async () => {
-    await requireCoach();
+    await requireAdmin();
     const id = idParam(input);
     if (!id) return actionError("Geçersiz kayıt.");
     const db = getDb();
@@ -150,7 +152,7 @@ export async function upsertFaq(
   input: unknown,
 ): Promise<ActionResult<{ id: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    await requireAdmin();
     const parsed = upsertFaqSchema.safeParse(input);
     if (!parsed.success) {
       return actionError(
@@ -179,7 +181,7 @@ export async function upsertFaq(
 
 export async function deleteFaq(input: unknown): Promise<ActionResult<void>> {
   return guarded(async () => {
-    await requireCoach();
+    await requireAdmin();
     const id = idParam(input);
     if (!id) return actionError("Geçersiz kayıt.");
     const db = getDb();
@@ -195,7 +197,7 @@ export async function saveCoachProfile(
   input: unknown,
 ): Promise<ActionResult<{ id: number }>> {
   return guarded(async () => {
-    const coach = await requireCoach();
+    const coach = await requireAdmin();
     const parsed = saveCoachProfileSchema.safeParse(input);
     if (!parsed.success) {
       return actionError(

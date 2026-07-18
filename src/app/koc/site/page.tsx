@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import {
   getCoachProfileRow,
@@ -6,6 +7,7 @@ import {
   listAllPackages,
   listAllTestimonials,
 } from "@/db/queries/cms";
+import { getViewer } from "@/lib/session";
 import { coachContent } from "@/db/seed/cms-content";
 import {
   CoachProfileForm,
@@ -36,6 +38,10 @@ function parseJsonArray(raw: string | null): string[] {
 }
 
 export default async function IcerikPage() {
+  // Pazarlama içeriği tek markadır (Ahmet Hakan) — yalnız yönetici düzenler.
+  const viewer = await getViewer();
+  if (viewer?.role !== "admin") redirect("/koc");
+
   const [testimonialRows, packageRows, faqRows, profileRow] = await Promise.all([
     listAllTestimonials(),
     listAllPackages(),
