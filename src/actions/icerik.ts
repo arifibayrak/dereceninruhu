@@ -71,7 +71,7 @@ export async function assignContent(
   input: unknown,
 ): Promise<ActionResult<{ contentItemId: number; count: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireCoach();
     const parsed = assignContentSchema.safeParse(input);
     if (!parsed.success) return actionError("Geçersiz giriş.");
     const v = parsed.data;
@@ -81,6 +81,10 @@ export async function assignContent(
       where: eq(contentItems.id, v.contentItemId),
     });
     if (!item) return actionError("İçerik bulunamadı.");
+    // Koç yalnız kendi oluşturduğu içeriği yönetebilir; yönetici hepsini.
+    if (user.role === "coach" && item.createdByUserId !== user.id) {
+      return actionError("Bu içerik sana ait değil.");
+    }
 
     if (v.enrollmentIds.length === 0) {
       await db
@@ -117,11 +121,20 @@ export async function deleteContentItem(
   input: unknown,
 ): Promise<ActionResult<{ contentItemId: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireCoach();
     const parsed = deleteContentSchema.safeParse(input);
     if (!parsed.success) return actionError("Geçersiz giriş.");
     const id = parsed.data.contentItemId;
     const db = getDb();
+    const item = await db.query.contentItems.findFirst({
+      where: eq(contentItems.id, id),
+      columns: { id: true, createdByUserId: true },
+    });
+    if (!item) return actionError("İçerik bulunamadı.");
+    // Koç yalnız kendi oluşturduğu içeriği silebilir; yönetici hepsini.
+    if (user.role === "coach" && item.createdByUserId !== user.id) {
+      return actionError("Bu içerik sana ait değil.");
+    }
     await db.delete(contentViews).where(eq(contentViews.contentItemId, id));
     await db
       .delete(contentVisibility)

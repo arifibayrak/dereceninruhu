@@ -13,6 +13,7 @@ import {
   youtubeVideoId,
 } from "@/lib/content";
 import { formatInt } from "@/lib/format";
+import { getViewer } from "@/lib/session";
 import {
   ContentAssignDialog,
   ContentDeleteButton,
@@ -30,10 +31,14 @@ const dateFmt = new Intl.DateTimeFormat("tr-TR", {
 });
 
 export default async function KocIcerikPage() {
+  const viewer = await getViewer();
+  const isAdmin = viewer?.role === "admin";
+  // Herkes tüm içeriği görür; koç yalnız kendi eklediğini yönetir (atama/sil).
+  const coachUserId = viewer?.role === "coach" ? viewer.id : null;
   const [items, options, students] = await Promise.all([
     listContentForCoach(),
     getContentFormOptions(),
-    getEnrollmentOptions(),
+    getEnrollmentOptions(coachUserId),
   ]);
   const studentOptions = students.map((s) => ({
     enrollmentId: s.enrollmentId,
@@ -70,6 +75,9 @@ export default async function KocIcerikPage() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
             const ytId = item.type === "video" ? youtubeVideoId(item.url) : null;
+            // Yönetici her içeriği; koç yalnız kendi eklediğini yönetebilir.
+            const canManage =
+              isAdmin || item.createdByUserId === viewer?.id;
             return (
               <li
                 key={item.id}
@@ -96,7 +104,9 @@ export default async function KocIcerikPage() {
                     <span className="line-clamp-2 text-sm font-medium">
                       {item.title}
                     </span>
-                    <ContentDeleteButton contentItemId={item.id} />
+                    {canManage && (
+                      <ContentDeleteButton contentItemId={item.id} />
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
@@ -130,13 +140,27 @@ export default async function KocIcerikPage() {
                       {item.body}
                     </p>
                   )}
+                  {item.createdByName && (
+                    <span className="truncate text-xs text-muted-foreground">
+                      Ekleyen: {item.createdByName}
+                      {item.createdByUserId === viewer?.id ? " (sen)" : ""}
+                    </span>
+                  )}
                   <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-                    <ContentAssignDialog
-                      contentItemId={item.id}
-                      title={item.title}
-                      students={studentOptions}
-                      assignedEnrollmentIds={item.assignedEnrollmentIds}
-                    />
+                    {canManage ? (
+                      <ContentAssignDialog
+                        contentItemId={item.id}
+                        title={item.title}
+                        students={studentOptions}
+                        assignedEnrollmentIds={item.assignedEnrollmentIds}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {item.assignedEnrollmentIds.length > 0
+                          ? `${item.assignedEnrollmentIds.length} öğrenciye atalı`
+                          : "—"}
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                       {item.url && !ytId && (
                         <a

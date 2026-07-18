@@ -7,6 +7,7 @@ import {
   examTemplates,
   subjects,
   topics,
+  users,
 } from "@/db/schema";
 import type { ContentType } from "@/lib/content";
 
@@ -25,12 +26,15 @@ export type CoachContentRow = {
   topicName: string | null;
   isLibrary: boolean;
   createdAt: Date;
+  /** İçeriği oluşturan koç/yönetici — "kim ekledi" etiketi + sahiplik. */
+  createdByUserId: string | null;
+  createdByName: string | null;
   /** Atanan kayıt id'leri (atama diyaloğu önseçimi). */
   assignedEnrollmentIds: number[];
   viewCount: number;
 };
 
-/** Koç içerik listesi — atamalar + izlenme sayısıyla. */
+/** Koç içerik listesi — atamalar + izlenme + oluşturan bilgisiyle (herkes görür). */
 export async function listContentForCoach(): Promise<CoachContentRow[]> {
   const db = getDb();
   const rows = await db
@@ -45,11 +49,14 @@ export async function listContentForCoach(): Promise<CoachContentRow[]> {
       topicName: topics.name,
       isLibrary: contentItems.isLibrary,
       createdAt: contentItems.createdAt,
+      createdByUserId: contentItems.createdByUserId,
+      createdByName: users.name,
     })
     .from(contentItems)
     .leftJoin(examTemplates, eq(examTemplates.id, contentItems.examTemplateId))
     .leftJoin(subjects, eq(subjects.id, contentItems.subjectId))
     .leftJoin(topics, eq(topics.id, contentItems.topicId))
+    .leftJoin(users, eq(users.id, contentItems.createdByUserId))
     .orderBy(desc(contentItems.createdAt), desc(contentItems.id));
 
   const ids = rows.map((r) => r.id);
