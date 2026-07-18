@@ -31,3 +31,28 @@ export function formatInt(n: number): string {
 export function formatKurus(kurus: number): string {
   return tryFmt.format(kurus / 100);
 }
+
+/**
+ * Parse a Turkish-locale ₺ amount into integer kuruş (admin price inputs).
+ * Accepts "2.500", "2.500,50", "2500", "2500.5", "₺1.250,00 TL".
+ * Returns null when unparseable or negative.
+ */
+export function parseTryToKurus(input: string): number | null {
+  const raw = input.trim().replace(/₺/g, "").replace(/tl/gi, "").replace(/\s/g, "");
+  if (!raw) return null;
+  let normalized = raw;
+  if (raw.includes(",")) {
+    // TR format: dots are thousands, comma is decimal.
+    normalized = raw.replaceAll(".", "").replace(",", ".");
+  } else if (raw.includes(".")) {
+    // No comma: "2.500" (TR thousands) vs "2500.5" (EN decimal).
+    const parts = raw.split(".");
+    const looksLikeThousands =
+      parts.length > 1 &&
+      parts.every((p, i) => (i === 0 ? p.length >= 1 && p.length <= 3 : p.length === 3));
+    if (looksLikeThousands) normalized = parts.join("");
+  }
+  const value = Number(normalized);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Math.round(value * 100);
+}

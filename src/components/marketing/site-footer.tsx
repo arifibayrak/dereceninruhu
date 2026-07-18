@@ -1,0 +1,97 @@
+import Link from "next/link";
+import { ExternalLinkIcon, MapPinIcon, StarIcon } from "lucide-react";
+
+import { coachStats } from "@/db/seed/cms-content";
+import { Logo } from "@/components/brand/logo";
+
+const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
+  {
+    title: "Keşfet",
+    links: [
+      { href: "/nasil-calisir", label: "Nasıl Çalışır" },
+      { href: "/koclar", label: "Koçlar" },
+      { href: "/fiyatlar", label: "Fiyatlar" },
+    ],
+  },
+  {
+    title: "İçerik",
+    links: [
+      { href: "/blog", label: "Blog" },
+      { href: "/basarilar", label: "Başarı Hikayeleri" },
+      { href: "/sss", label: "Sıkça Sorulan Sorular" },
+    ],
+  },
+  {
+    title: "Başla",
+    links: [
+      { href: "/iletisim", label: "Ücretsiz Ön Görüşme" },
+      { href: "/giris", label: "Öğrenci / Koç Girişi" },
+    ],
+  },
+];
+
+/** Pazarlama sitesi alt bilgisi. */
+export function SiteFooter() {
+  return (
+    <footer className="border-t bg-card/50">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-10 sm:px-6 md:py-12">
+        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+          <div className="flex flex-col items-start gap-3">
+            <Logo size={28} />
+            <p className="max-w-xs text-sm text-pretty text-muted-foreground">
+              LGS, YKS ve KPSS için birebir koçluk: haftalık program, soru
+              takibi ve deneme analiziyle görünür net artışı.
+            </p>
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+              <StarIcon className="size-4 fill-gold text-gold" />
+              5,0 · {coachStats.reviewCount} yorum
+              <a
+                href={coachStats.proofUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                Gigbi&apos;de doğrula
+                <ExternalLinkIcon className="size-3.5" />
+              </a>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <MapPinIcon className="size-3.5" />
+              Kartal, İstanbul — görüşmeler online
+            </span>
+          </div>
+
+          {COLUMNS.map((col) => (
+            <div key={col.title} className="flex flex-col gap-3">
+              <span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                {col.title}
+              </span>
+              <ul className="flex flex-col gap-2">
+                {col.links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-foreground/80 transition-colors hover:text-primary"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-6">
+          <span className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} Derecenin Ruhu · Tüm hakları saklıdır.
+          </span>
+          <span className="text-xs font-medium text-muted-foreground">
+            Netlerini artır, <span className="text-primary">hedefine ulaş</span>
+            <span className="text-gold">.</span>
+          </span>
+        </div>
+      </div>
+    </footer>
+  );
+}

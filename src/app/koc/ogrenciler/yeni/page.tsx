@@ -2,13 +2,34 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 
-import { StudentCreateForm } from "@/components/app/student-create-form";
+import {
+  StudentCreateForm,
+  type StudentPrefill,
+} from "@/components/app/student-create-form";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Yeni Öğrenci" };
 
-export default function YeniOgrenciPage() {
+function str(v: string | string[] | undefined): string | undefined {
+  return typeof v === "string" && v.trim() !== "" ? v : undefined;
+}
+
+export default async function YeniOgrenciPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // Lead'den "Öğrenciye çevir": ?ad=…&telefon=…&sinav=… ile ön dolgu.
+  const sp = await searchParams;
+  const sinav = str(sp.sinav);
+  const prefill: StudentPrefill = {
+    fullName: str(sp.ad),
+    phone: str(sp.telefon),
+    examCode:
+      sinav === "KPSS" || sinav === "YKS" || sinav === "LGS" ? sinav : undefined,
+  };
+
   return (
     <>
       <div className="flex flex-col gap-4">
@@ -28,7 +49,7 @@ export default function YeniOgrenciPage() {
         />
       </div>
       <div className="max-w-2xl">
-        <StudentCreateForm />
+        <StudentCreateForm prefill={prefill} />
       </div>
     </>
   );

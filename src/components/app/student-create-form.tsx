@@ -64,8 +64,15 @@ const FIELD_NAMES: FieldName[] = [
   "parentPhone",
 ];
 
+/** Lead'den "Öğrenciye çevir" ile gelen ön dolgu (querystring). */
+export type StudentPrefill = {
+  fullName?: string;
+  phone?: string;
+  examCode?: "KPSS" | "YKS" | "LGS";
+};
+
 /** Yeni öğrenci formu + başarı ekranında davet linki ve WhatsApp gönderimi. */
-export function StudentCreateForm() {
+export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<
     (CreatedStudent & { fullName: string; phone: string }) | null
@@ -74,9 +81,9 @@ export function StudentCreateForm() {
   const form = useForm<FormInput, unknown, CreateStudentInput>({
     resolver: zodResolver(createStudentSchema),
     defaultValues: {
-      fullName: "",
-      phone: "",
-      examCode: "YKS",
+      fullName: prefill?.fullName ?? "",
+      phone: prefill?.phone ?? "",
+      examCode: prefill?.examCode ?? "YKS",
       trackCode: undefined,
       targetText: "",
       grade: "",

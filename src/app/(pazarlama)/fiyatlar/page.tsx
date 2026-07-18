@@ -1,0 +1,135 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { CheckIcon, InfoIcon, SparklesIcon } from "lucide-react";
+
+import { getPublicFaqs, getPublicPackages } from "@/db/queries/cms";
+import { formatKurus } from "@/lib/format";
+import { CtaBand } from "@/components/marketing/cta-band";
+import { FaqAccordion } from "@/components/marketing/faq-accordion";
+import { SectionHeading } from "@/components/brand/section-heading";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+// Paketler D1'den okunur → istek başına render.
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Fiyatlar",
+  description:
+    "Derecenin Ruhu koçluk paketleri: aylık koçluk, 3 aylık paket ve deneme analizi paketi. Uzun taahhüt yok; her paket ücretsiz ön görüşmeyle başlar.",
+};
+
+export default async function FiyatlarPage() {
+  const [packages, faqs] = await Promise.all([
+    getPublicPackages(),
+    getPublicFaqs(),
+  ]);
+
+  // Ödeme/başlama ile ilgili SSS'leri öne al.
+  const paymentFaqs = faqs.filter(
+    (f) =>
+      f.question.includes("Ödeme") ||
+      f.question.includes("ön görüşme") ||
+      f.question.includes("başlamak"),
+  );
+
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-4 py-10 sm:px-6 md:gap-20 md:py-16">
+      <section className="relative flex flex-col items-center gap-4 text-center">
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute -top-24 left-1/2 h-64 w-[min(32rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />
+        </div>
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] text-primary uppercase">
+          <span aria-hidden className="size-1.5 rounded-full bg-gold" />
+          Fiyatlandırma
+        </span>
+        <h1 className="font-heading text-headline max-w-2xl text-balance">
+          Sade paketler, <span className="text-primary">uzun taahhüt yok</span>
+          <span className="text-gold">.</span>
+        </h1>
+        <p className="max-w-xl text-base text-pretty text-muted-foreground">
+          Her paket ücretsiz ön görüşmeyle başlar; kayıt kararını görüşmeden
+          sonra verirsin. Ödeme havale/EFT, nakit veya kartla yapılır.
+        </p>
+      </section>
+
+      {/* Paket kartları */}
+      <section className="grid gap-4 lg:grid-cols-3">
+        {packages.map((pkg, i) => {
+          const highlighted = i === 1;
+          return (
+            <div
+              key={pkg.name}
+              className={cn(
+                "relative flex flex-col gap-5 rounded-3xl bg-card p-6 sm:p-7",
+                highlighted
+                  ? "ring-2 ring-primary/50 shadow-xl shadow-primary/10"
+                  : "ring-1 ring-foreground/10",
+              )}
+            >
+              {highlighted && (
+                <Badge className="absolute -top-2.5 left-6">En popüler</Badge>
+              )}
+              <div className="flex flex-col gap-1">
+                <h2 className="font-heading text-lg font-semibold">{pkg.name}</h2>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-heading text-3xl font-bold tabular-nums">
+                    {formatKurus(pkg.priceKurus)}
+                  </span>
+                  {pkg.period && (
+                    <span className="text-sm text-muted-foreground">
+                      / {pkg.period}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ul className="flex flex-1 flex-col gap-2.5">
+                {pkg.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm">
+                    <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
+                    <span className="text-pretty">{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                size="lg"
+                variant={highlighted ? "default" : "outline"}
+                className="w-full"
+                render={<Link href="/iletisim" />}
+              >
+                <SparklesIcon data-icon="inline-start" />
+                Ücretsiz ön görüşmeyle başla
+              </Button>
+            </div>
+          );
+        })}
+      </section>
+
+      <div className="mx-auto flex max-w-2xl items-start gap-3 rounded-xl bg-info/10 p-4 text-sm text-pretty">
+        <InfoIcon className="mt-0.5 size-4 shrink-0 text-info" />
+        <p className="text-muted-foreground">
+          Online ödeme alınmaz — kayıt ve ödeme, ücretsiz ön görüşmede
+          netleştikten sonra koçunla birlikte planlanır. Kardeş ve grup
+          indirimleri için görüşmede sorabilirsin.
+        </p>
+      </div>
+
+      {/* İlgili SSS */}
+      {paymentFaqs.length > 0 && (
+        <section className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+          <SectionHeading
+            eyebrow="Merak edilenler"
+            title="Ödeme ve başlangıç"
+          />
+          <FaqAccordion items={paymentFaqs} />
+        </section>
+      )}
+
+      <CtaBand
+        title="Hangi paket sana uygun, birlikte karar verelim."
+        description="Ön görüşmede hedefine ve temposuna göre en mantıklı paketi önertiriz — satış baskısı yok."
+      />
+    </div>
+  );
+}

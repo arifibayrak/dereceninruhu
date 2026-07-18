@@ -159,6 +159,102 @@ export const planFromSessionSchema = z.object({
   weekStart: z.coerce.date(),
 });
 
+/* -------------------------------------------------------------------------- */
+/*  Faz 3 — pazarlama sitesi (lead + CMS)                                      */
+/* -------------------------------------------------------------------------- */
+
+export const leadExamSchema = z.enum(["LGS", "YKS", "KPSS", "Diğer"]);
+
+/** Public /iletisim formu — auth yok; `website` bal küpü (bot tuzağı). */
+export const createLeadSchema = z.object({
+  name: z.string().trim().min(2, "Ad soyad gerekli.").max(120),
+  phone: phoneSchema,
+  exam: leadExamSchema,
+  message: z
+    .string()
+    .trim()
+    .max(1000, "Mesaj en fazla 1000 karakter olabilir.")
+    .optional()
+    .or(z.literal("")),
+  /** Honeypot — gerçek kullanıcı asla doldurmaz. */
+  website: z.literal("").optional(),
+});
+export type CreateLeadInput = z.infer<typeof createLeadSchema>;
+
+export const leadStatusSchema = z.enum(["yeni", "görüşüldü", "kayıt", "kayıp"]);
+export type LeadStatus = z.infer<typeof leadStatusSchema>;
+
+export const updateLeadStatusSchema = z.object({
+  leadId: z.coerce.number().int().positive(),
+  status: leadStatusSchema,
+});
+
+/** Blog yazısı oluştur/güncelle (koç). */
+export const upsertBlogPostSchema = z.object({
+  id: z.coerce.number().int().positive().optional(),
+  title: z.string().trim().min(3, "Başlık gerekli.").max(160),
+  slug: z
+    .string()
+    .trim()
+    .min(3, "Slug gerekli.")
+    .max(160)
+    .regex(/^[a-z0-9-]+$/, "Slug yalnız küçük harf, rakam ve tire içerebilir."),
+  excerpt: z.string().trim().max(300, "Özet en fazla 300 karakter.").optional().or(z.literal("")),
+  body: z.string().trim().min(10, "İçerik gerekli.").max(50_000),
+  coverImageUrl: z.url("Geçerli bir URL girin.").optional().or(z.literal("")),
+  status: z.enum(["draft", "published", "archived"]),
+});
+export type UpsertBlogPostInput = z.infer<typeof upsertBlogPostSchema>;
+
+/** Yorum (testimonial) — sitede ad + soyadın ilk harfi yazılır. */
+export const upsertTestimonialSchema = z.object({
+  id: z.coerce.number().int().positive().optional(),
+  studentName: z.string().trim().min(2, "İsim gerekli.").max(80),
+  exam: examCodeSchema,
+  result: z.string().trim().max(120).optional().or(z.literal("")),
+  quote: z.string().trim().min(2, "Yorum metni gerekli.").max(600),
+  sortOrder: z.coerce.number().int().min(0).max(999),
+  isActive: z.boolean(),
+});
+export type UpsertTestimonialInput = z.infer<typeof upsertTestimonialSchema>;
+
+/** Paket — fiyat integer kuruş olarak gelir (client ₺ → kuruş çevirir). */
+export const upsertPackageSchema = z.object({
+  id: z.coerce.number().int().positive().optional(),
+  name: z.string().trim().min(2, "Paket adı gerekli.").max(80),
+  priceKurus: z.coerce
+    .number()
+    .int("Fiyat kuruş cinsinden tam sayı olmalı.")
+    .min(0, "Fiyat negatif olamaz.")
+    .max(100_000_000),
+  period: z.string().trim().max(40).optional().or(z.literal("")),
+  features: z.array(z.string().trim().min(1).max(160)).max(12),
+  sortOrder: z.coerce.number().int().min(0).max(999),
+  isActive: z.boolean(),
+});
+export type UpsertPackageInput = z.infer<typeof upsertPackageSchema>;
+
+export const upsertFaqSchema = z.object({
+  id: z.coerce.number().int().positive().optional(),
+  question: z.string().trim().min(5, "Soru gerekli.").max(200),
+  answer: z.string().trim().min(5, "Cevap gerekli.").max(2000),
+  sortOrder: z.coerce.number().int().min(0).max(999),
+  isActive: z.boolean(),
+});
+export type UpsertFaqInput = z.infer<typeof upsertFaqSchema>;
+
+/** Koç profili — id yoksa mevcut koç kullanıcısına yeni profil açılır. */
+export const saveCoachProfileSchema = z.object({
+  id: z.coerce.number().int().positive().optional(),
+  displayName: z.string().trim().min(2, "İsim gerekli.").max(80),
+  bio: z.string().trim().max(2000).optional().or(z.literal("")),
+  photoUrl: z.url("Geçerli bir URL girin.").optional().or(z.literal("")),
+  subjects: z.array(z.string().trim().min(1).max(40)).max(10),
+  achievements: z.array(z.string().trim().min(1).max(120)).max(12),
+  isActive: z.boolean(),
+});
+export type SaveCoachProfileInput = z.infer<typeof saveCoachProfileSchema>;
+
 /** Deneme girişi — net server-side hesaplanır (D − Y/divisor). */
 export const createMockSchema = z.object({
   enrollmentId: z.coerce.number().int().positive(),

@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  ArrowRightIcon,
   CalendarDaysIcon,
   CircleCheckIcon,
+  InboxIcon,
   MessageCircleIcon,
   PlusIcon,
   SendIcon,
   SparklesIcon,
 } from "lucide-react";
 
+import { countNewLeads } from "@/db/queries/cms";
 import { getPlansAwaitingPublish } from "@/db/queries/plans";
 import { getUpcomingSessions } from "@/db/queries/sessions";
 import { getCoachDashboard } from "@/db/queries/roster";
@@ -46,10 +49,11 @@ const sessionFmt = new Intl.DateTimeFormat("tr-TR", {
 });
 
 export default async function KocPanelPage() {
-  const [dash, pendingPlans, upcomingSessions] = await Promise.all([
+  const [dash, pendingPlans, upcomingSessions, newLeadCount] = await Promise.all([
     getCoachDashboard(),
     getPlansAwaitingPublish(),
     getUpcomingSessions(),
+    countNewLeads(),
   ]);
   const now = new Date();
 
@@ -68,6 +72,21 @@ export default async function KocPanelPage() {
           Yeni öğrenci
         </Button>
       </div>
+
+      {newLeadCount > 0 && (
+        <Link
+          href="/koc/leadler?durum=yeni"
+          className="flex items-center gap-3 rounded-xl bg-gold/10 p-4 ring-1 ring-gold/30 transition-colors hover:bg-gold/15"
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gold/20">
+            <InboxIcon className="size-4.5 text-gold-foreground dark:text-gold" />
+          </span>
+          <span className="flex-1 text-sm font-medium">
+            {formatInt(newLeadCount)} yeni lead ön görüşme bekliyor
+          </span>
+          <ArrowRightIcon className="size-4 text-muted-foreground" />
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile

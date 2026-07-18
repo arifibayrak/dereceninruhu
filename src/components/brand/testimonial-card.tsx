@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 export type Testimonial = {
   /** Gizlilik: sitede ad + soyadın ilk harfi, örn. "Merve K." */
   displayName: string;
-  exam: "LGS" | "YKS" | "KPSS";
+  /** Genelde "LGS" | "YKS" | "KPSS"; CMS serbest metnine tolerans var. */
+  exam: string;
   quote: string;
   /** ISO tarih (örn. "2026-07-09") — "Temmuz 2026" olarak gösterilir. */
   date?: string;
@@ -20,7 +21,7 @@ const monthYear = new Intl.DateTimeFormat("tr-TR", {
 });
 
 /** Sınav rozeti: renk noktada, metin mürekkepte (erişilebilirlik). */
-const EXAM_DOT: Record<Testimonial["exam"], string> = {
+const EXAM_DOT: Record<string, string> = {
   YKS: "bg-chart-1",
   KPSS: "bg-chart-3",
   LGS: "bg-chart-2",
@@ -76,7 +77,10 @@ export function TestimonialCard({
         <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
           <span
             aria-hidden
-            className={cn("size-1.5 rounded-full", EXAM_DOT[exam])}
+            className={cn(
+              "size-1.5 rounded-full",
+              EXAM_DOT[exam] ?? "bg-muted-foreground",
+            )}
           />
           {exam}
         </span>

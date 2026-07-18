@@ -44,4 +44,8 @@ export const waTemplates = {
 
   davet: ({ studentName }: ReminderCtx) =>
     `Merhaba ${studentName}! Derecenin Ruhu takip sistemine davetlisin. Aşağıdaki bağlantıdan PIN'ini belirleyip başlayabilirsin 👇`,
+
+  /** Site formundan gelen lead'e ilk temas (ücretsiz ön görüşme planlama). */
+  leadIlkTemas: ({ studentName }: ReminderCtx) =>
+    `Merhaba ${studentName} 👋 Derecenin Ruhu'na bıraktığın ön görüşme talebin için teşekkürler! Ücretsiz ön görüşmemizi planlamak için yazıyorum — bugün ya da yarın hangi saatler uygun olur? 😊`,
 } satisfies Record<string, (ctx: ReminderCtx) => string>;
