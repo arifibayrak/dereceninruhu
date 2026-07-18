@@ -10,6 +10,7 @@ import {
 
 import { coachStats } from "@/db/seed/cms-content";
 import { LeadForm } from "@/components/marketing/lead-form";
+import { CalBooking } from "@/components/marketing/cal-booking";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Statik sayfa — D1 okumaz; form gönderimi Server Action ile çalışır.
@@ -103,15 +104,25 @@ export default function IletisimPage() {
           </div>
         </div>
 
-        {/* Sağ: form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ön görüşme talebi</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LeadForm />
-          </CardContent>
-        </Card>
+        {/* Sağ: takvim (birincil) + form (alternatif) */}
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Takvimden 30 dk ücretsiz görüşme seç</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CalBooking />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Ya da bilgini bırak, biz arayalım</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LeadForm />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
