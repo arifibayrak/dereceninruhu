@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDaysIcon,
   LayoutDashboardIcon,
+  LibraryIcon,
   SettingsIcon,
   UsersIcon,
+  WalletIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -18,6 +20,18 @@ const LINKS = [
     href: "/koc/gorusmeler",
     label: "Görüşmeler",
     icon: CalendarDaysIcon,
+    exact: false,
+  },
+  {
+    href: "/koc/muhasebe",
+    label: "Muhasebe",
+    icon: WalletIcon,
+    exact: false,
+  },
+  {
+    href: "/koc/icerik",
+    label: "İçerik",
+    icon: LibraryIcon,
     exact: false,
   },
   { href: "/koc/ayarlar", label: "Ayarlar", icon: SettingsIcon, exact: false },

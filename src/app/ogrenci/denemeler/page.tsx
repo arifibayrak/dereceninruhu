@@ -83,19 +83,30 @@ export default async function DenemelerPage() {
                   >
                     {m.scope === "full" ? "Tam" : "Branş"}
                   </Badge>
-                  {m.analysisDone && (
+                  {m.analysisDone ? (
                     <Badge className="h-4 bg-success/10 px-1.5 text-[10px] text-success">
                       Analiz yapıldı
                     </Badge>
+                  ) : (
+                    <Link
+                      href={`/ogrenci/denemeler/${m.id}/analiz`}
+                      className="text-[10px] font-medium text-primary hover:underline"
+                    >
+                      Analiz gir →
+                    </Link>
                   )}
                 </span>
               </div>
-              <div className="flex shrink-0 flex-col items-end leading-tight">
+              <Link
+                href={`/ogrenci/denemeler/${m.id}/analiz`}
+                className="flex shrink-0 flex-col items-end leading-tight"
+                aria-label={`${m.name?.trim() || m.sectionName} analizini aç`}
+              >
                 <span className="font-heading text-xl font-bold tabular-nums">
                   {formatNet(m.totalNet)}
                 </span>
                 <span className="text-[10px] text-muted-foreground">net</span>
-              </div>
+              </Link>
             </li>
           ))}
         </ul>

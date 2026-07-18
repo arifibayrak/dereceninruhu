@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply dereceninruhu-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply dereceninruhu-db --remote",
-    "db:seed:local": "tsx src/db/seed/index.ts"
+    "db:seed:local": "tsx src/db/seed/index.ts",
+    "db:seed:topics": "tsx src/db/seed/topics.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
