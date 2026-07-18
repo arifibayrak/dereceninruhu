@@ -234,7 +234,7 @@ export const faqSeeds: { question: string; answer: string }[] = [
   {
     question: "Ödeme nasıl yapılıyor? Uzun taahhüt var mı?",
     answer:
-      "Aylık veya paket olarak; havale/EFT, nakit veya kartla ödeyebilirsin. Uzun taahhüt yoktur — " +
+      "Aylık veya paket olarak; havale/EFT veya nakit ödeyebilirsin. Uzun taahhüt yoktur — " +
       "ilk ayın sonunda devam edip etmemek tamamen sana bağlıdır.",
   },
   {

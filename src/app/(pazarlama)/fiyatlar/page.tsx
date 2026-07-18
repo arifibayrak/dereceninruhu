@@ -50,7 +50,7 @@ export default async function FiyatlarPage() {
         </h1>
         <p className="max-w-xl text-base text-pretty text-muted-foreground">
           Her paket ücretsiz ön görüşmeyle başlar; kayıt kararını görüşmeden
-          sonra verirsin. Ödeme havale/EFT, nakit veya kartla yapılır.
+          sonra verirsin. Ödeme havale/EFT veya nakit yapılır.
         </p>
       </section>
 
