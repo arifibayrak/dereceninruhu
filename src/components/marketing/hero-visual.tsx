@@ -5,14 +5,14 @@ import { StarIcon, TrendingUpIcon } from "lucide-react";
  * KPI kutusu ve gerçek bir yorumdan mini kart. Statik SVG, sıfır JS.
  */
 
-const POINTS = [18, 22.5, 21.25, 27.5, 31.25, 30, 36.25, 42.5];
+const POINTS = [74, 78.5, 77.25, 83.5, 87.25, 86, 92.25, 98.5];
 const W = 440;
 const H = 170;
 const PAD = 14;
 
 function toXy(value: number, index: number): [number, number] {
-  const min = 12;
-  const max = 48;
+  const min = 68;
+  const max = 104;
   const x = PAD + (index * (W - PAD * 2)) / (POINTS.length - 1);
   const y = H - PAD - ((value - min) / (max - min)) * (H - PAD * 2);
   return [x, y];
@@ -34,7 +34,7 @@ export function HeroVisual() {
               Toplam net — son 8 deneme
             </span>
             <span className="font-heading text-3xl font-bold tracking-tight tabular-nums">
-              42,50
+              98,50
             </span>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-xs font-semibold text-success tabular-nums">
@@ -46,7 +46,7 @@ export function HeroVisual() {
           viewBox={`0 0 ${W} ${H}`}
           className="h-auto w-full"
           role="img"
-          aria-label="Sekiz denemede 18'den 42,5'e yükselen net grafiği"
+          aria-label="Sekiz denemede 74'ten 98,5'e yükselen net grafiği"
         >
           <defs>
             <linearGradient id="hero-area" x1="0" y1="0" x2="0" y2="1">
