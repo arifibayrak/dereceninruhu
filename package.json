@@ -1,0 +1,68 @@
+{
+  "name": "dereceninruhu",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply dereceninruhu-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply dereceninruhu-db --remote",
+    "db:seed:local": "tsx src/db/seed/index.ts"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "@fontsource-variable/bricolage-grotesque": "^5.2.10",
+    "@hookform/resolvers": "^5.4.0",
+    "@opennextjs/cloudflare": "^1.20.1",
+    "better-auth": "^1.6.23",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "drizzle-orm": "^0.45.2",
+    "geist": "^1.7.2",
+    "lucide-react": "^1.25.0",
+    "next": "16.2.10",
+    "next-themes": "^0.4.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.82.0",
+    "recharts": "^3.9.2",
+    "shadcn": "^4.13.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0",
+    "tw-animate-css": "^1.4.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "better-sqlite3": "^12.11.1",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.1",
+    "typescript": "^5",
+    "vitest": "^3.2.7",
+    "wrangler": "^4.112.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "workerd",
+      "esbuild",
+      "@tailwindcss/oxide",
+      "sharp",
+      "better-sqlite3"
+    ]
+  }
+}

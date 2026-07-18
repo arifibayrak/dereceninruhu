@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dereceninruhu",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dereceninruhu-db",
+      // PLACEHOLDER — Arif: run `wrangler d1 create dereceninruhu-db` (after
+      // `wrangler login`) and paste the returned database_id here before deploy.
+      // Local dev (`--local`) ignores this value.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "drizzle/migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "dereceninruhu-files"
+    }
+  ]
+  // Cron triggers (haftalık roll-up, aylık fatura) added in Faz 2/Faz 4 with a
+  // custom worker scheduled handler.
+}
