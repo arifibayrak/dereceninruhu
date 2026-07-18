@@ -25,18 +25,22 @@ export default async function KocLayout({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-4 px-4 sm:px-6">
-          <Link href="/koc" aria-label="Koç paneli">
-            <Logo size={26} />
-          </Link>
-          <CoachNav className="ml-2" isAdmin={role === "admin"} />
-          <div className="ml-auto flex items-center gap-1.5">
-            <span className="hidden text-sm text-muted-foreground md:block">
-              {session.user.name}
-            </span>
-            <ThemeToggle />
-            <SignOutButton iconOnly />
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
+          {/* Üst şerit: marka solda, kullanıcı sağda */}
+          <div className="flex h-14 items-center justify-between gap-4">
+            <Link href="/koc" aria-label="Koç paneli">
+              <Logo size={26} />
+            </Link>
+            <div className="flex items-center gap-2">
+              <span className="hidden max-w-[22ch] truncate text-sm text-muted-foreground sm:block">
+                {session.user.name}
+              </span>
+              <ThemeToggle />
+              <SignOutButton iconOnly />
+            </div>
           </div>
+          {/* Gezinme şeridi: tam genişlik, taşarsa yatay kayar */}
+          <CoachNav isAdmin={role === "admin"} />
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 md:py-8">

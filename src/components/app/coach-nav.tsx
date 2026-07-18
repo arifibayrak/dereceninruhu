@@ -64,7 +64,14 @@ export function CoachNav({
     : LINKS;
 
   return (
-    <nav className={cn("flex items-center gap-1", className)}>
+    <nav
+      className={cn(
+        // Kendi satırı: taşarsa yatay kayar (sarmalanmaz), kaydırma çubuğu gizli.
+        "-mx-1 flex h-12 items-center gap-1 overflow-x-auto px-1",
+        "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        className,
+      )}
+    >
       {links.map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         return (
@@ -72,13 +79,13 @@ export function CoachNav({
             key={href}
             href={href}
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-colors",
+              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors",
               active
                 ? "bg-secondary text-secondary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
-            <Icon className="size-4" />
+            <Icon className="size-4 shrink-0" />
             <span className="hidden sm:inline">{label}</span>
           </Link>
         );
