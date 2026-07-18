@@ -286,9 +286,13 @@ export async function upsertBlogPost(
     if (v.id) {
       const existing = await db.query.blogPosts.findFirst({
         where: eq(blogPosts.id, v.id),
-        columns: { publishedAt: true },
+        columns: { publishedAt: true, authorUserId: true },
       });
       if (!existing) return actionError("Yazı bulunamadı.");
+      // Koç yalnız kendi yazısını düzenleyebilir; yönetici hepsini.
+      if (coach.role === "coach" && existing.authorUserId !== coach.id) {
+        return actionError("Bu yazı sana ait değil.");
+      }
       await db
         .update(blogPosts)
         .set({
@@ -319,10 +323,19 @@ export async function upsertBlogPost(
 
 export async function deleteBlogPost(input: unknown): Promise<ActionResult<void>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireCoach();
     const id = idParam(input);
     if (!id) return actionError("Geçersiz kayıt.");
     const db = getDb();
+    const post = await db.query.blogPosts.findFirst({
+      where: eq(blogPosts.id, id),
+      columns: { id: true, authorUserId: true },
+    });
+    if (!post) return actionError("Yazı bulunamadı.");
+    // Koç yalnız kendi yazısını silebilir; yönetici hepsini.
+    if (user.role === "coach" && post.authorUserId !== user.id) {
+      return actionError("Bu yazı sana ait değil.");
+    }
     await db.delete(blogPosts).where(eq(blogPosts.id, id));
     revalidateBlog();
     return { ok: true, data: undefined };

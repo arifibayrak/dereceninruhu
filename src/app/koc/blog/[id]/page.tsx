@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 
 import { getPostById } from "@/db/queries/cms";
+import { getViewer } from "@/lib/session";
 import { BlogPostForm } from "@/components/app/blog-post-form";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,11 @@ export default async function YaziDuzenlePage({
 
   const post = await getPostById(postId);
   if (!post) notFound();
+  // Koç yalnız kendi yazısını düzenleyebilir; yönetici hepsini.
+  const viewer = await getViewer();
+  if (viewer?.role === "coach" && post.authorUserId !== viewer.id) {
+    notFound();
+  }
 
   return (
     <>

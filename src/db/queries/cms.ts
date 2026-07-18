@@ -214,6 +214,7 @@ export async function getCoachProfileRow() {
   });
 }
 
+/** Tüm blog yazıları (yazar adıyla) — koç panosu; herkes görür, sahiplik ayrı. */
 export async function listAllPosts() {
   const db = getDb();
   return db.query.blogPosts.findMany({
@@ -225,7 +226,9 @@ export async function listAllPosts() {
       status: true,
       publishedAt: true,
       updatedAt: true,
+      authorUserId: true,
     },
+    with: { author: { columns: { name: true } } },
   });
 }
 

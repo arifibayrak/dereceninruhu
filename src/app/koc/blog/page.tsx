@@ -4,6 +4,7 @@ import { ExternalLinkIcon, NewspaperIcon, PlusIcon } from "lucide-react";
 
 import { listAllPosts } from "@/db/queries/cms";
 import { formatTrDate } from "@/lib/dates";
+import { getViewer } from "@/lib/session";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,8 @@ const STATUS_LABEL = {
 } as const;
 
 export default async function KocBlogPage() {
-  const posts = await listAllPosts();
+  const [posts, viewer] = await Promise.all([listAllPosts(), getViewer()]);
+  const isAdmin = viewer?.role === "admin";
 
   return (
     <>
@@ -46,17 +48,29 @@ export default async function KocBlogPage() {
         <ul className="flex flex-col divide-y rounded-2xl bg-card ring-1 ring-foreground/10">
           {posts.map((post) => {
             const status = STATUS_LABEL[post.status];
+            // Yönetici her yazıyı; koç yalnız kendi yazısını düzenleyebilir.
+            const canManage = isAdmin || post.authorUserId === viewer?.id;
+            const authorLabel =
+              post.authorUserId === viewer?.id
+                ? "sen"
+                : (post.author?.name ?? "—");
             return (
               <li key={post.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <Link
-                    href={`/koc/blog/${post.id}`}
-                    className="truncate text-sm font-medium hover:text-primary"
-                  >
-                    {post.title}
-                  </Link>
+                  {canManage ? (
+                    <Link
+                      href={`/koc/blog/${post.id}`}
+                      className="truncate text-sm font-medium hover:text-primary"
+                    >
+                      {post.title}
+                    </Link>
+                  ) : (
+                    <span className="truncate text-sm font-medium">
+                      {post.title}
+                    </span>
+                  )}
                   <span className="truncate text-xs text-muted-foreground">
-                    /blog/{post.slug}
+                    /blog/{post.slug} · {authorLabel}
                     {post.publishedAt
                       ? ` · ${formatTrDate(post.publishedAt)}`
                       : ""}
