@@ -6,6 +6,7 @@ import { eq, inArray } from "drizzle-orm";
 import { getDb, type DB } from "@/db";
 import { enrollments, users } from "@/db/schema";
 import { getAuth } from "@/lib/auth";
+import { isOwnerEmail } from "@/lib/owner";
 import {
   assignStudentCoachSchema,
   bulkAssignCoachSchema,
@@ -83,7 +84,7 @@ export async function updateUserRole(
   input: unknown,
 ): Promise<ActionResult<{ userId: string }>> {
   return guarded(async () => {
-    await requireAdmin();
+    const actor = await requireAdmin();
     const parsed = updateUserRoleSchema.safeParse(input);
     if (!parsed.success) return actionError("Geçersiz rol isteği.");
     const { userId, role } = parsed.data;
@@ -91,11 +92,17 @@ export async function updateUserRole(
     const db = getDb();
     const target = await db.query.users.findFirst({
       where: eq(users.id, userId),
-      columns: { id: true, role: true },
+      columns: { id: true, role: true, email: true },
     });
     if (!target) return actionError("Kullanıcı bulunamadı.");
     if (target.role === "student") {
       return actionError("Öğrenci hesabının rolü buradan değiştirilemez.");
+    }
+    // Hesap sahibinin (Arif) rolünü yalnız kendisi değiştirebilir.
+    if (isOwnerEmail(target.email) && !isOwnerEmail(actor.email)) {
+      return actionError(
+        "Bu hesabın rolü yalnız hesap sahibi tarafından değiştirilebilir.",
+      );
     }
     if (target.role === role) return { ok: true, data: { userId } };
 

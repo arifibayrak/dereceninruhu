@@ -5,6 +5,7 @@ import { ArrowRightIcon } from "lucide-react";
 
 import { listStaff } from "@/db/queries/admin";
 import { formatInt } from "@/lib/format";
+import { isOwnerEmail } from "@/lib/owner";
 import { getViewer } from "@/lib/session";
 import { AdminAddForm } from "@/components/app/admin-add-form";
 import { CoachAddForm } from "@/components/app/coach-add-form";
@@ -45,6 +46,10 @@ export default async function YonetimPage() {
 
   const staff = await listStaff();
   const adminCount = staff.filter((s) => s.role === "admin").length;
+  // Hesap sahibinin (Arif) rolünü yalnız kendisi değiştirebilir.
+  const viewerIsOwner = isOwnerEmail(
+    staff.find((s) => s.id === viewer.id)?.email,
+  );
 
   return (
     <>
@@ -75,6 +80,7 @@ export default async function YonetimPage() {
           <TableBody>
             {staff.map((s) => {
               const lastAdmin = s.role === "admin" && adminCount <= 1;
+              const lockedOwner = isOwnerEmail(s.email) && !viewerIsOwner;
               return (
                 <TableRow key={s.id}>
                   <TableCell className="pl-4 font-medium">
@@ -106,13 +112,17 @@ export default async function YonetimPage() {
                       key={`${s.id}:${s.role}`}
                       userId={s.id}
                       role={s.role}
-                      disabled={lastAdmin}
+                      disabled={lastAdmin || lockedOwner}
                     />
-                    {lastAdmin && (
+                    {lockedOwner ? (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Hesap sahibi — yalnız kendisi değiştirebilir
+                      </p>
+                    ) : lastAdmin ? (
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         Son yönetici — rol kilitli
                       </p>
-                    )}
+                    ) : null}
                   </TableCell>
                 </TableRow>
               );
