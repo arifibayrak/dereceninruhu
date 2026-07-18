@@ -1,0 +1,63 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
+import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
+import { getCurrentUser, type Role } from "@/lib/session";
+import { NoEnrollmentCard } from "@/components/app/no-enrollment";
+import { StudentProfileForm } from "@/components/app/student-profile-form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+export const metadata: Metadata = { title: "Profil" };
+
+export default async function OgrenciProfilPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/giris");
+  const role = (user as { role?: Role }).role ?? "student";
+
+  const detail = await getEnrollmentDetailByUserId(user.id);
+  if (!detail) {
+    return <NoEnrollmentCard isCoach={role === "coach" || role === "admin"} />;
+  }
+  const { student, enrollment } = detail;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h1 className="font-heading text-xl font-semibold">Profil</h1>
+        <p className="text-sm text-muted-foreground">
+          Bilgilerini güncel tut; koçun bunları görür.
+        </p>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Bilgilerim</CardTitle>
+          <CardDescription>
+            {enrollment.examName}
+            {enrollment.trackName ? ` · ${enrollment.trackName}` : ""}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <StudentProfileForm
+            variant="self"
+            initial={{
+              fullName: student.fullName,
+              phone: student.phone ?? "",
+              parentPhone: student.parentPhone ?? "",
+              targetText: enrollment.targetText ?? "",
+              grade: student.grade ?? "",
+              field: student.field ?? "",
+              school: student.school ?? "",
+              dershane: student.dershane ?? "",
+            }}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -4,11 +4,16 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { enrollments, examTemplates, students, tracks } from "@/db/schema";
 import { normalizePhone } from "@/lib/phone";
-import { createStudentSchema } from "@/lib/validation";
+import {
+  createStudentSchema,
+  updateStudentProfileSchema,
+} from "@/lib/validation";
 import {
   actionError,
+  fieldErrorsOf,
   guarded,
   requireCoach,
+  requireUser,
   type ActionResult,
 } from "@/actions/_guard";
 
@@ -104,22 +109,19 @@ export async function createStudent(
   });
 }
 
-const updateStudentSchema = createStudentSchema;
-
-/** Update a student's profile + their active enrollment's target. */
+/** Update a student's profile + their active enrollment's target (coach). */
 export async function updateStudent(
   studentId: number,
   input: unknown,
 ): Promise<ActionResult<{ studentId: number }>> {
   return guarded(async () => {
     await requireCoach();
-    const parsed = updateStudentSchema.safeParse(input);
+    const parsed = updateStudentProfileSchema.safeParse(input);
     if (!parsed.success) {
-      const fieldErrors: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        fieldErrors[issue.path.join(".")] = issue.message;
-      }
-      return actionError("Lütfen formu kontrol edin.", fieldErrors);
+      return actionError(
+        "Lütfen formu kontrol edin.",
+        fieldErrorsOf(parsed.error.issues),
+      );
     }
     const v = parsed.data;
     const db = getDb();
@@ -149,5 +151,63 @@ export async function updateStudent(
       );
 
     return { ok: true, data: { studentId } };
+  });
+}
+
+/**
+ * Öğrenci kendi profilini günceller (self-servis).
+ * Giriş telefonu (users.phoneNumber, PIN girişi) bilinçli olarak KAPSAM DIŞI —
+ * yalnız `students` + aktif `enrollments.targetText` güncellenir.
+ */
+export async function updateMyProfile(
+  input: unknown,
+): Promise<ActionResult<void>> {
+  return guarded(async () => {
+    const user = await requireUser();
+    const parsed = updateStudentProfileSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError(
+        "Lütfen formu kontrol edin.",
+        fieldErrorsOf(parsed.error.issues),
+      );
+    }
+    const db = getDb();
+
+    const student = await db.query.students.findFirst({
+      where: eq(students.userId, user.id),
+    });
+    if (!student) {
+      return actionError(
+        "Öğrenci profili bulunamadı. Daveti tamamladıysan tekrar giriş yap.",
+      );
+    }
+
+    const v = parsed.data;
+
+    await db
+      .update(students)
+      .set({
+        fullName: v.fullName.trim(),
+        phone: v.phone ? normalizePhone(v.phone) : null,
+        parentPhone: v.parentPhone ? normalizePhone(v.parentPhone) : null,
+        grade: clean(v.grade),
+        field: clean(v.field),
+        school: clean(v.school),
+        dershane: clean(v.dershane),
+        updatedAt: new Date(),
+      })
+      .where(eq(students.id, student.id));
+
+    await db
+      .update(enrollments)
+      .set({ targetText: clean(v.targetText), updatedAt: new Date() })
+      .where(
+        and(
+          eq(enrollments.studentId, student.id),
+          eq(enrollments.status, "active"),
+        ),
+      );
+
+    return { ok: true, data: undefined };
   });
 }

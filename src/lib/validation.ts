@@ -32,6 +32,24 @@ export const createStudentSchema = z
   });
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 
+/**
+ * Profil düzenleme — sınav/alan değiştirmez, yalnız kişisel bilgiler + hedef.
+ * Hem koç (öğrenci profili) hem öğrenci (kendi profili) için kullanılır.
+ */
+export const updateStudentProfileSchema = z.object({
+  fullName: z.string().trim().min(2, "Ad soyad gerekli."),
+  phone: phoneSchema.optional().or(z.literal("")),
+  parentPhone: phoneSchema.optional().or(z.literal("")),
+  targetText: z.string().trim().max(200).optional().or(z.literal("")),
+  grade: z.string().trim().max(40).optional().or(z.literal("")),
+  field: z.string().trim().max(80).optional().or(z.literal("")),
+  school: z.string().trim().max(120).optional().or(z.literal("")),
+  dershane: z.string().trim().max(120).optional().or(z.literal("")),
+});
+export type UpdateStudentProfileInput = z.infer<
+  typeof updateStudentProfileSchema
+>;
+
 /** İlk kurulum — ilk yönetici (koç) hesabı. */
 export const setupAdminSchema = z.object({
   name: z.string().trim().min(2, "Ad soyad gerekli."),

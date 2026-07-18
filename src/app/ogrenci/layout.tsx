@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { UserRoundIcon } from "lucide-react";
 
 import { getSession, type Role } from "@/lib/session";
 import { SignOutButton } from "@/components/app/sign-out-button";
@@ -7,6 +8,7 @@ import { StudentBottomNav } from "@/components/app/student-nav";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 // Session/D1-backed — render per-request (applies to all /ogrenci/* segments).
 export const dynamic = "force-dynamic";
@@ -36,6 +38,14 @@ export default async function OgrenciLayout({
             {isCoachPreview && (
               <Badge variant="secondary">Koç önizlemesi</Badge>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Profil"
+              render={<Link href="/ogrenci/profil" />}
+            >
+              <UserRoundIcon />
+            </Button>
             <ThemeToggle />
             <SignOutButton iconOnly />
           </div>

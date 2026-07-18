@@ -54,6 +54,7 @@ import {
   WaInviteButton,
 } from "@/components/app/invite-actions";
 import { MockCreateDialog } from "@/components/app/mock-create-dialog";
+import { StudentProfileForm } from "@/components/app/student-profile-form";
 import type { MockSection } from "@/components/app/mock-form";
 import {
   ProgramBuilder,
@@ -619,12 +620,10 @@ export default async function OgrenciKokpitPage({
           <Card className="max-w-lg">
             <CardHeader>
               <CardTitle>Profil</CardTitle>
-              <CardDescription>
-                Düzenleme sonraki fazda; şimdilik özet bilgiler.
-              </CardDescription>
+              <CardDescription>Öğrenci bilgilerini düzenle.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+            <CardContent className="flex flex-col gap-6">
+              <dl className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-2 text-sm">
                 {isAdmin ? (
                   <>
                     <dt className="self-center text-muted-foreground">Koç</dt>
@@ -643,13 +642,6 @@ export default async function OgrenciKokpitPage({
                 ) : (
                   <ProfileRow label="Koç" value={enrollment.coachName} />
                 )}
-                <ProfileRow label="Telefon" value={student.phone} />
-                <ProfileRow label="Veli telefonu" value={student.parentPhone} />
-                <ProfileRow label="Sınıf / durum" value={student.grade} />
-                <ProfileRow label="Alan / bölüm" value={student.field} />
-                <ProfileRow label="Okul" value={student.school} />
-                <ProfileRow label="Dershane" value={student.dershane} />
-                <ProfileRow label="Hedef" value={enrollment.targetText} />
                 <ProfileRow
                   label="Başlangıç"
                   value={
@@ -659,6 +651,20 @@ export default async function OgrenciKokpitPage({
                   }
                 />
               </dl>
+              <StudentProfileForm
+                variant="coach"
+                studentId={studentId}
+                initial={{
+                  fullName: student.fullName,
+                  phone: student.phone ?? "",
+                  parentPhone: student.parentPhone ?? "",
+                  targetText: enrollment.targetText ?? "",
+                  grade: student.grade ?? "",
+                  field: student.field ?? "",
+                  school: student.school ?? "",
+                  dershane: student.dershane ?? "",
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>
