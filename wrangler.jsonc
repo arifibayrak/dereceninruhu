@@ -11,23 +11,20 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    // Must match where the app is served (Better Auth baseURL + trusted origin).
+    // Update to https://dereceninruhu.com once the custom domain is bound.
+    "BETTER_AUTH_URL": "https://dereceninruhu.aib25.workers.dev"
+  },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "dereceninruhu-db",
-      // PLACEHOLDER — Arif: run `wrangler d1 create dereceninruhu-db` (after
-      // `wrangler login`) and paste the returned database_id here before deploy.
-      // Local dev (`--local`) ignores this value.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "99be7c0d-45d7-4f79-adb0-57b32fd1a2a1",
       "migrations_dir": "drizzle/migrations"
     }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "R2",
-      "bucket_name": "dereceninruhu-files"
-    }
   ]
-  // Cron triggers (haftalık roll-up, aylık fatura) added in Faz 2/Faz 4 with a
-  // custom worker scheduled handler.
+  // R2 binding removed until R2 is enabled on the account (Cloudflare dashboard).
+  // Nothing uses R2 yet; re-add when file storage (makbuz/içerik) ships.
+  // Cron triggers (haftalık roll-up, aylık fatura) added later with a scheduled handler.
 }
