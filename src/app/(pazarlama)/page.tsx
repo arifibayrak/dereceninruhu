@@ -102,7 +102,8 @@ export default async function HomePage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-20 px-4 py-10 sm:px-6 md:gap-28 md:py-16">
       {/* -------------------------------- Hero ------------------------------- */}
-      <section className="relative">
+      {/* İlk ekranı doldurur (masaüstü): alttaki bölüm katlamanın altına iner. */}
+      <section className="relative lg:flex lg:min-h-[calc(100svh-285px)] lg:flex-col lg:justify-center">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/4 h-72 w-[min(34rem,90vw)] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
           <div className="absolute top-8 right-[10%] size-40 rounded-full bg-gold/15 blur-2xl" />
