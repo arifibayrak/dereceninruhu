@@ -81,10 +81,15 @@ async function paidByInvoice(
 /*  Fatura listeleri                                                          */
 /* -------------------------------------------------------------------------- */
 
-/** Tüm faturalar (öğrenci adıyla), filtrelenebilir, yeniden eskiye. */
+/**
+ * Faturalar (öğrenci adıyla), filtrelenebilir, yeniden eskiye. `coachUserId`
+ * verilirse yalnız o koça atanmış öğrencilerin faturaları döner (koç görünümü);
+ * null/undefined ise tüm kadro (yönetici görünümü).
+ */
 export async function listInvoices(opts?: {
   status?: InvoiceStatus | "açık";
   enrollmentId?: number;
+  coachUserId?: string | null;
   limit?: number;
   now?: Date;
 }): Promise<InvoiceRow[]> {
@@ -92,6 +97,8 @@ export async function listInvoices(opts?: {
   const now = opts?.now ?? new Date();
   const conds = [];
   if (opts?.enrollmentId) conds.push(eq(invoices.enrollmentId, opts.enrollmentId));
+  if (opts?.coachUserId)
+    conds.push(eq(enrollments.coachUserId, opts.coachUserId));
   if (opts?.status === "açık") conds.push(inArray(invoices.status, OPEN_STATUSES));
   else if (opts?.status) conds.push(eq(invoices.status, opts.status));
 
@@ -131,8 +138,9 @@ export async function listInvoices(opts?: {
 /** Gecikmiş (açık + vadesi geçmiş) faturalar — pano + hatırlatma listesi. */
 export async function getOverdueInvoices(
   now: Date = new Date(),
+  coachUserId?: string | null,
 ): Promise<InvoiceRow[]> {
-  const open = await listInvoices({ status: "açık", now });
+  const open = await listInvoices({ status: "açık", now, coachUserId });
   return open
     .filter((r) => r.isOverdue)
     .sort((a, b) => (a.dueOn?.getTime() ?? 0) - (b.dueOn?.getTime() ?? 0));
@@ -141,20 +149,30 @@ export async function getOverdueInvoices(
 /** Gecikmiş fatura sayısı — koç panosu rozeti. */
 export async function getOverdueInvoiceCount(
   now: Date = new Date(),
+  coachUserId?: string | null,
 ): Promise<number> {
-  return (await getOverdueInvoices(now)).length;
+  return (await getOverdueInvoices(now, coachUserId)).length;
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Ödemeler                                                                  */
 /* -------------------------------------------------------------------------- */
 
-/** Ödeme listesi (öğrenci + fatura etiketiyle), yeniden eskiye. */
+/**
+ * Ödeme listesi (öğrenci + fatura etiketiyle), yeniden eskiye. `coachUserId`
+ * verilirse yalnız o koça atanmış öğrencilerin ödemeleri döner.
+ */
 export async function listPayments(opts?: {
   enrollmentId?: number;
+  coachUserId?: string | null;
   limit?: number;
 }): Promise<PaymentRow[]> {
   const db = getDb();
+  const conds = [];
+  if (opts?.enrollmentId)
+    conds.push(eq(payments.enrollmentId, opts.enrollmentId));
+  if (opts?.coachUserId)
+    conds.push(eq(enrollments.coachUserId, opts.coachUserId));
   const rows = await db
     .select({
       id: payments.id,
@@ -172,11 +190,7 @@ export async function listPayments(opts?: {
     .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
     .innerJoin(students, eq(students.id, enrollments.studentId))
     .leftJoin(invoices, eq(invoices.id, payments.invoiceId))
-    .where(
-      opts?.enrollmentId
-        ? eq(payments.enrollmentId, opts.enrollmentId)
-        : undefined,
-    )
+    .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(payments.paidOn), desc(payments.id))
     .limit(opts?.limit ?? 200);
   return rows;
@@ -197,26 +211,35 @@ export type MuhasebeDashboard = {
   recentPayments: PaymentRow[];
 };
 
-/** /koc/muhasebe panosu — tek bakışta işletme durumu. */
+/**
+ * /koc/muhasebe panosu — tek bakışta işletme durumu. `coachUserId` verilirse
+ * yalnız o koça atanmış öğrencilerin muhasebesi (koç görünümü).
+ */
 export async function getMuhasebeDashboard(
   now: Date = new Date(),
+  coachUserId?: string | null,
 ): Promise<MuhasebeDashboard> {
   const db = getDb();
   const { start, end } = trtMonthRange(now);
+  const coachFilter = coachUserId
+    ? eq(enrollments.coachUserId, coachUserId)
+    : undefined;
 
   const [monthRow] = await db
     .select({
       total: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
     })
     .from(payments)
-    .where(and(gte(payments.paidOn, start), lt(payments.paidOn, end)));
+    .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
+    .where(and(gte(payments.paidOn, start), lt(payments.paidOn, end), coachFilter));
 
   const [invoicedRow] = await db
     .select({
       total: sql<number>`coalesce(sum(${invoices.amountKurus}), 0)`,
     })
     .from(invoices)
-    .where(ne(invoices.status, "iptal"));
+    .innerJoin(enrollments, eq(enrollments.id, invoices.enrollmentId))
+    .where(and(ne(invoices.status, "iptal"), coachFilter));
 
   // Faturaya bağlı ödemeler (iptal faturaya bağlılar hariç) — tahsilat oranı.
   const [collectedRow] = await db
@@ -225,9 +248,10 @@ export async function getMuhasebeDashboard(
     })
     .from(payments)
     .innerJoin(invoices, eq(invoices.id, payments.invoiceId))
-    .where(ne(invoices.status, "iptal"));
+    .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
+    .where(and(ne(invoices.status, "iptal"), coachFilter));
 
-  const open = await listInvoices({ status: "açık", now });
+  const open = await listInvoices({ status: "açık", now, coachUserId });
   const outstandingKurus = open.reduce((acc, r) => acc + r.balanceKurus, 0);
   const overdue = open
     .filter((r) => r.isOverdue)
@@ -241,7 +265,7 @@ export async function getMuhasebeDashboard(
     outstandingKurus,
     collectionRate: invoiced > 0 ? collected / invoiced : null,
     overdue,
-    recentPayments: await listPayments({ limit: 8 }),
+    recentPayments: await listPayments({ limit: 8, coachUserId }),
   };
 }
 
@@ -316,7 +340,9 @@ export type EnrollmentOption = {
   label: string;
 };
 
-export async function getEnrollmentOptions(): Promise<EnrollmentOption[]> {
+export async function getEnrollmentOptions(
+  coachUserId?: string | null,
+): Promise<EnrollmentOption[]> {
   const db = getDb();
   const rows = await db
     .select({
@@ -326,7 +352,13 @@ export async function getEnrollmentOptions(): Promise<EnrollmentOption[]> {
     })
     .from(enrollments)
     .innerJoin(students, eq(students.id, enrollments.studentId))
-    .where(and(eq(enrollments.status, "active"), eq(students.status, "active")))
+    .where(
+      and(
+        eq(enrollments.status, "active"),
+        eq(students.status, "active"),
+        coachUserId ? eq(enrollments.coachUserId, coachUserId) : undefined,
+      ),
+    )
     .orderBy(students.fullName);
   return rows;
 }

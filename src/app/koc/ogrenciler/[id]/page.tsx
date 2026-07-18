@@ -150,6 +150,10 @@ export default async function OgrenciKokpitPage({
 
   const viewer = await getViewer();
   const isAdmin = viewer?.role === "admin";
+  // Koç yalnız kendisine atanan öğrencinin kokpitini (muhasebe dahil) görür.
+  if (viewer?.role === "coach" && enrollment.coachUserId !== viewer.id) {
+    notFound();
+  }
   const coaches = isAdmin ? await listCoaches() : [];
 
   const initialTab = (TAB_VALUES as readonly string[]).includes(tab ?? "")

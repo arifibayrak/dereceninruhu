@@ -7,6 +7,7 @@ import {
   listInvoices,
 } from "@/db/queries/muhasebe";
 import { formatKurus } from "@/lib/format";
+import { getViewer } from "@/lib/session";
 import { trMonthLabel, type InvoiceStatus } from "@/lib/muhasebe";
 import { InvoiceCreateDialog } from "@/components/app/invoice-create-dialog";
 import {
@@ -54,6 +55,8 @@ export default async function FaturalarPage({
     FILTERS.some((f) => f.value === durum) ? durum : ""
   ) as FilterValue;
   const now = new Date();
+  const viewer = await getViewer();
+  const coachUserId = viewer?.role === "coach" ? viewer.id : null;
 
   // "gecikmiş" statüden değil vadeden türetilir → açık faturalardan süz.
   const [allInvoices, options] = await Promise.all([
@@ -65,8 +68,9 @@ export default async function FaturalarPage({
             ? "açık"
             : (filter as InvoiceStatus | "açık"),
       now,
+      coachUserId,
     }),
-    getEnrollmentOptions(),
+    getEnrollmentOptions(coachUserId),
   ]);
   const invoices =
     filter === "gecikmiş"

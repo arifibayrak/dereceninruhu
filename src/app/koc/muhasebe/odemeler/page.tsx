@@ -8,6 +8,7 @@ import {
   listPayments,
 } from "@/db/queries/muhasebe";
 import { formatKurus } from "@/lib/format";
+import { getViewer } from "@/lib/session";
 import { PAYMENT_METHOD_LABELS } from "@/lib/muhasebe";
 import { buildPaymentStudentOptions } from "@/lib/muhasebe-view";
 import { PaymentDeleteButton } from "@/components/app/payment-delete-button";
@@ -33,10 +34,12 @@ const dateFmt = new Intl.DateTimeFormat("tr-TR", {
 
 export default async function OdemelerPage() {
   const now = new Date();
+  const viewer = await getViewer();
+  const coachUserId = viewer?.role === "coach" ? viewer.id : null;
   const [payments, options, openInvoices] = await Promise.all([
-    listPayments(),
-    getEnrollmentOptions(),
-    listInvoices({ status: "açık", now }),
+    listPayments({ coachUserId }),
+    getEnrollmentOptions(coachUserId),
+    listInvoices({ status: "açık", now, coachUserId }),
   ]);
   const paymentStudents = buildPaymentStudentOptions(options, openInvoices);
   const totalKurus = payments.reduce((acc, p) => acc + p.amountKurus, 0);

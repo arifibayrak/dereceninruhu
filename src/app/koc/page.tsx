@@ -62,7 +62,10 @@ export default async function KocPanelPage() {
       getPlansAwaitingPublish(),
       getUpcomingSessions(),
       countNewLeads(),
-      getOverdueInvoiceCount(),
+      getOverdueInvoiceCount(
+        new Date(),
+        viewer.role === "coach" ? viewer.id : null,
+      ),
     ]);
   const now = new Date();
 

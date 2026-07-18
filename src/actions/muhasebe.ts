@@ -18,19 +18,24 @@ import {
   guarded,
   requireCoach,
   type ActionResult,
+  type SessionUser,
 } from "@/actions/_guard";
 
 /**
  * Faz 4 — muhasebe aksiyonları. Tamamı koç/yönetici (requireCoach);
  * öğrenciler finansal verileri hiç görmez. Money = integer kuruş.
+ * Koç yalnız KENDİ öğrencilerinin muhasebesine dokunabilir; yönetici hepsine.
  */
 
-async function assertEnrollmentExists(enrollmentId: number) {
+async function assertEnrollmentAccess(enrollmentId: number, user: SessionUser) {
   const db = getDb();
   const row = await db.query.enrollments.findFirst({
     where: eq(enrollments.id, enrollmentId),
   });
   if (!row) throw new Error("Kayıt bulunamadı");
+  if (user.role === "coach" && row.coachUserId !== user.id) {
+    throw new Error("Bu öğrenci sana atanmadı");
+  }
   return row;
 }
 
@@ -69,14 +74,14 @@ export async function upsertFeePlan(
   input: unknown,
 ): Promise<ActionResult<{ feePlanId: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireCoach();
     const parsed = upsertFeePlanSchema.safeParse(input);
     if (!parsed.success) {
       return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
     }
     const v = parsed.data;
     const db = getDb();
-    await assertEnrollmentExists(v.enrollmentId);
+    await assertEnrollmentAccess(v.enrollmentId, user);
 
     if (v.feePlanId) {
       const existing = await db.query.feePlans.findFirst({
@@ -129,14 +134,14 @@ export async function createInvoice(
   input: unknown,
 ): Promise<ActionResult<{ invoiceId: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireCoach();
     const parsed = createInvoiceSchema.safeParse(input);
     if (!parsed.success) {
       return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
     }
     const v = parsed.data;
     const db = getDb();
-    await assertEnrollmentExists(v.enrollmentId);
+    await assertEnrollmentAccess(v.enrollmentId, user);
 
     const activePlan = await db.query.feePlans.findFirst({
       where: and(
@@ -166,7 +171,7 @@ export async function updateInvoiceStatus(
   input: unknown,
 ): Promise<ActionResult<{ invoiceId: number; status: InvoiceStatus }>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireCoach();
     const parsed = updateInvoiceStatusSchema.safeParse(input);
     if (!parsed.success) return actionError("Geçersiz giriş.");
     const v = parsed.data;
@@ -175,6 +180,7 @@ export async function updateInvoiceStatus(
       where: eq(invoices.id, v.invoiceId),
     });
     if (!invoice) return actionError("Fatura bulunamadı.");
+    await assertEnrollmentAccess(invoice.enrollmentId, user);
     await db
       .update(invoices)
       .set({ status: v.status, updatedAt: new Date() })
@@ -188,7 +194,7 @@ export async function voidInvoice(
   input: unknown,
 ): Promise<ActionResult<{ invoiceId: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireCoach();
     const parsed = voidInvoiceSchema.safeParse(input);
     if (!parsed.success) return actionError("Geçersiz giriş.");
     const db = getDb();
@@ -196,6 +202,7 @@ export async function voidInvoice(
       where: eq(invoices.id, parsed.data.invoiceId),
     });
     if (!invoice) return actionError("Fatura bulunamadı.");
+    await assertEnrollmentAccess(invoice.enrollmentId, user);
     if (invoice.status === "ödendi") {
       return actionError("Ödenmiş fatura iptal edilemez.");
     }
@@ -219,7 +226,7 @@ export async function recordPayment(
     }
     const v = parsed.data;
     const db = getDb();
-    await assertEnrollmentExists(v.enrollmentId);
+    await assertEnrollmentAccess(v.enrollmentId, user);
 
     if (v.invoiceId) {
       const invoice = await db.query.invoices.findFirst({
@@ -258,12 +265,13 @@ export async function deletePayment(
   paymentId: number,
 ): Promise<ActionResult<{ paymentId: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireCoach();
     const db = getDb();
     const payment = await db.query.payments.findFirst({
       where: eq(payments.id, paymentId),
     });
     if (!payment) return actionError("Ödeme bulunamadı.");
+    await assertEnrollmentAccess(payment.enrollmentId, user);
     await db.delete(payments).where(eq(payments.id, paymentId));
     if (payment.invoiceId) {
       // Ödeme silinince tam ödenmişlik bozulabilir — durumu geri türet.

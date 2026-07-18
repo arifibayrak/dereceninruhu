@@ -13,6 +13,7 @@ import {
   listInvoices,
 } from "@/db/queries/muhasebe";
 import { formatKurus } from "@/lib/format";
+import { getViewer } from "@/lib/session";
 import { trMonthLabel } from "@/lib/muhasebe";
 import { buildPaymentStudentOptions } from "@/lib/muhasebe-view";
 import { buildWaLink, waTemplates } from "@/lib/whatsapp";
@@ -43,10 +44,13 @@ const pctFmt = new Intl.NumberFormat("tr-TR", {
 
 export default async function MuhasebePage() {
   const now = new Date();
+  const viewer = await getViewer();
+  // Koç yalnız kendi öğrencilerinin muhasebesini görür; yönetici tümünü.
+  const coachUserId = viewer?.role === "coach" ? viewer.id : null;
   const [dash, options, openInvoices] = await Promise.all([
-    getMuhasebeDashboard(now),
-    getEnrollmentOptions(),
-    listInvoices({ status: "açık", now }),
+    getMuhasebeDashboard(now, coachUserId),
+    getEnrollmentOptions(coachUserId),
+    listInvoices({ status: "açık", now, coachUserId }),
   ]);
   const paymentStudents = buildPaymentStudentOptions(options, openInvoices);
 
