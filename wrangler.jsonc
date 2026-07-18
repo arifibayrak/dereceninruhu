@@ -13,9 +13,11 @@
   },
   "vars": {
     // Must match where the app is served (Better Auth baseURL + trusted origin).
-    // Update to https://dereceninruhu.com once the custom domain is bound.
-    "BETTER_AUTH_URL": "https://dereceninruhu.aib25.workers.dev"
+    "BETTER_AUTH_URL": "https://dereceninruhu.com"
   },
+  "routes": [
+    { "pattern": "dereceninruhu.com", "custom_domain": true }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
