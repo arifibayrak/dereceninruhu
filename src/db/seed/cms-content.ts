@@ -252,42 +252,45 @@ export const faqSeeds: { question: string; answer: string }[] = [
  */
 export const packageSeeds: {
   name: string;
-  priceKurus: number; // TODO(Arif): placeholder — gerçek fiyatı panelden gir.
+  priceKurus: number;
+  compareAtKurus?: number | null;
   period: string;
   features: string[];
 }[] = [
   {
-    name: "Aylık Koçluk",
-    priceKurus: 250_000, // ₺2.500 — PLACEHOLDER
-    period: "aylık",
+    name: "Haftalık Koçluk",
+    priceKurus: 129_900, // ₺1.299
+    compareAtKurus: 149_900, // ₺1.499
+    period: "haftalık",
     features: [
       "Haftalık birebir koçluk görüşmesi",
       "Sana özel haftalık çalışma programı",
-      "Soru ve deneme takibi (uygulama üzerinden)",
+      "Günlük soru ve deneme takibi (uygulama)",
       "WhatsApp'tan koçuna doğrudan erişim",
+    ],
+  },
+  {
+    name: "Aylık Koçluk",
+    priceKurus: 399_900, // ₺3.999
+    compareAtKurus: 499_900, // ₺4.999
+    period: "aylık",
+    features: [
+      "Haftalık koçluğun tüm içeriği",
+      "Aylık hedef yol haritası",
+      "Deneme & net analizi + eksik konu haritası",
+      "Öncelikli görüşme saatleri",
       "Veli bilgilendirmesi (LGS/YKS)",
     ],
   },
   {
-    name: "3 Aylık Paket",
-    priceKurus: 675_000, // ₺6.750 — PLACEHOLDER
-    period: "3 aylık",
-    features: [
-      "Aylık koçluğun tüm içeriği",
-      "3 aylık hedef yol haritası",
-      "Öncelikli görüşme saatleri",
-      "Aylık ödemeye göre daha avantajlı fiyat",
-    ],
-  },
-  {
     name: "Deneme Analizi Paketi",
-    priceKurus: 75_000, // ₺750 — PLACEHOLDER
+    priceKurus: 49_900, // ₺499
     period: "tek seferlik",
     features: [
-      "4 denemenin detaylı analizi",
+      "Denemelerinin detaylı analizi",
       "Konu bazlı eksik haritası",
       "60 dk birebir değerlendirme görüşmesi",
-      "Sonraki 4 hafta için öneri planı",
+      "Sonraki haftalar için öneri planı",
     ],
   },
 ];

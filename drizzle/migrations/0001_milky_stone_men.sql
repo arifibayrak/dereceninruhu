@@ -1,0 +1,1 @@
+ALTER TABLE `packages` ADD `compare_at_kurus` integer;

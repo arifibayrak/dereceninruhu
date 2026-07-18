@@ -41,6 +41,8 @@ export type PublicPackage = {
   id?: number;
   name: string;
   priceKurus: number;
+  /** Optional "was" price for a discount strikethrough. */
+  compareAtKurus?: number | null;
   period: string | null;
   features: string[];
 };
@@ -108,6 +110,7 @@ export async function getPublicPackages(): Promise<PublicPackage[]> {
       id: r.id,
       name: r.name,
       priceKurus: r.priceKurus,
+      compareAtKurus: r.compareAtKurus,
       period: r.period,
       features: parseJsonArray(r.features),
     }));
@@ -115,6 +118,7 @@ export async function getPublicPackages(): Promise<PublicPackage[]> {
   return packageSeeds.map((p) => ({
     name: p.name,
     priceKurus: p.priceKurus,
+    compareAtKurus: p.compareAtKurus ?? null,
     period: p.period,
     features: p.features,
   }));

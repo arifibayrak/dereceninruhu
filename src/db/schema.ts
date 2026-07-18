@@ -744,6 +744,8 @@ export const packages = sqliteTable("packages", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   priceKurus: integer("price_kurus").notNull(),
+  /** Optional "was" price (kuruş) for a discount display (strikethrough). */
+  compareAtKurus: integer("compare_at_kurus"),
   /** Billing period label shown publicly (e.g. "aylık"). */
   period: text("period"),
   /** JSON-encoded string[] of feature bullets. */

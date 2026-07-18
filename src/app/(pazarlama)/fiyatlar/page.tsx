@@ -73,6 +73,20 @@ export default async function FiyatlarPage() {
               )}
               <div className="flex flex-col gap-1">
                 <h2 className="font-heading text-lg font-semibold">{pkg.name}</h2>
+                {pkg.compareAtKurus && pkg.compareAtKurus > pkg.priceKurus && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground tabular-nums line-through">
+                      {formatKurus(pkg.compareAtKurus)}
+                    </span>
+                    <Badge className="bg-success/15 text-success">
+                      %
+                      {Math.round(
+                        (1 - pkg.priceKurus / pkg.compareAtKurus) * 100,
+                      )}{" "}
+                      indirim
+                    </Badge>
+                  </div>
+                )}
                 <div className="flex items-baseline gap-1.5">
                   <span className="font-heading text-3xl font-bold tabular-nums">
                     {formatKurus(pkg.priceKurus)}
