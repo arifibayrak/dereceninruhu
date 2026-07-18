@@ -11,12 +11,15 @@ import {
   SparklesIcon,
 } from "lucide-react";
 
+import { redirect } from "next/navigation";
+
 import { countNewLeads } from "@/db/queries/cms";
 import { getOverdueInvoiceCount } from "@/db/queries/muhasebe";
 import { getPlansAwaitingPublish } from "@/db/queries/plans";
 import { getUpcomingSessions } from "@/db/queries/sessions";
 import { getCoachDashboard } from "@/db/queries/roster";
 import { formatWeekLabel, trDayKey } from "@/lib/dates";
+import { getViewer } from "@/lib/session";
 import { formatInt } from "@/lib/format";
 import { buildWaLink, waTemplates } from "@/lib/whatsapp";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
@@ -50,9 +53,12 @@ const sessionFmt = new Intl.DateTimeFormat("tr-TR", {
 });
 
 export default async function KocPanelPage() {
+  const viewer = await getViewer();
+  if (!viewer) redirect("/giris");
+
   const [dash, pendingPlans, upcomingSessions, newLeadCount, overdueCount] =
     await Promise.all([
-      getCoachDashboard(),
+      getCoachDashboard(viewer),
       getPlansAwaitingPublish(),
       getUpcomingSessions(),
       countNewLeads(),

@@ -8,8 +8,20 @@ import {
   questionLogs,
   students,
   tracks,
+  users,
 } from "@/db/schema";
 import { daysBetween, weekRange } from "@/lib/dates";
+import type { SessionViewer } from "@/lib/session";
+
+/**
+ * Kadro görünürlüğü: yönetici tüm öğrencileri, koç yalnız kendisine atanan
+ * (enrollments.coach_user_id = koç) kayıtları görür.
+ */
+function coachScope(viewer: SessionViewer) {
+  return viewer.role === "coach"
+    ? eq(enrollments.coachUserId, viewer.id)
+    : undefined;
+}
 
 export type RosterRow = {
   studentId: number;
@@ -20,6 +32,9 @@ export type RosterRow = {
   trackCode: string | null;
   trackName: string | null;
   targetText: string | null;
+  /** Atanan koç (users.id) — null = henüz atanmadı. */
+  coachUserId: string | null;
+  coachName: string | null;
   weekQuestionTotal: number;
   /** Son aktivite (soru girişi ya da deneme) — null = hiç giriş yok. */
   lastActivity: Date | null;
@@ -31,7 +46,10 @@ export type RosterRow = {
 };
 
 /** Aktif kadro: öğrenci + kayıt + bu hafta soru + son giriş + davet durumu. */
-export async function getRoster(now: Date = new Date()): Promise<RosterRow[]> {
+export async function getRoster(
+  viewer: SessionViewer,
+  now: Date = new Date(),
+): Promise<RosterRow[]> {
   const db = getDb();
   const { start, end } = weekRange(now);
 
@@ -47,12 +65,21 @@ export async function getRoster(now: Date = new Date()): Promise<RosterRow[]> {
       trackCode: tracks.code,
       trackName: tracks.name,
       targetText: enrollments.targetText,
+      coachUserId: enrollments.coachUserId,
+      coachName: users.name,
     })
     .from(enrollments)
     .innerJoin(students, eq(students.id, enrollments.studentId))
     .innerJoin(examTemplates, eq(examTemplates.id, enrollments.examTemplateId))
     .leftJoin(tracks, eq(tracks.id, enrollments.trackId))
-    .where(and(eq(enrollments.status, "active"), eq(students.status, "active")))
+    .leftJoin(users, eq(users.id, enrollments.coachUserId))
+    .where(
+      and(
+        eq(enrollments.status, "active"),
+        eq(students.status, "active"),
+        coachScope(viewer),
+      ),
+    )
     .orderBy(students.fullName);
 
   const weekTotals = await db
@@ -102,6 +129,8 @@ export async function getRoster(now: Date = new Date()): Promise<RosterRow[]> {
       trackCode: r.trackCode ?? null,
       trackName: r.trackName ?? null,
       targetText: r.targetText,
+      coachUserId: r.coachUserId ?? null,
+      coachName: r.coachName ?? null,
       weekQuestionTotal: totalBy.get(r.enrollmentId) ?? 0,
       lastActivity,
       staleDays: lastActivity ? daysBetween(lastActivity, now) : null,
@@ -120,8 +149,9 @@ export type PendingMock = {
   sectionName: string;
 };
 
-/** Analizi yapılmamış denemeler (koç panosu). */
+/** Analizi yapılmamış denemeler (koç panosu) — koç yalnız kendi kadrosunu görür. */
 export async function getPendingAnalysisMocks(
+  viewer: SessionViewer,
   limit = 12,
 ): Promise<PendingMock[]> {
   const db = getDb();
@@ -140,7 +170,7 @@ export async function getPendingAnalysisMocks(
     .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
     .innerJoin(students, eq(students.id, enrollments.studentId))
     .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
-    .where(eq(mockExams.analysisDone, false))
+    .where(and(eq(mockExams.analysisDone, false), coachScope(viewer)))
     .orderBy(desc(mockExams.takenOn))
     .limit(limit);
   return rows.map((r) => ({
@@ -163,18 +193,26 @@ export type CoachDashboard = {
   roster: RosterRow[];
 };
 
-/** Koç panosu — bu haftanın tek bakışta özeti. */
+/** Koç panosu — bu haftanın tek bakışta özeti (rol-bazlı kadro). */
 export async function getCoachDashboard(
+  viewer: SessionViewer,
   now: Date = new Date(),
 ): Promise<CoachDashboard> {
   const db = getDb();
-  const roster = await getRoster(now);
+  const roster = await getRoster(viewer, now);
   const { start, end } = weekRange(now);
 
   const [mockCountRow] = await db
     .select({ count: sql<number>`count(*)` })
     .from(mockExams)
-    .where(and(gte(mockExams.takenOn, start), lt(mockExams.takenOn, end)));
+    .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
+    .where(
+      and(
+        gte(mockExams.takenOn, start),
+        lt(mockExams.takenOn, end),
+        coachScope(viewer),
+      ),
+    );
 
   const staleStudents = roster
     .filter((r) => r.staleDays === null || r.staleDays >= 3)
@@ -185,7 +223,7 @@ export async function getCoachDashboard(
     weekQuestionTotal: roster.reduce((acc, r) => acc + r.weekQuestionTotal, 0),
     weekMockCount: Number(mockCountRow?.count ?? 0),
     staleStudents,
-    pendingMocks: await getPendingAnalysisMocks(),
+    pendingMocks: await getPendingAnalysisMocks(viewer),
     roster,
   };
 }

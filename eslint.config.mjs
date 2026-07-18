@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Cloudflare build/dev outputs — bundled JS, not product source.
+    ".open-next/**",
+    ".wrangler/**",
+    // Harness workspace (agent worktrees) — never product code.
+    ".claude/**",
   ]),
 ]);
 

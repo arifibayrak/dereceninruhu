@@ -37,6 +37,9 @@ export type EnrollmentDetail = {
     examName: string;
     trackCode: string | null;
     trackName: string | null;
+    /** Atanan koç — null = henüz atanmadı. */
+    coachUserId: string | null;
+    coachName: string | null;
   };
 };
 
@@ -54,7 +57,7 @@ export async function getEnrollmentDetailByStudentId(
       eq(enrollments.studentId, studentId),
       eq(enrollments.status, "active"),
     ),
-    with: { examTemplate: true, track: true },
+    with: { examTemplate: true, track: true, coach: true },
   });
   if (!enrollment) return null;
   return {
@@ -80,6 +83,8 @@ export async function getEnrollmentDetailByStudentId(
       examName: enrollment.examTemplate.name,
       trackCode: enrollment.track?.code ?? null,
       trackName: enrollment.track?.name ?? null,
+      coachUserId: enrollment.coachUserId,
+      coachName: enrollment.coach?.name ?? null,
     },
   };
 }

@@ -24,3 +24,13 @@ export async function hasRole(...roles: Role[]): Promise<boolean> {
   const user = await getCurrentUser();
   return !!user && roles.includes((user as { role?: Role }).role ?? "student");
 }
+
+/** Rol-bazlı sorgular için asgari kimlik: kim + hangi rol. */
+export type SessionViewer = { id: string; role: Role };
+
+/** Oturumdaki kullanıcıyı {id, role} olarak çözer — sayfalar sorgulara geçirir. */
+export async function getViewer(): Promise<SessionViewer | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return { id: user.id, role: (user as { role?: Role }).role ?? "student" };
+}

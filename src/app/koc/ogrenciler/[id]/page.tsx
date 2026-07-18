@@ -9,6 +9,7 @@ import {
   MessageCircleIcon,
 } from "lucide-react";
 
+import { listCoaches } from "@/db/queries/admin";
 import {
   getEnrollmentDetailByStudentId,
   getSectionsForEnrollment,
@@ -37,6 +38,7 @@ import {
   weekDays,
 } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
+import { getViewer } from "@/lib/session";
 import {
   buildStudentInsights,
   computeStreak,
@@ -45,6 +47,7 @@ import {
 import { cn } from "@/lib/utils";
 import { buildWaLink, waTemplates } from "@/lib/whatsapp";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
+import { CoachAssignSelect } from "@/components/app/coach-assign-select";
 import { InsightList } from "@/components/app/insight-list";
 import {
   CopyInviteButton,
@@ -143,6 +146,10 @@ export default async function OgrenciKokpitPage({
   const detail = await getEnrollmentDetailByStudentId(studentId);
   if (!detail) notFound();
   const { student, enrollment } = detail;
+
+  const viewer = await getViewer();
+  const isAdmin = viewer?.role === "admin";
+  const coaches = isAdmin ? await listCoaches() : [];
 
   const initialTab = (TAB_VALUES as readonly string[]).includes(tab ?? "")
     ? (tab as string)
@@ -271,6 +278,9 @@ export default async function OgrenciKokpitPage({
                 <Badge className="bg-warning/10 text-warning">
                   Davet bekliyor
                 </Badge>
+              )}
+              {enrollment.coachName && (
+                <Badge variant="outline">Koç: {enrollment.coachName}</Badge>
               )}
               {enrollment.targetText && (
                 <span className="text-sm text-muted-foreground">
@@ -615,6 +625,24 @@ export default async function OgrenciKokpitPage({
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+                {isAdmin ? (
+                  <>
+                    <dt className="self-center text-muted-foreground">Koç</dt>
+                    <dd>
+                      <CoachAssignSelect
+                        key={enrollment.coachUserId ?? "koc-yok"}
+                        enrollmentId={enrollment.id}
+                        coachUserId={enrollment.coachUserId}
+                        coaches={coaches.map((c) => ({
+                          id: c.id,
+                          name: c.name,
+                        }))}
+                      />
+                    </dd>
+                  </>
+                ) : (
+                  <ProfileRow label="Koç" value={enrollment.coachName} />
+                )}
                 <ProfileRow label="Telefon" value={student.phone} />
                 <ProfileRow label="Veli telefonu" value={student.parentPhone} />
                 <ProfileRow label="Sınıf / durum" value={student.grade} />

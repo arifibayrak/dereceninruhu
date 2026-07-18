@@ -10,13 +10,22 @@ import {
   MegaphoneIcon,
   NewspaperIcon,
   SettingsIcon,
+  ShieldCheckIcon,
   UsersIcon,
   WalletIcon,
+  type LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const LINKS = [
+type NavLink = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact: boolean;
+};
+
+const LINKS: NavLink[] = [
   { href: "/koc", label: "Panel", icon: LayoutDashboardIcon, exact: true },
   { href: "/koc/ogrenciler", label: "Öğrenciler", icon: UsersIcon, exact: false },
   { href: "/koc/leadler", label: "Leadler", icon: InboxIcon, exact: false },
@@ -31,15 +40,32 @@ const LINKS = [
   { href: "/koc/blog", label: "Blog", icon: NewspaperIcon, exact: false },
   { href: "/koc/site", label: "Site", icon: MegaphoneIcon, exact: false },
   { href: "/koc/ayarlar", label: "Ayarlar", icon: SettingsIcon, exact: false },
-] as const;
+];
 
-/** Koç üst gezinmesi — aktif bağlantı vurgulu. */
-export function CoachNav({ className }: { className?: string }) {
+/** Yalnız yöneticinin gördüğü Yönetim bağlantısı (Ayarlar'dan önce). */
+const ADMIN_LINK: NavLink = {
+  href: "/koc/yonetim",
+  label: "Yönetim",
+  icon: ShieldCheckIcon,
+  exact: false,
+};
+
+/** Koç üst gezinmesi — aktif bağlantı vurgulu; Yönetim yalnız yöneticide. */
+export function CoachNav({
+  className,
+  isAdmin = false,
+}: {
+  className?: string;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
+  const links = isAdmin
+    ? [...LINKS.slice(0, -1), ADMIN_LINK, LINKS[LINKS.length - 1]]
+    : LINKS;
 
   return (
     <nav className={cn("flex items-center gap-1", className)}>
-      {LINKS.map(({ href, label, icon: Icon, exact }) => {
+      {links.map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         return (
           <Link

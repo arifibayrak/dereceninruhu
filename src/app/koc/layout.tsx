@@ -29,7 +29,7 @@ export default async function KocLayout({
           <Link href="/koc" aria-label="Koç paneli">
             <Logo size={26} />
           </Link>
-          <CoachNav className="ml-2" />
+          <CoachNav className="ml-2" isAdmin={role === "admin"} />
           <div className="ml-auto flex items-center gap-1.5">
             <span className="hidden text-sm text-muted-foreground md:block">
               {session.user.name}

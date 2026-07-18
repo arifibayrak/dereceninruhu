@@ -1,41 +1,63 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PlusIcon, UsersIcon } from "lucide-react";
 
+import { listCoaches } from "@/db/queries/admin";
 import { getRoster } from "@/db/queries/roster";
 import { formatInt } from "@/lib/format";
-import {
-  CopyInviteButton,
-  WaInviteButton,
-} from "@/components/app/invite-actions";
-import { StalenessBadge } from "@/components/app/staleness-badge";
-import { Badge } from "@/components/ui/badge";
+import { getViewer } from "@/lib/session";
+import { RosterTable } from "@/components/app/roster-table";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Öğrenciler" };
 
 const FILTERS = ["KPSS", "YKS", "LGS"] as const;
 
+/** Atanmamış öğrenciler için ?koc= değeri. */
+const KOC_YOK = "yok";
+
+function rosterHref(params: { sinav?: string | null; koc?: string | null }) {
+  const qs = new URLSearchParams();
+  if (params.sinav) qs.set("sinav", params.sinav);
+  if (params.koc) qs.set("koc", params.koc);
+  const s = qs.toString();
+  return s ? `/koc/ogrenciler?${s}` : "/koc/ogrenciler";
+}
+
 export default async function OgrencilerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sinav?: string }>;
+  searchParams: Promise<{ sinav?: string; koc?: string }>;
 }) {
-  const { sinav } = await searchParams;
+  const { sinav, koc } = await searchParams;
+  const viewer = await getViewer();
+  if (!viewer) redirect("/giris");
+  const isAdmin = viewer.role === "admin";
+
+  const [roster, coaches] = await Promise.all([
+    getRoster(viewer),
+    isAdmin ? listCoaches() : Promise.resolve([]),
+  ]);
+
   const activeFilter = FILTERS.find((f) => f === sinav) ?? null;
-  const roster = await getRoster();
-  const rows = activeFilter
+  const activeKoc =
+    isAdmin && koc && (koc === KOC_YOK || coaches.some((c) => c.id === koc))
+      ? koc
+      : null;
+
+  let rows = activeFilter
     ? roster.filter((r) => r.examCode === activeFilter)
     : roster;
+  if (activeKoc) {
+    rows =
+      activeKoc === KOC_YOK
+        ? rows.filter((r) => r.coachUserId === null)
+        : rows.filter((r) => r.coachUserId === activeKoc);
+  }
+
+  const unassignedCount = roster.filter((r) => r.coachUserId === null).length;
 
   return (
     <>
@@ -53,19 +75,53 @@ export default async function OgrencilerPage({
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterChip href="/koc/ogrenciler" active={activeFilter === null}>
-          Tümü
-        </FilterChip>
-        {FILTERS.map((f) => (
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <FilterChip
-            key={f}
-            href={`/koc/ogrenciler?sinav=${f}`}
-            active={activeFilter === f}
+            href={rosterHref({ koc: activeKoc })}
+            active={activeFilter === null}
           >
-            {f}
+            Tümü
           </FilterChip>
-        ))}
+          {FILTERS.map((f) => (
+            <FilterChip
+              key={f}
+              href={rosterHref({ sinav: f, koc: activeKoc })}
+              active={activeFilter === f}
+            >
+              {f}
+            </FilterChip>
+          ))}
+        </div>
+
+        {isAdmin && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              Koça göre:
+            </span>
+            <FilterChip
+              href={rosterHref({ sinav: activeFilter })}
+              active={activeKoc === null}
+            >
+              Tümü
+            </FilterChip>
+            {coaches.map((c) => (
+              <FilterChip
+                key={c.id}
+                href={rosterHref({ sinav: activeFilter, koc: c.id })}
+                active={activeKoc === c.id}
+              >
+                {c.name}
+              </FilterChip>
+            ))}
+            <FilterChip
+              href={rosterHref({ sinav: activeFilter, koc: KOC_YOK })}
+              active={activeKoc === KOC_YOK}
+            >
+              Atanmamış{unassignedCount > 0 ? ` · ${formatInt(unassignedCount)}` : ""}
+            </FilterChip>
+          </div>
+        )}
       </div>
 
       {rows.length === 0 ? (
@@ -75,12 +131,18 @@ export default async function OgrencilerPage({
           </span>
           <div className="flex flex-col gap-1">
             <p className="font-heading text-lg font-semibold">
-              {activeFilter
-                ? `${activeFilter} öğrencisi yok`
-                : "Henüz öğrenci yok"}
+              {activeKoc
+                ? "Bu filtrede öğrenci yok"
+                : activeFilter
+                  ? `${activeFilter} öğrencisi yok`
+                  : isAdmin
+                    ? "Henüz öğrenci yok"
+                    : "Sana atanmış öğrenci yok"}
             </p>
             <p className="text-sm text-muted-foreground">
-              İlk öğrencini ekle, davet linkini WhatsApp&apos;tan gönder.
+              {isAdmin
+                ? "İlk öğrencini ekle, davet linkini WhatsApp'tan gönder."
+                : "Yönetici öğrenci ataması yaptığında burada görünür."}
             </p>
           </div>
           <Button render={<Link href="/koc/ogrenciler/yeni" />}>
@@ -89,71 +151,24 @@ export default async function OgrencilerPage({
           </Button>
         </div>
       ) : (
-        <div className="rounded-xl bg-card ring-1 ring-foreground/10">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-4">Ad</TableHead>
-                <TableHead>Sınav</TableHead>
-                <TableHead>Hedef</TableHead>
-                <TableHead className="text-right">Bu hafta soru</TableHead>
-                <TableHead>Son giriş</TableHead>
-                <TableHead className="pr-4">Davet</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.enrollmentId}>
-                  <TableCell className="pl-4 font-medium">
-                    <Link
-                      href={`/koc/ogrenciler/${r.studentId}`}
-                      className="hover:text-primary"
-                    >
-                      {r.fullName}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {r.examCode}
-                      {r.trackCode ? ` · ${r.trackCode}` : ""}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="max-w-52 truncate text-muted-foreground">
-                    {r.targetText ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
-                    {formatInt(r.weekQuestionTotal)}
-                  </TableCell>
-                  <TableCell>
-                    <StalenessBadge staleDays={r.staleDays} />
-                  </TableCell>
-                  <TableCell className="pr-4">
-                    {r.inviteAccepted ? (
-                      <Badge className="bg-success/10 text-success">
-                        Kabul edildi
-                      </Badge>
-                    ) : r.inviteCode ? (
-                      <div className="flex items-center gap-1.5">
-                        <CopyInviteButton
-                          invitePath={`/davet/${r.inviteCode}`}
-                        />
-                        {r.phone && (
-                          <WaInviteButton
-                            phone={r.phone}
-                            studentName={r.fullName.split(" ")[0]}
-                            invitePath={`/davet/${r.inviteCode}`}
-                          />
-                        )}
-                      </div>
-                    ) : (
-                      <Badge variant="outline">Davet yok</Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <RosterTable
+          rows={rows.map((r) => ({
+            studentId: r.studentId,
+            enrollmentId: r.enrollmentId,
+            fullName: r.fullName,
+            phone: r.phone,
+            examCode: r.examCode,
+            trackCode: r.trackCode,
+            targetText: r.targetText,
+            weekQuestionTotal: r.weekQuestionTotal,
+            staleDays: r.staleDays,
+            inviteAccepted: r.inviteAccepted,
+            inviteCode: r.inviteCode,
+            coachUserId: r.coachUserId,
+          }))}
+          coaches={coaches.map((c) => ({ id: c.id, name: c.name }))}
+          isAdmin={isAdmin}
+        />
       )}
     </>
   );
