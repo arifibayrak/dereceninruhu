@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  CalendarDaysIcon,
   CircleCheckIcon,
   MessageCircleIcon,
   PlusIcon,
+  SendIcon,
   SparklesIcon,
 } from "lucide-react";
 
+import { getPlansAwaitingPublish } from "@/db/queries/plans";
+import { getUpcomingSessions } from "@/db/queries/sessions";
 import { getCoachDashboard } from "@/db/queries/roster";
-import { formatWeekLabel } from "@/lib/dates";
+import { formatWeekLabel, trDayKey } from "@/lib/dates";
 import { formatInt } from "@/lib/format";
 import { buildWaLink, waTemplates } from "@/lib/whatsapp";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
@@ -32,8 +36,21 @@ const dateFmt = new Intl.DateTimeFormat("tr-TR", {
   month: "short",
 });
 
+const sessionFmt = new Intl.DateTimeFormat("tr-TR", {
+  timeZone: "Europe/Istanbul",
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 export default async function KocPanelPage() {
-  const dash = await getCoachDashboard();
+  const [dash, pendingPlans, upcomingSessions] = await Promise.all([
+    getCoachDashboard(),
+    getPlansAwaitingPublish(),
+    getUpcomingSessions(),
+  ]);
   const now = new Date();
 
   return (
@@ -178,6 +195,96 @@ export default async function KocPanelPage() {
                 ))}
               </ul>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Yayınlanmayı bekleyen programlar</CardTitle>
+            <CardDescription>
+              Taslak kalan haftalık programlar — öğrenci yayınlanana kadar
+              görmez.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {pendingPlans.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-xl bg-success/10 p-4 text-sm text-success">
+                <SendIcon className="size-4 shrink-0" />
+                Taslak program yok — tüm programlar yayında.
+              </div>
+            ) : (
+              <ul className="flex flex-col divide-y">
+                {pendingPlans.map((p) => (
+                  <li
+                    key={p.planId}
+                    className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <Link
+                        href={`/koc/ogrenciler/${p.studentId}?tab=program&hafta=${trDayKey(p.weekStart)}`}
+                        className="truncate text-sm font-medium hover:text-primary"
+                      >
+                        {p.studentName}
+                      </Link>
+                      <span className="text-xs text-muted-foreground">
+                        {formatWeekLabel(p.weekStart)} ·{" "}
+                        {formatInt(p.taskCount)} görev
+                      </span>
+                    </div>
+                    <Badge className="bg-warning/10 text-warning">Taslak</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Yaklaşan görüşmeler (7 gün)</CardTitle>
+            <CardDescription>
+              Önümüzdeki hafta planlı koçluk görüşmeleri.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {upcomingSessions.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
+                <CalendarDaysIcon className="size-4 shrink-0" />
+                Önümüzdeki 7 günde planlı görüşme yok.
+              </div>
+            ) : (
+              <ul className="flex flex-col divide-y">
+                {upcomingSessions.map((s) => (
+                  <li
+                    key={s.sessionId}
+                    className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <Link
+                        href={`/koc/ogrenciler/${s.studentId}?tab=gorusmeler`}
+                        className="truncate text-sm font-medium hover:text-primary"
+                      >
+                        {s.studentName}
+                      </Link>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {sessionFmt.format(s.scheduledAt)}
+                        {s.studentVisibleNote
+                          ? ` · ${s.studentVisibleNote}`
+                          : ""}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="self-end"
+              render={<Link href="/koc/gorusmeler" />}
+            >
+              Tüm görüşmeler →
+            </Button>
           </CardContent>
         </Card>
       </div>

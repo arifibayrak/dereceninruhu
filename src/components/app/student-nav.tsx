@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  CalendarCheckIcon,
   ChartLineIcon,
   HomeIcon,
   NotebookPenIcon,
@@ -13,6 +14,12 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/ogrenci", label: "Bugün", icon: HomeIcon, exact: true },
+  {
+    href: "/ogrenci/program",
+    label: "Program",
+    icon: CalendarCheckIcon,
+    exact: false,
+  },
   {
     href: "/ogrenci/soru-takibi",
     label: "Soru Takibi",
@@ -42,7 +49,7 @@ export function StudentBottomNav() {
       aria-label="Öğrenci gezinmesi"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur"
     >
-      <div className="mx-auto grid w-full max-w-lg grid-cols-4">
+      <div className="mx-auto grid w-full max-w-lg grid-cols-5">
         {LINKS.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
           return (

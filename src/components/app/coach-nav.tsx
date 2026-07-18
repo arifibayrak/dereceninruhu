@@ -2,13 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboardIcon, SettingsIcon, UsersIcon } from "lucide-react";
+import {
+  CalendarDaysIcon,
+  LayoutDashboardIcon,
+  SettingsIcon,
+  UsersIcon,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/koc", label: "Panel", icon: LayoutDashboardIcon, exact: true },
   { href: "/koc/ogrenciler", label: "Öğrenciler", icon: UsersIcon, exact: false },
+  {
+    href: "/koc/gorusmeler",
+    label: "Görüşmeler",
+    icon: CalendarDaysIcon,
+    exact: false,
+  },
   { href: "/koc/ayarlar", label: "Ayarlar", icon: SettingsIcon, exact: false },
 ] as const;
 

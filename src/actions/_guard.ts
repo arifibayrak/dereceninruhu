@@ -12,6 +12,15 @@ export function actionError(
   return { ok: false, error, fieldErrors };
 }
 
+/** Zod issue listesini alan-bazlı hata haritasına çevirir (formlar için). */
+export function fieldErrorsOf(
+  issues: readonly { path: PropertyKey[]; message: string }[],
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const i of issues) out[i.path.join(".")] = i.message;
+  return out;
+}
+
 export type SessionUser = {
   id: string;
   role: Role;

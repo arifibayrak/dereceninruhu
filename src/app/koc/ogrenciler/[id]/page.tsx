@@ -1,12 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, HourglassIcon, MessageCircleIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  HourglassIcon,
+  MessageCircleIcon,
+} from "lucide-react";
 
 import {
   getEnrollmentDetailByStudentId,
   getSectionsForEnrollment,
 } from "@/db/queries/enrollment";
+import {
+  getResourcesForEnrollment,
+  getWeeklyPlan,
+  listWeeklyPlans,
+} from "@/db/queries/plans";
+import { listSessionsForEnrollment } from "@/db/queries/sessions";
 import {
   getMockList,
   getNetSeries,
@@ -15,13 +27,22 @@ import {
   getWeekGrid,
   getWeekQuestionTotal,
 } from "@/db/queries/tracking";
-import { formatWeekLabel, trDayKey, weekDays } from "@/lib/dates";
+import {
+  addDays,
+  DAY_NAMES_TR,
+  formatWeekLabel,
+  mondayOf,
+  trDayKey,
+  trWeekday,
+  weekDays,
+} from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
 import {
   buildStudentInsights,
   computeStreak,
   netTrend,
 } from "@/lib/insights";
+import { cn } from "@/lib/utils";
 import { buildWaLink, waTemplates } from "@/lib/whatsapp";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
 import { InsightList } from "@/components/app/insight-list";
@@ -31,6 +52,15 @@ import {
 } from "@/components/app/invite-actions";
 import { MockCreateDialog } from "@/components/app/mock-create-dialog";
 import type { MockSection } from "@/components/app/mock-form";
+import {
+  ProgramBuilder,
+  type BuilderSubject,
+  type BuilderTask,
+} from "@/components/app/program-builder";
+import {
+  SessionsPanel,
+  type SessionItem,
+} from "@/components/app/sessions-panel";
 import { WeekGridForm, type GridSection } from "@/components/app/week-grid-form";
 import { NetProgressChart } from "@/components/charts/net-progress-chart";
 import { StatTile } from "@/components/brand/stat-tile";
@@ -52,6 +82,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { EnrollmentSessionRow } from "@/db/queries/sessions";
 
 export const metadata: Metadata = { title: "Öğrenci" };
 
@@ -62,20 +93,52 @@ const dateFmt = new Intl.DateTimeFormat("tr-TR", {
   year: "numeric",
 });
 
+const dayMonthFmt = new Intl.DateTimeFormat("tr-TR", {
+  timeZone: "Europe/Istanbul",
+  day: "numeric",
+  month: "short",
+});
+
 const STUB_TABS = [
-  { value: "program", label: "Program" },
   { value: "konular", label: "Konular" },
   { value: "icerik", label: "İçerik" },
-  { value: "gorusmeler", label: "Görüşmeler" },
   { value: "muhasebe", label: "Muhasebe" },
 ] as const;
 
+const TAB_VALUES = [
+  "ozet",
+  "soru-takibi",
+  "denemeler",
+  "program",
+  "konular",
+  "icerik",
+  "gorusmeler",
+  "muhasebe",
+  "profil",
+] as const;
+
+function toSessionItems(rows: EnrollmentSessionRow[]): SessionItem[] {
+  return rows.map((r) => ({
+    id: r.id,
+    scheduledAtMs: r.scheduledAt?.getTime() ?? null,
+    heldAtMs: r.heldAt?.getTime() ?? null,
+    status: r.status,
+    summary: r.summary,
+    studentVisibleNote: r.studentVisibleNote,
+    nextPlanId: r.nextPlanId,
+    nextPlanWeekKey: r.nextPlanWeekKey,
+  }));
+}
+
 export default async function OgrenciKokpitPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ hafta?: string; tab?: string }>;
 }) {
   const { id } = await params;
+  const { hafta, tab } = await searchParams;
   const studentId = Number(id);
   if (!Number.isInteger(studentId) || studentId <= 0) notFound();
 
@@ -83,20 +146,44 @@ export default async function OgrenciKokpitPage({
   if (!detail) notFound();
   const { student, enrollment } = detail;
 
+  const initialTab = (TAB_VALUES as readonly string[]).includes(tab ?? "")
+    ? (tab as string)
+    : "ozet";
+
   const now = new Date();
+  const anchor =
+    hafta && /^\d{4}-\d{2}-\d{2}$/.test(hafta) ? new Date(hafta) : now;
+  const planMonday = mondayOf(Number.isNaN(anchor.getTime()) ? now : anchor);
+  const currentMonday = mondayOf(now);
+  const isPlanCurrentWeek = planMonday.getTime() === currentMonday.getTime();
+
   const sections = await getSectionsForEnrollment(
     enrollment.examTemplateId,
     enrollment.trackCode,
   );
-  const [grid, mocks, netSeries, insightInput, totalQuestions, weekTotal] =
-    await Promise.all([
-      getWeekGrid(enrollment.id, now),
-      getMockList(enrollment.id),
-      getNetSeries(enrollment.id),
-      getStudentInsightInput(enrollment.id, now),
-      getTotalQuestions(enrollment.id),
-      getWeekQuestionTotal(enrollment.id, now),
-    ]);
+  const [
+    grid,
+    mocks,
+    netSeries,
+    insightInput,
+    totalQuestions,
+    weekTotal,
+    plan,
+    planWeeks,
+    resources,
+    sessions,
+  ] = await Promise.all([
+    getWeekGrid(enrollment.id, now),
+    getMockList(enrollment.id),
+    getNetSeries(enrollment.id),
+    getStudentInsightInput(enrollment.id, now),
+    getTotalQuestions(enrollment.id),
+    getWeekQuestionTotal(enrollment.id, now),
+    getWeeklyPlan(enrollment.id, planMonday),
+    listWeeklyPlans(enrollment.id, 8),
+    getResourcesForEnrollment(enrollment.id),
+    listSessionsForEnrollment(enrollment.id, now),
+  ]);
 
   const insights = buildStudentInsights(insightInput);
   const trend = netTrend(insightInput.netSeries);
@@ -126,6 +213,36 @@ export default async function OgrenciKokpitPage({
 
   const dayKeys = weekDays(now).map(trDayKey);
   const invitePath = student.inviteCode ? `/davet/${student.inviteCode}` : null;
+
+  // Program sekmesi verileri
+  const builderSubjects: BuilderSubject[] = sections.flatMap((s) =>
+    s.loggable.map((sub) => ({
+      id: sub.id,
+      name: sub.name,
+      sectionName: s.name,
+    })),
+  );
+  const builderTasks: BuilderTask[] = (plan?.tasks ?? []).map((t) => ({
+    id: t.id,
+    day: t.day,
+    subjectId: t.subjectId,
+    subjectName: t.subjectName,
+    resourceId: t.resourceId,
+    resourceName: t.resourceName,
+    description: t.description,
+    targetQuestions: t.targetQuestions,
+    isDone: t.isDone,
+  }));
+  const builderDays = weekDays(planMonday).map((d, i) => ({
+    day: i + 1,
+    name: DAY_NAMES_TR[i],
+    dateLabel: dayMonthFmt.format(d),
+  }));
+  const planWeekKey = trDayKey(planMonday);
+  const prevWeekKey = trDayKey(addDays(planMonday, -7));
+  const nextWeekKey = trDayKey(addDays(planMonday, 7));
+  const programHref = (weekKey: string) =>
+    `/koc/ogrenciler/${studentId}?tab=program&hafta=${weekKey}`;
 
   return (
     <>
@@ -203,13 +320,15 @@ export default async function OgrenciKokpitPage({
         </div>
       </div>
 
-      {/* Sekmeler */}
-      <Tabs defaultValue="ozet">
+      {/* Sekmeler — ?tab= değişince yeniden kurulur (görüşme → program akışı) */}
+      <Tabs key={initialTab} defaultValue={initialTab}>
         <div className="overflow-x-auto pb-1">
           <TabsList className="w-max">
             <TabsTrigger value="ozet">Özet</TabsTrigger>
             <TabsTrigger value="soru-takibi">Soru Takibi</TabsTrigger>
             <TabsTrigger value="denemeler">Denemeler</TabsTrigger>
+            <TabsTrigger value="program">Program</TabsTrigger>
+            <TabsTrigger value="gorusmeler">Görüşmeler</TabsTrigger>
             {STUB_TABS.map((t) => (
               <TabsTrigger key={t.value} value={t.value}>
                 {t.label}
@@ -349,6 +468,103 @@ export default async function OgrenciKokpitPage({
               </Table>
             </div>
           )}
+        </TabsContent>
+
+        {/* ----------------------------- Program ----------------------------- */}
+        <TabsContent value="program" className="flex flex-col gap-4 pt-2">
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Önceki hafta"
+              render={<Link href={programHref(prevWeekKey)} />}
+            >
+              <ChevronLeftIcon />
+            </Button>
+            <div className="flex flex-col items-center leading-tight">
+              <span className="font-heading text-sm font-semibold">
+                {formatWeekLabel(planMonday)}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {isPlanCurrentWeek
+                  ? "Bu hafta"
+                  : planMonday.getTime() < currentMonday.getTime()
+                    ? "Geçmiş hafta"
+                    : "Gelecek hafta"}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Sonraki hafta"
+              render={<Link href={programHref(nextWeekKey)} />}
+            >
+              <ChevronRightIcon />
+            </Button>
+          </div>
+
+          {planWeeks.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-medium text-muted-foreground">
+                Planlı haftalar:
+              </span>
+              {planWeeks.map((p) => {
+                const weekKey = trDayKey(p.weekStart);
+                const isActive = weekKey === planWeekKey;
+                return (
+                  <Link
+                    key={p.id}
+                    href={programHref(weekKey)}
+                    className={cn(
+                      "inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium ring-1 ring-foreground/10 transition-colors",
+                      isActive
+                        ? "bg-secondary text-secondary-foreground"
+                        : "bg-card text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        p.status === "draft" ? "bg-warning" : "bg-success",
+                      )}
+                    />
+                    {formatWeekLabel(p.weekStart)}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          <ProgramBuilder
+            enrollmentId={enrollment.id}
+            weekKey={planWeekKey}
+            plan={
+              plan
+                ? {
+                    id: plan.id,
+                    status: plan.status,
+                    motto: plan.motto,
+                    coachNote: plan.coachNote,
+                  }
+                : null
+            }
+            tasks={builderTasks}
+            subjects={builderSubjects}
+            resources={resources}
+            days={builderDays}
+            todayDay={isPlanCurrentWeek ? trWeekday(now) : null}
+          />
+        </TabsContent>
+
+        {/* ---------------------------- Görüşmeler ---------------------------- */}
+        <TabsContent value="gorusmeler" className="pt-2">
+          <SessionsPanel
+            enrollmentId={enrollment.id}
+            studentId={student.id}
+            upcoming={toSessionItems(sessions.upcoming)}
+            past={toSessionItems(sessions.past)}
+          />
         </TabsContent>
 
         {/* ------------------------------ Stublar ---------------------------- */}

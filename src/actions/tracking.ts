@@ -1,14 +1,12 @@
 "use server";
 
 import { eq, sql } from "drizzle-orm";
-import { getDb, type DB } from "@/db";
+import { getDb } from "@/db";
 import {
-  enrollments,
   examSections,
   mockExamResults,
   mockExams,
   questionLogs,
-  students,
   subjects,
 } from "@/db/schema";
 import { computeNet, rollUpChildren, type SubjectCounts } from "@/lib/net";
@@ -16,37 +14,13 @@ import { startOfTrtDay } from "@/lib/dates";
 import { createMockSchema, questionLogUpsertSchema } from "@/lib/validation";
 import {
   actionError,
+  fieldErrorsOf,
   guarded,
   requireCoach,
   requireUser,
   type ActionResult,
-  type SessionUser,
 } from "@/actions/_guard";
-
-/** Coaches (2-person practice, both see all) pass; students only their own. */
-async function assertEnrollmentAccess(
-  db: DB,
-  enrollmentId: number,
-  user: SessionUser,
-): Promise<void> {
-  if (user.role === "coach" || user.role === "admin") return;
-  const rows = await db
-    .select({ userId: students.userId })
-    .from(enrollments)
-    .innerJoin(students, eq(students.id, enrollments.studentId))
-    .where(eq(enrollments.id, enrollmentId));
-  if (!rows[0] || rows[0].userId !== user.id) {
-    throw new Error("Bu kayıt sana ait değil");
-  }
-}
-
-function fieldErrorsOf(
-  issues: readonly { path: PropertyKey[]; message: string }[],
-): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const i of issues) out[i.path.join(".")] = i.message;
-  return out;
-}
+import { assertEnrollmentAccess } from "@/actions/_access";
 
 /** Soru takibi: upsert one day's per-subject counts (the grid is an upsert). */
 export async function upsertQuestionLogs(

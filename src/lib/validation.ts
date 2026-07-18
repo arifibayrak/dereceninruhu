@@ -80,6 +80,85 @@ export const questionLogUpsertSchema = z.object({
 });
 export type QuestionLogUpsertInput = z.infer<typeof questionLogUpsertSchema>;
 
+/* -------------------------------------------------------------------------- */
+/*  Faz 2 — haftalık program + koçluk görüşmeleri                             */
+/* -------------------------------------------------------------------------- */
+
+/** Haftalık program üst bilgisi — koç upsert'i (hafta = pazartesi). */
+export const upsertWeeklyPlanSchema = z.object({
+  enrollmentId: z.coerce.number().int().positive(),
+  weekStart: z.coerce.date(),
+  motto: z.string().trim().max(200).optional().or(z.literal("")),
+  coachNote: z.string().trim().max(2000).optional().or(z.literal("")),
+  status: z.enum(["draft", "published", "completed"]).optional(),
+});
+export type UpsertWeeklyPlanInput = z.infer<typeof upsertWeeklyPlanSchema>;
+
+/** Program görevi — ekleme (plan yoksa taslak olarak oluşturulur). */
+export const planTaskCreateSchema = z.object({
+  enrollmentId: z.coerce.number().int().positive(),
+  weekStart: z.coerce.date(),
+  day: z.coerce.number().int().min(1).max(7),
+  subjectId: z.coerce.number().int().positive().nullish(),
+  resourceId: z.coerce.number().int().positive().nullish(),
+  description: z.string().trim().min(1, "Görev açıklaması gerekli.").max(300),
+  targetQuestions: z.coerce.number().int().min(0).max(2000).nullish(),
+});
+export type PlanTaskCreateInput = z.infer<typeof planTaskCreateSchema>;
+
+/** Program görevi — düzenleme. */
+export const planTaskUpdateSchema = z.object({
+  taskId: z.coerce.number().int().positive(),
+  day: z.coerce.number().int().min(1).max(7),
+  subjectId: z.coerce.number().int().positive().nullish(),
+  resourceId: z.coerce.number().int().positive().nullish(),
+  description: z.string().trim().min(1, "Görev açıklaması gerekli.").max(300),
+  targetQuestions: z.coerce.number().int().min(0).max(2000).nullish(),
+});
+export type PlanTaskUpdateInput = z.infer<typeof planTaskUpdateSchema>;
+
+/** Görev id'si — silme vb. tekil işlemler. */
+export const planTaskIdSchema = z.object({
+  taskId: z.coerce.number().int().positive(),
+});
+
+/** Görev tamam/geri al — öğrenci yalnız kendi kaydında. */
+export const togglePlanTaskSchema = z.object({
+  taskId: z.coerce.number().int().positive(),
+  isDone: z.boolean(),
+});
+
+/** Taslak programı yayınlama. */
+export const publishPlanSchema = z.object({
+  planId: z.coerce.number().int().positive(),
+});
+
+/** Görüşme planlama (koç). */
+export const createSessionSchema = z.object({
+  enrollmentId: z.coerce.number().int().positive(),
+  scheduledAt: z.coerce.date(),
+  studentVisibleNote: z.string().trim().max(500).optional().or(z.literal("")),
+  summary: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+export type CreateSessionInput = z.infer<typeof createSessionSchema>;
+
+/** Görüşme güncelleme — verilmeyen alanlar dokunulmaz. */
+export const updateSessionSchema = z.object({
+  sessionId: z.coerce.number().int().positive(),
+  scheduledAt: z.coerce.date().optional(),
+  status: z.enum(["scheduled", "held", "cancelled", "missed"]).optional(),
+  summary: z.string().trim().max(2000).optional(),
+  studentVisibleNote: z.string().trim().max(500).optional(),
+  nextPlanId: z.coerce.number().int().positive().nullish(),
+});
+export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;
+
+/** "Bu görüşmeden program oluştur" — haftalık plan oluşturup görüşmeye bağlar. */
+export const planFromSessionSchema = z.object({
+  sessionId: z.coerce.number().int().positive(),
+  weekStart: z.coerce.date(),
+});
+
 /** Deneme girişi — net server-side hesaplanır (D − Y/divisor). */
 export const createMockSchema = z.object({
   enrollmentId: z.coerce.number().int().positive(),

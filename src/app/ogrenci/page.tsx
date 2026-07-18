@@ -6,9 +6,11 @@ import {
   getEnrollmentDetailByUserId,
   getSectionsForEnrollment,
 } from "@/db/queries/enrollment";
+import { getWeeklyPlan } from "@/db/queries/plans";
+import { getNextSessionForEnrollment } from "@/db/queries/sessions";
 import { getStudentInsightInput, getWeekGrid } from "@/db/queries/tracking";
 import { getCurrentUser, type Role } from "@/lib/session";
-import { formatTrDate, trDayKey } from "@/lib/dates";
+import { formatTrDate, trDayKey, trWeekday } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
 import {
   buildStudentInsights,
@@ -18,6 +20,10 @@ import {
 import { InsightList } from "@/components/app/insight-list";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import {
+  TodayPlanTasks,
+  type ChecklistTask,
+} from "@/components/app/plan-checklist";
+import {
   TodayQuickAdd,
   type QuickAddSubject,
 } from "@/components/app/today-quick-add";
@@ -25,6 +31,15 @@ import { StatTile } from "@/components/brand/stat-tile";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = { title: "Bugün" };
+
+const sessionFmt = new Intl.DateTimeFormat("tr-TR", {
+  timeZone: "Europe/Istanbul",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 export default async function OgrenciBugunPage() {
   const user = await getCurrentUser();
@@ -39,11 +54,26 @@ export default async function OgrenciBugunPage() {
 
   const now = new Date();
   const todayKey = trDayKey(now);
-  const [sections, grid, insightInput] = await Promise.all([
-    getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
-    getWeekGrid(enrollment.id, now),
-    getStudentInsightInput(enrollment.id, now),
-  ]);
+  const [sections, grid, insightInput, weekPlan, nextSession] =
+    await Promise.all([
+      getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
+      getWeekGrid(enrollment.id, now),
+      getStudentInsightInput(enrollment.id, now),
+      getWeeklyPlan(enrollment.id, now, { publishedOnly: true }),
+      getNextSessionForEnrollment(enrollment.id, now),
+    ]);
+
+  const todayDay = trWeekday(now);
+  const todayTasks: ChecklistTask[] = (weekPlan?.tasks ?? [])
+    .filter((t) => t.day === todayDay)
+    .map((t) => ({
+      id: t.id,
+      description: t.description,
+      subjectName: t.subjectName,
+      resourceName: t.resourceName,
+      targetQuestions: t.targetQuestions,
+      isDone: t.isDone,
+    }));
 
   const insights = buildStudentInsights(insightInput);
   const streak = computeStreak(insightInput.activeDayKeys, now);
@@ -101,14 +131,23 @@ export default async function OgrenciBugunPage() {
 
       <InsightList insights={insights} limit={2} />
 
+      {todayTasks.length > 0 && <TodayPlanTasks tasks={todayTasks} />}
+
       <div className="flex items-center gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-info/10">
           <CalendarClockIcon className="size-4 text-info" />
         </span>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium">Sonraki görüşme</span>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-sm font-medium">
+            {nextSession
+              ? `Sonraki görüşme · ${sessionFmt.format(nextSession.scheduledAt)}`
+              : "Sonraki görüşme"}
+          </span>
           <span className="text-xs text-muted-foreground">
-            Görüşme planlama yakında — koçun seninle iletişime geçecek.
+            {nextSession
+              ? nextSession.studentVisibleNote ??
+                "Koçunla planlı görüşmen var — hazırlıklı gel."
+              : "Planlanmış görüşme yok — koçun seninle iletişime geçecek."}
           </span>
         </div>
       </div>
