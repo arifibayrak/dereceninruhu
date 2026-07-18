@@ -118,7 +118,7 @@ export const testimonialSeeds: TestimonialSeed[] = [
     isActive: true,
   },
   // -- Kaynakta kırpılmış yorumlar — TODO(Arif): tam metni onaylayıp
-  //    /koc/icerik'ten aktifleştir (isActive=false ile beklerler). -----------
+  //    /koc/site'ten aktifleştir (isActive=false ile beklerler). -----------
   {
     studentName: "Almina Ç.",
     exam: "KPSS",
@@ -248,7 +248,7 @@ export const faqSeeds: { question: string; answer: string }[] = [
 
 /**
  * DİKKAT — fiyatlar YER TUTUCUDUR (TODO Arif): gerçek fiyatları
- * /koc/icerik → Paketler sekmesinden ₺ olarak gir (kuruş cinsinden saklanır).
+ * /koc/site → Paketler sekmesinden ₺ olarak gir (kuruş cinsinden saklanır).
  */
 export const packageSeeds: {
   name: string;

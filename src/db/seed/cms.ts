@@ -9,7 +9,7 @@
  * blog_posts.slug, coach_profiles.user_id). Panelden yapılan düzenlemeler
  * seed'in yeniden çalıştırılmasıyla ASLA ezilmez.
  *
- * NOT: Paket fiyatları YER TUTUCU — gerçek fiyatları /koc/icerik'ten gir.
+ * NOT: Paket fiyatları YER TUTUCU — gerçek fiyatları /koc/site'ten gir.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -230,7 +230,7 @@ function main() {
       console.log(`  ${table}: ${c.inserted} eklendi, ${c.skipped} atlandı (mevcut)`);
     }
     console.log(
-      "\nHatırlatma: paket fiyatları YER TUTUCU — /koc/icerik → Paketler'den gerçek fiyatları girin.",
+      "\nHatırlatma: paket fiyatları YER TUTUCU — /koc/site → Paketler'den gerçek fiyatları girin.",
     );
   } finally {
     sqlite.close();

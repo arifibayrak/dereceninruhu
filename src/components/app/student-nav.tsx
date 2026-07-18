@@ -6,6 +6,7 @@ import {
   CalendarCheckIcon,
   ChartLineIcon,
   HomeIcon,
+  LibraryIcon,
   NotebookPenIcon,
   TargetIcon,
 } from "lucide-react";
@@ -22,7 +23,7 @@ const LINKS = [
   },
   {
     href: "/ogrenci/soru-takibi",
-    label: "Soru Takibi",
+    label: "Sorular",
     icon: NotebookPenIcon,
     exact: false,
   },
@@ -38,6 +39,12 @@ const LINKS = [
     icon: ChartLineIcon,
     exact: false,
   },
+  {
+    href: "/ogrenci/icerik",
+    label: "İçerik",
+    icon: LibraryIcon,
+    exact: false,
+  },
 ] as const;
 
 /** Öğrenci alt gezinmesi — mobil öncelikli, büyük dokunma alanları. */
@@ -49,7 +56,7 @@ export function StudentBottomNav() {
       aria-label="Öğrenci gezinmesi"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur"
     >
-      <div className="mx-auto grid w-full max-w-lg grid-cols-5">
+      <div className="mx-auto grid w-full max-w-lg grid-cols-6">
         {LINKS.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
           return (

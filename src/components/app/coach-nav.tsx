@@ -6,10 +6,12 @@ import {
   CalendarDaysIcon,
   InboxIcon,
   LayoutDashboardIcon,
+  LibraryIcon,
   MegaphoneIcon,
   NewspaperIcon,
   SettingsIcon,
   UsersIcon,
+  WalletIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -24,8 +26,10 @@ const LINKS = [
     icon: CalendarDaysIcon,
     exact: false,
   },
+  { href: "/koc/muhasebe", label: "Muhasebe", icon: WalletIcon, exact: false },
+  { href: "/koc/icerik", label: "İçerik", icon: LibraryIcon, exact: false },
   { href: "/koc/blog", label: "Blog", icon: NewspaperIcon, exact: false },
-  { href: "/koc/icerik", label: "İçerik", icon: MegaphoneIcon, exact: false },
+  { href: "/koc/site", label: "Site", icon: MegaphoneIcon, exact: false },
   { href: "/koc/ayarlar", label: "Ayarlar", icon: SettingsIcon, exact: false },
 ] as const;
 

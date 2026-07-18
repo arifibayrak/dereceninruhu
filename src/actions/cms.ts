@@ -330,7 +330,7 @@ export async function deleteBlogPost(input: unknown): Promise<ActionResult<void>
 /* --------------------------------- Yardımcı ------------------------------- */
 
 function revalidateMarketing() {
-  for (const p of ["/", "/koclar", "/fiyatlar", "/basarilar", "/sss", "/koc/icerik"]) {
+  for (const p of ["/", "/koclar", "/fiyatlar", "/basarilar", "/sss", "/koc/site"]) {
     revalidatePath(p);
   }
 }

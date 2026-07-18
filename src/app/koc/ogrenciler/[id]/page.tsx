@@ -5,7 +5,7 @@ import {
   ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  HourglassIcon,
+  ClipboardListIcon,
   MessageCircleIcon,
 } from "lucide-react";
 
@@ -83,6 +83,10 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { EnrollmentSessionRow } from "@/db/queries/sessions";
+import { AnalizPanel } from "./analiz-panel";
+import { IcerikTab } from "./icerik-tab";
+import { KonularTab } from "./konular-tab";
+import { MuhasebeTab } from "./muhasebe-tab";
 
 export const metadata: Metadata = { title: "Öğrenci" };
 
@@ -98,12 +102,6 @@ const dayMonthFmt = new Intl.DateTimeFormat("tr-TR", {
   day: "numeric",
   month: "short",
 });
-
-const STUB_TABS = [
-  { value: "konular", label: "Konular" },
-  { value: "icerik", label: "İçerik" },
-  { value: "muhasebe", label: "Muhasebe" },
-] as const;
 
 const TAB_VALUES = [
   "ozet",
@@ -329,11 +327,9 @@ export default async function OgrenciKokpitPage({
             <TabsTrigger value="denemeler">Denemeler</TabsTrigger>
             <TabsTrigger value="program">Program</TabsTrigger>
             <TabsTrigger value="gorusmeler">Görüşmeler</TabsTrigger>
-            {STUB_TABS.map((t) => (
-              <TabsTrigger key={t.value} value={t.value}>
-                {t.label}
-              </TabsTrigger>
-            ))}
+            <TabsTrigger value="konular">Konular</TabsTrigger>
+            <TabsTrigger value="icerik">İçerik</TabsTrigger>
+            <TabsTrigger value="muhasebe">Muhasebe</TabsTrigger>
             <TabsTrigger value="profil">Profil</TabsTrigger>
           </TabsList>
         </div>
@@ -457,10 +453,24 @@ export default async function OgrenciKokpitPage({
                         {formatNet(m.totalNet)}
                       </TableCell>
                       <TableCell className="pr-4 text-right">
-                        <AnalysisToggle
-                          mockExamId={m.id}
-                          done={m.analysisDone}
-                        />
+                        <span className="inline-flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            render={
+                              <Link
+                                href={`/koc/ogrenciler/${studentId}/deneme/${m.id}/analiz`}
+                              />
+                            }
+                          >
+                            <ClipboardListIcon data-icon="inline-start" />
+                            Analiz
+                          </Button>
+                          <AnalysisToggle
+                            mockExamId={m.id}
+                            done={m.analysisDone}
+                          />
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -468,6 +478,7 @@ export default async function OgrenciKokpitPage({
               </Table>
             </div>
           )}
+          <AnalizPanel enrollmentId={enrollment.id} />
         </TabsContent>
 
         {/* ----------------------------- Program ----------------------------- */}
@@ -567,12 +578,31 @@ export default async function OgrenciKokpitPage({
           />
         </TabsContent>
 
-        {/* ------------------------------ Stublar ---------------------------- */}
-        {STUB_TABS.map((t) => (
-          <TabsContent key={t.value} value={t.value} className="pt-2">
-            <StubPanel title={t.label} />
-          </TabsContent>
-        ))}
+        {/* ------------------------------ Konular ---------------------------- */}
+        <TabsContent value="konular" className="pt-2">
+          <KonularTab
+            enrollmentId={enrollment.id}
+            examTemplateId={enrollment.examTemplateId}
+            trackCode={enrollment.trackCode}
+          />
+        </TabsContent>
+
+        {/* ------------------------------ İçerik ------------------------------ */}
+        <TabsContent value="icerik" className="pt-2">
+          <IcerikTab
+            enrollmentId={enrollment.id}
+            examTemplateId={enrollment.examTemplateId}
+            studentName={student.fullName}
+          />
+        </TabsContent>
+
+        {/* ----------------------------- Muhasebe ----------------------------- */}
+        <TabsContent value="muhasebe" className="pt-2">
+          <MuhasebeTab
+            enrollmentId={enrollment.id}
+            studentName={student.fullName}
+          />
+        </TabsContent>
 
         {/* ------------------------------ Profil ----------------------------- */}
         <TabsContent value="profil" className="pt-2">
@@ -615,23 +645,6 @@ function ProfileRow({ label, value }: { label: string; value: string | null }) {
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-medium">{value?.trim() || "—"}</dd>
     </>
-  );
-}
-
-function StubPanel({ title }: { title: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl bg-card px-6 py-14 text-center ring-1 ring-foreground/10">
-      <span className="flex size-11 items-center justify-center rounded-full bg-primary/10">
-        <HourglassIcon className="size-5 text-primary" />
-      </span>
-      <div className="flex flex-col gap-1">
-        <p className="font-heading text-lg font-semibold">{title} yakında</p>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          Bu bölüm sonraki fazda geliyor. Şimdilik özet, soru takibi ve
-          denemeler üzerinden ilerleyebilirsin.
-        </p>
-      </div>
-    </div>
   );
 }
 

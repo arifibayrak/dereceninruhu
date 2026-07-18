@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { countNewLeads } from "@/db/queries/cms";
+import { getOverdueInvoiceCount } from "@/db/queries/muhasebe";
 import { getPlansAwaitingPublish } from "@/db/queries/plans";
 import { getUpcomingSessions } from "@/db/queries/sessions";
 import { getCoachDashboard } from "@/db/queries/roster";
@@ -49,12 +50,14 @@ const sessionFmt = new Intl.DateTimeFormat("tr-TR", {
 });
 
 export default async function KocPanelPage() {
-  const [dash, pendingPlans, upcomingSessions, newLeadCount] = await Promise.all([
-    getCoachDashboard(),
-    getPlansAwaitingPublish(),
-    getUpcomingSessions(),
-    countNewLeads(),
-  ]);
+  const [dash, pendingPlans, upcomingSessions, newLeadCount, overdueCount] =
+    await Promise.all([
+      getCoachDashboard(),
+      getPlansAwaitingPublish(),
+      getUpcomingSessions(),
+      countNewLeads(),
+      getOverdueInvoiceCount(),
+    ]);
   const now = new Date();
 
   return (
@@ -88,7 +91,8 @@ export default async function KocPanelPage() {
         </Link>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+
         <StatTile
           label="Aktif öğrenci"
           value={formatInt(dash.rosterCount)}
@@ -109,6 +113,16 @@ export default async function KocPanelPage() {
           value={formatInt(dash.pendingMocks.length)}
           hint="Deneme analizi"
         />
+        <Link href="/koc/muhasebe" className="contents">
+          <StatTile
+            label="Gecikmiş ödeme"
+            value={formatInt(overdueCount)}
+            hint="Muhasebe →"
+            className={
+              overdueCount > 0 ? "ring-destructive/30" : undefined
+            }
+          />
+        </Link>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -209,6 +223,17 @@ export default async function KocPanelPage() {
                         {dateFmt.format(m.takenOn)}
                       </span>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      render={
+                        <Link
+                          href={`/koc/ogrenciler/${m.studentId}/deneme/${m.mockExamId}/analiz`}
+                        />
+                      }
+                    >
+                      Analiz gir
+                    </Button>
                     <AnalysisToggle mockExamId={m.mockExamId} done={false} />
                   </li>
                 ))}

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChevronRightIcon, CrosshairIcon } from "lucide-react";
 
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import {
@@ -86,6 +88,22 @@ export default async function GelisimPage() {
           hint="soru · tüm zamanlar"
         />
       </div>
+
+      <Link
+        href="/ogrenci/analiz"
+        className="flex items-center gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-colors hover:ring-primary/40"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <CrosshairIcon className="size-4 text-primary" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-sm font-medium">Eksik konular ve kaynak takibi</span>
+          <span className="truncate text-xs text-muted-foreground">
+            Deneme analizlerinden toplam eksik sıralaman + ısı haritan
+          </span>
+        </span>
+        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
+      </Link>
 
       <Card>
         <CardHeader>

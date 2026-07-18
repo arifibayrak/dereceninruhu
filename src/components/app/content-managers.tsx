@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /koc/icerik yöneticileri — yorum / paket / SSS CRUD'u.
+ * /koc/site yöneticileri — yorum / paket / SSS CRUD'u.
  * Basit kontrollü formlar + Dialog editör; doğrulama server-side Zod
  * (actions/cms.ts), hatalar toast ile gösterilir.
  */
