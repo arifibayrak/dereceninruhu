@@ -1,0 +1,22 @@
+{
+  // Ayrı, küçük Worker: günlük olarak ana uygulamanın /api/cron/billing
+  // ucunu tetikler. Ana uygulamadan bağımsız deploy edilir.
+  "name": "dereceninruhu-billing-cron",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  // Cloudflare cron UTC çalışır: 03:00 UTC = 06:00 Europe/Istanbul.
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Aynı hesaptaki ana Worker'a doğrudan (service binding) — public URL üzerinden
+  // aynı-zone çağrısı Cloudflare 1042 verir; binding bunu aşar.
+  "services": [{ "binding": "APP", "service": "dereceninruhu" }],
+  "vars": {
+    "BILLING_URL": "https://dereceninruhu.com/api/cron/billing"
+  }
+  // CRON_SECRET bir secret'tır (ana Worker'daki ile AYNI değer):
+  //   cd workers/billing-cron && pnpm exec wrangler secret put CRON_SECRET
+}

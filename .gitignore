@@ -54,3 +54,6 @@ next-env.d.ts
 
 # agent worktrees + local harness state
 .claude/
+
+# real secrets pasted in — keep out of git
+.dev.vars.example
