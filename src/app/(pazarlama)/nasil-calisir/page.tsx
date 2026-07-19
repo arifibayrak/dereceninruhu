@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import {
   CalendarDaysIcon,
@@ -12,16 +11,20 @@ import {
 
 import { CtaBand } from "@/components/marketing/cta-band";
 import { SectionHeading } from "@/components/brand/section-heading";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { buildMetadata } from "@/lib/seo";
+import { breadcrumbSchema } from "@/lib/schema";
 
 // Saf statik sayfa — D1 okumaz, prerender edilir.
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Nasıl Çalışır",
   description:
     "Derecenin Ruhu koçluk süreci: ücretsiz ön görüşme, sana özel haftalık program, soru takibi, deneme analizi ve haftalık birebir görüşmeler.",
-};
+  path: "/nasil-calisir",
+});
 
 const TIMELINE = [
   {
@@ -88,6 +91,12 @@ const INCLUDED = [
 export default function NasilCalisirPage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-4 py-10 sm:px-6 md:gap-20 md:py-16">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Ana Sayfa", path: "/" },
+          { name: "Nasıl Çalışır", path: "/nasil-calisir" },
+        ])}
+      />
       <section className="relative flex flex-col items-start gap-5">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/3 h-64 w-[min(30rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />

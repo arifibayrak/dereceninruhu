@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRightIcon,
@@ -32,18 +31,22 @@ import { ProofStrip } from "@/components/marketing/proof-strip";
 import { ScarcityBadge } from "@/components/marketing/scarcity-badge";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { TestimonialCard } from "@/components/brand/testimonial-card";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { buildMetadata } from "@/lib/seo";
+import { faqPageSchema, serviceSchema } from "@/lib/schema";
 
 // CMS içeriği D1'den okunur → istek başına render (bkz. AGENTS.md).
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: { absolute: "Derecenin Ruhu — LGS, YKS ve KPSS Birebir Koçluk" },
+export const metadata = buildMetadata({
+  titleAbsolute: "Derecenin Ruhu — LGS, YKS ve KPSS Birebir Koçluk",
   description:
     "Derece yapmış bir koçla birebir sınav koçluğu: haftalık program, soru takibi ve deneme analiziyle netlerini artır, hedefine ulaş. 5,0★ / 77 yorum.",
-};
+  path: "/",
+});
 
 const STEPS = [
   {
@@ -68,18 +71,21 @@ const EXAM_CARDS = [
     code: "LGS",
     icon: BookOpenIcon,
     title: "LGS",
+    href: "/lgs-koclugu",
     body: "8. sınıf sürecinde düzen, deneme alışkanlığı ve veliyle şeffaf takip.",
   },
   {
     code: "YKS",
     icon: GraduationCapIcon,
     title: "YKS · TYT-AYT",
+    href: "/yks-koclugu",
     body: "Alanına göre program, konu bazlı eksik haritası ve sıralama hedefi.",
   },
   {
     code: "KPSS",
     icon: BriefcaseIcon,
     title: "KPSS",
+    href: "/kpss-koclugu",
     body: "İş-çalışma dengesine uyan gerçekçi program ve atama hedefine giden strateji.",
   },
 ] as const;
@@ -114,6 +120,13 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-20 px-4 py-10 sm:px-6 md:gap-28 md:py-16">
+      {/* Yapısal veri: koçluk hizmeti (5,0★/77 puan sayfada görünür) + SSS. */}
+      <JsonLd
+        data={[
+          serviceSchema({ withRating: true }),
+          faqPageSchema(faqs.slice(0, 4)),
+        ]}
+      />
       {/* -------------------------------- Hero ------------------------------- */}
       {/* İlk ekranı doldurur (masaüstü): alttaki bölüm katlamanın altına iner. */}
       <section className="relative lg:flex lg:min-h-[calc(100svh-285px)] lg:flex-col lg:justify-center">
@@ -339,9 +352,10 @@ export default async function HomePage() {
         />
         <div className="grid gap-4 md:grid-cols-3">
           {EXAM_CARDS.map((exam) => (
-            <div
+            <Link
               key={exam.code}
-              className="group flex flex-col gap-3 rounded-2xl bg-card p-6 ring-1 ring-foreground/10 transition-shadow hover:shadow-lg hover:shadow-primary/5"
+              href={exam.href}
+              className="group flex flex-col gap-3 rounded-2xl bg-card p-6 ring-1 ring-foreground/10 transition-shadow hover:shadow-lg hover:shadow-primary/5 hover:ring-primary/30"
             >
               <div className="flex items-center justify-between">
                 <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
@@ -353,7 +367,11 @@ export default async function HomePage() {
               <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
                 {exam.body}
               </p>
-            </div>
+              <span className="mt-auto inline-flex items-center gap-1 pt-1 text-sm font-medium text-primary">
+                {exam.code} koçluğunu keşfet
+                <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
           ))}
         </div>
       </section>

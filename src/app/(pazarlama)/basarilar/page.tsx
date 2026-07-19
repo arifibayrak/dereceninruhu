@@ -1,26 +1,39 @@
-import type { Metadata } from "next";
-
 import { getPublicTestimonials } from "@/db/queries/cms";
 import { coachStats } from "@/db/seed/cms-content";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { ProofStrip } from "@/components/marketing/proof-strip";
 import { TestimonialCard } from "@/components/brand/testimonial-card";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Badge } from "@/components/ui/badge";
+import { buildMetadata } from "@/lib/seo";
+import { breadcrumbSchema, reviewsSchema, serviceSchema } from "@/lib/schema";
 
 // Yorumlar D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Başarı Hikayeleri",
   description:
     "Derecenin Ruhu öğrencilerinin ve velilerinin gerçek yorumları — Gigbi üzerinde 5,0 yıldız ortalama, 77 yorum.",
-};
+  path: "/basarilar",
+});
 
 export default async function BasarilarPage() {
   const testimonials = await getPublicTestimonials();
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-10 sm:px-6 md:gap-16 md:py-16">
+      {/* Yapısal veri: puanlı hizmet + görünen yorumlar (Review — politika uyumlu). */}
+      <JsonLd
+        data={[
+          serviceSchema({ withRating: true }),
+          ...reviewsSchema(testimonials),
+          breadcrumbSchema([
+            { name: "Ana Sayfa", path: "/" },
+            { name: "Başarı Hikayeleri", path: "/basarilar" },
+          ]),
+        ]}
+      />
       <section className="relative flex flex-col items-center gap-4 text-center">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/2 h-64 w-[min(32rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />

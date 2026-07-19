@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckIcon, InfoIcon, SparklesIcon } from "lucide-react";
 
@@ -10,18 +9,22 @@ import { CtaBand } from "@/components/marketing/cta-band";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { ScarcityBadge } from "@/components/marketing/scarcity-badge";
 import { SectionHeading } from "@/components/brand/section-heading";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { buildMetadata } from "@/lib/seo";
+import { breadcrumbSchema, faqPageSchema, serviceSchema } from "@/lib/schema";
 
 // Paketler D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Fiyatlar",
   description:
     "Derecenin Ruhu koçluk paketleri: aylık koçluk, 3 aylık paket ve deneme analizi paketi. Uzun taahhüt yok; her paket ücretsiz ön görüşmeyle başlar.",
-};
+  path: "/fiyatlar",
+});
 
 export default async function FiyatlarPage() {
   const [packages, faqs, cohort] = await Promise.all([
@@ -48,6 +51,18 @@ export default async function FiyatlarPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-4 py-10 sm:px-6 md:gap-20 md:py-16">
+      {/* Yapısal veri: paketli koçluk hizmeti (Offer'lar) + ödeme SSS'leri.
+          Puan burada gösterilmediği için aggregateRating EKLENMEZ (politika). */}
+      <JsonLd
+        data={[
+          serviceSchema({ name: "Sınav Koçluğu Paketleri", packages }),
+          ...(paymentFaqs.length ? [faqPageSchema(paymentFaqs)] : []),
+          breadcrumbSchema([
+            { name: "Ana Sayfa", path: "/" },
+            { name: "Fiyatlar", path: "/fiyatlar" },
+          ]),
+        ]}
+      />
       <section className="relative flex flex-col items-center gap-4 text-center">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/2 h-64 w-[min(32rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />

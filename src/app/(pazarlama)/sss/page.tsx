@@ -1,26 +1,39 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { MessageCircleIcon } from "lucide-react";
 
 import { getPublicFaqs } from "@/db/queries/cms";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
+import { buildMetadata } from "@/lib/seo";
+import { breadcrumbSchema, faqPageSchema } from "@/lib/schema";
 
 // SSS D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Sıkça Sorulan Sorular",
   description:
     "Derecenin Ruhu koçluk süreci, görüşmeler, deneme analizi, veli bilgilendirmesi ve ödeme hakkında sık sorulan sorular.",
-};
+  path: "/sss",
+});
 
 export default async function SssPage() {
   const faqs = await getPublicFaqs();
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-12 px-4 py-10 sm:px-6 md:gap-16 md:py-16">
+      {/* Yapısal veri: tüm SSS (GEO: LLM'ler en çok Q&A biçimini alıntılar). */}
+      <JsonLd
+        data={[
+          faqPageSchema(faqs),
+          breadcrumbSchema([
+            { name: "Ana Sayfa", path: "/" },
+            { name: "Sıkça Sorulan Sorular", path: "/sss" },
+          ]),
+        ]}
+      />
       <section className="relative flex flex-col items-center gap-4 text-center">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/2 h-64 w-[min(28rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />

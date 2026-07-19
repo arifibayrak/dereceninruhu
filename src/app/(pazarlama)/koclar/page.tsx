@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRightIcon,
@@ -18,18 +17,22 @@ import { CtaBand } from "@/components/marketing/cta-band";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { StatTile } from "@/components/brand/stat-tile";
 import { TestimonialCard } from "@/components/brand/testimonial-card";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { buildMetadata } from "@/lib/seo";
+import { breadcrumbSchema, profilePageSchema } from "@/lib/schema";
 
 // Koç profili D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Koçlar",
   description:
     "Ahmet Hakan Almak — YKS Türkiye 876., KPSS 93 puan. 3+ yıldır LGS, YKS ve KPSS öğrencilerine birebir koçluk. 5,0★ / 77 yorum.",
-};
+  path: "/koclar",
+});
 
 function initialsOf(name: string) {
   return name
@@ -51,6 +54,19 @@ export default async function KoclarPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-4 py-10 sm:px-6 md:gap-20 md:py-16">
+      {/* Yapısal veri: koç profili (5,0★/77 puan + yorumlar sayfada görünür). */}
+      <JsonLd
+        data={[
+          profilePageSchema(coach, {
+            withRating: true,
+            profilePath: "/koclar",
+          }),
+          breadcrumbSchema([
+            { name: "Ana Sayfa", path: "/" },
+            { name: "Koçlar", path: "/koclar" },
+          ]),
+        ]}
+      />
       {/* Profil kahramanı */}
       <section className="relative">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
