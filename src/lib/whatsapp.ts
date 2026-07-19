@@ -48,4 +48,16 @@ export const waTemplates = {
   /** Site formundan gelen lead'e ilk temas (ücretsiz ön görüşme planlama). */
   leadIlkTemas: ({ studentName }: ReminderCtx) =>
     `Merhaba ${studentName} 👋 Derecenin Ruhu'na bıraktığın ön görüşme talebin için teşekkürler! Ücretsiz ön görüşmemizi planlamak için yazıyorum — bugün ya da yarın hangi saatler uygun olur? 😊`,
+
+  /** Bekleme listesindeki kişiye kontenjan açıldı daveti. */
+  beklemeDavet: ({ studentName }: ReminderCtx) =>
+    `Merhaba ${studentName} 👋 Derecenin Ruhu bekleme listesindeydin — bu dönem için sana bir kontenjan açıldı! 🎯 Kaydını tamamlamak ve ücretsiz ön görüşmeni planlamak için uygun olduğun saatleri yazar mısın?`,
+
+  /** Bekleme listesini sıcak tutma — henüz sıra gelmedi. */
+  beklemeNurture: ({ studentName }: ReminderCtx) =>
+    `Merhaba ${studentName} 🙌 Bekleme listemizde öncelikli bir yerdesin. Kontenjan açılır açılmaz ilk sana haber vereceğiz. Bu arada aklına takılan her şeyi buradan sorabilirsin 💬`,
+
+  /** Koç başvurusuna tanışma görüşmesi daveti. */
+  basvuruGorusme: ({ studentName }: ReminderCtx) =>
+    `Merhaba ${studentName} 👋 Derecenin Ruhu koç başvurun için teşekkürler! Başvurunu değerlendirdik ve seninle bir tanışma görüşmesi yapmak isteriz. Bu hafta hangi gün/saat uygun olur? 😊`,
 } satisfies Record<string, (ctx: ReminderCtx) => string>;

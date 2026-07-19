@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import {
+  countActiveStudents,
   getCoachProfileRow,
+  getCohort,
   listAllFaqs,
   listAllPackages,
   listAllTestimonials,
@@ -13,6 +15,10 @@ import {
   CoachProfileForm,
   type CoachProfileValues,
 } from "@/components/app/coach-profile-form";
+import {
+  CohortSettingsForm,
+  type CohortSettingsValues,
+} from "@/components/app/cohort-settings-form";
 import {
   FaqManager,
   PackageManager,
@@ -42,12 +48,25 @@ export default async function IcerikPage() {
   const viewer = await getViewer();
   if (viewer?.role !== "admin") redirect("/koc");
 
-  const [testimonialRows, packageRows, faqRows, profileRow] = await Promise.all([
-    listAllTestimonials(),
-    listAllPackages(),
-    listAllFaqs(),
-    getCoachProfileRow(),
-  ]);
+  const [testimonialRows, packageRows, faqRows, profileRow, cohort, realActive] =
+    await Promise.all([
+      listAllTestimonials(),
+      listAllPackages(),
+      listAllFaqs(),
+      getCoachProfileRow(),
+      getCohort(),
+      countActiveStudents(),
+    ]);
+
+  const cohortValues: CohortSettingsValues = {
+    donemLabel: cohort.donemLabel,
+    displayCapacity: cohort.displayCapacity,
+    displayFilled: cohort.displayFilled,
+    closesOn: cohort.closesOn,
+    status: cohort.status,
+    waitlistOpen: cohort.waitlistOpen,
+    scarcityVisible: cohort.scarcityVisible,
+  };
 
   const profile: CoachProfileValues = profileRow
     ? {
@@ -80,6 +99,7 @@ export default async function IcerikPage() {
 
       <Tabs defaultValue="yorumlar" className="gap-6">
         <TabsList className="w-full max-w-full justify-start overflow-x-auto sm:w-fit">
+          <TabsTrigger value="donem">Dönem</TabsTrigger>
           <TabsTrigger value="yorumlar">
             Yorumlar ({testimonialRows.length})
           </TabsTrigger>
@@ -89,6 +109,13 @@ export default async function IcerikPage() {
           <TabsTrigger value="sss">SSS ({faqRows.length})</TabsTrigger>
           <TabsTrigger value="profil">Koç profili</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="donem">
+          <CohortSettingsForm
+            initial={cohortValues}
+            realActiveStudents={realActive}
+          />
+        </TabsContent>
 
         <TabsContent value="yorumlar">
           <TestimonialManager

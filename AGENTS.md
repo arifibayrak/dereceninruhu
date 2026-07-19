@@ -52,6 +52,32 @@ Turkish exam-prep coaching (mentorluk) OS. All-Cloudflare. Full plan:
   authorization in the Server-Action layer (students: only their own enrollment). Never trust client role.
 - All tracking rows FK **`enrollment_id`**, not `student_id`.
 
+## Positioning & growth mechanics (premium — non-negotiable)
+This is a **premium, high-demand, exclusive** service: restricted access is the quality signal.
+All copy and UX should read that way — calm and credible, never bargain-y or hard-sell.
+- **Batch/cohort ("dönem").** Availability is framed as strictly limited batches. There is ONE **global**
+  active dönem for the whole business, stored as a singleton row in `cohort_settings` (id=1), edited by
+  admins in `/koc/site` → **Dönem** tab. Read it via `getCohort()`; derive the view-model with
+  `cohortView()` / `enrollmentOpen()` from `@/lib/cohort`.
+- **Displayed numbers are admin-controlled marketing values — NEVER the truth.** `displayCapacity` /
+  `displayFilled` are what the admin chooses to publish. **Never** expose real capacity or real enrollment
+  on public surfaces. The real active-student count (`countActiveStudents()`) is admin-only reference,
+  shown beside the published number in `/koc/site` and must never reach a public page/HTML.
+- **FOMO = genuine & tasteful.** No aggressive popups/blinking timers. Mixed framing: **ratio**
+  ("Bu dönem için son N kontenjan", `<ScarcityBadge/>`) on pricing surfaces; **no-cap**
+  ("Sınırlı kontenjan" + a calm close-date countdown, `<CohortBanner/>`) on hero/bands. `scarcityVisible`
+  is the site-wide kill switch; when dönem `status ∈ {dolu,kapali}` enroll CTAs flip to the waitlist.
+- **Waitlist + backlog.** Overflow demand is captured in `waitlist_entries` (public `/bekleme-listesi`
+  form → `createWaitlistEntry`). Coaches manage the backlog at `/koc/bekleme` (FIFO queue position,
+  status pipeline, WhatsApp touchpoints). Keep-warm/invite templates live in `@/lib/whatsapp`
+  (`beklemeNurture`, `beklemeDavet`).
+- **Coach applications (admin-only).** Public `/koc-basvuru` form → `coach_applications`. Reviewed ONLY by
+  admins at `/koc/basvurular` (gate on `role === "admin"`; there is no "admin/admin" login). No
+  auto-provisioning — "Koça çevir" prefills the existing add-coach form in `/koc/yonetim`.
+- **Reuse the leads pattern** (`leads` table + `createLead` + `/koc/leadler`) for any new public-intake →
+  admin-tracker feature: public action (no auth) with Zod + `website` honeypot, then a role-gated status
+  pipeline. Don't invent a new shape.
+
 ## Style
 - Mobile-first (students are on phones). Server Components by default; Server Actions for mutations; `"use client"`
   only where interactivity is needed. Validate every action input with Zod. Keep components small and typed.

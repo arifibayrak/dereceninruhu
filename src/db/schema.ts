@@ -716,6 +716,100 @@ export const leads = sqliteTable(
   (t) => [index("leads_status_idx").on(t.status)],
 );
 
+/**
+ * Dönem / kontenjan ayarları — TEK satır (id=1). Sitedeki "sınırlı kontenjan"
+ * mesajını besleyen YÖNETİCİ KONTROLÜNDEKİ gösterim değerleri. Gerçek kapasite
+ * ve kayıt sayısı ASLA public gösterilmez; buradaki sayılar yalnızca yöneticinin
+ * yayımlamayı seçtiği pazarlama değerleridir (bkz. AGENTS.md — premium
+ * konumlandırma). Gerçek aktif öğrenci sayısı yalnız admin panelinde, referans
+ * olarak, bu değerin yanında gösterilir.
+ */
+export const cohortSettings = sqliteTable("cohort_settings", {
+  /** Singleton — daima id=1. */
+  id: integer("id").primaryKey(),
+  /** Dönem etiketi, ör. "2026 Güz Dönemi". */
+  donemLabel: text("donem_label").notNull().default("Güncel Dönem"),
+  /** Gösterilen kontenjan (boş → yalnız "sınırlı kontenjan" ifadesi, sayı yok). */
+  displayCapacity: integer("display_capacity"),
+  /** Gösterilen dolu sayısı — pazarlama değeri, GERÇEK kayıt sayısı DEĞİL. */
+  displayFilled: integer("display_filled").notNull().default(0),
+  /** Kayıtların kapandığı tarih — public geri sayımı besler. */
+  closesOn: integer("closes_on", { mode: "timestamp" }),
+  status: text("status", {
+    enum: ["acik", "son_kontenjan", "dolu", "kapali"],
+  })
+    .notNull()
+    .default("acik"),
+  /** Bekleme listesi başvuru alıyor mu. */
+  waitlistOpen: integer("waitlist_open", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  /** Kıtlık/kontenjan mesajları sitede görünsün mü (ana şalter). */
+  scarcityVisible: integer("scarcity_visible", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * Bekleme listesi — dönem dolduğunda talebi yakalar; sıra pozisyonu okuma
+ * anında hesaplanır (bekleyenler createdAt'e göre sıralanır). `leads` ile aynı
+ * kalıp: public form → honeypot + Zod → koç/yönetici havuzdan yönetir.
+ */
+export const waitlistEntries = sqliteTable(
+  "waitlist_entries",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    /** Hangi sınav (serbest metin: LGS/YKS/KPSS/…). */
+    exam: text("exam"),
+    message: text("message"),
+    status: text("status", {
+      enum: ["bekliyor", "davet_edildi", "kayit", "ayrildi"],
+    })
+      .notNull()
+      .default("bekliyor"),
+    source: text("source"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("waitlist_status_idx").on(t.status)],
+);
+
+/**
+ * Koç başvuruları — public başvuru formu → YALNIZ YÖNETİCİ inceler. Statü
+ * boru hattı `aiProposals` inceleme kalıbını izler (`reviewedByUserId`). Kabul
+ * otomatik hesap açmaz; yönetici "Koça çevir" ile mevcut ekleme formuna geçer.
+ */
+export const coachApplications = sqliteTable(
+  "coach_applications",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    email: text("email"),
+    /** Branş(lar), serbest metin (ör. "Matematik, Geometri"). */
+    subjects: text("subjects"),
+    /** Deneyim özeti. */
+    experience: text("experience"),
+    /** CV / LinkedIn bağlantısı (isteğe bağlı). */
+    link: text("link"),
+    /** Neden bizimle çalışmak istiyor. */
+    message: text("message"),
+    status: text("status", {
+      enum: ["yeni", "inceleniyor", "gorusme", "kabul", "ret"],
+    })
+      .notNull()
+      .default("yeni"),
+    /** Son işlemi yapan yönetici. */
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id),
+    source: text("source"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("coach_applications_status_idx").on(t.status)],
+);
+
 export const blogPosts = sqliteTable("blog_posts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
@@ -1416,6 +1510,9 @@ export type FeePlan = typeof feePlans.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
+export type CohortSettings = typeof cohortSettings.$inferSelect;
+export type WaitlistEntry = typeof waitlistEntries.$inferSelect;
+export type CoachApplication = typeof coachApplications.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type Package = typeof packages.$inferSelect;

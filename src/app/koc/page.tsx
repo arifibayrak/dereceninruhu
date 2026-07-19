@@ -4,6 +4,8 @@ import {
   ArrowRightIcon,
   CalendarDaysIcon,
   CircleCheckIcon,
+  ClipboardCheckIcon,
+  ClockIcon,
   InboxIcon,
   MessageCircleIcon,
   PlusIcon,
@@ -13,7 +15,11 @@ import {
 
 import { redirect } from "next/navigation";
 
-import { countNewLeads } from "@/db/queries/cms";
+import {
+  countNewApplications,
+  countNewLeads,
+  countNewWaitlist,
+} from "@/db/queries/cms";
 import { getOverdueInvoiceCount } from "@/db/queries/muhasebe";
 import { getPlansAwaitingPublish } from "@/db/queries/plans";
 import { getUpcomingSessions } from "@/db/queries/sessions";
@@ -56,17 +62,26 @@ export default async function KocPanelPage() {
   const viewer = await getViewer();
   if (!viewer) redirect("/giris");
 
-  const [dash, pendingPlans, upcomingSessions, newLeadCount, overdueCount] =
-    await Promise.all([
-      getCoachDashboard(viewer),
-      getPlansAwaitingPublish(),
-      getUpcomingSessions(),
-      countNewLeads(),
-      getOverdueInvoiceCount(
-        new Date(),
-        viewer.role === "coach" ? viewer.id : null,
-      ),
-    ]);
+  const [
+    dash,
+    pendingPlans,
+    upcomingSessions,
+    newLeadCount,
+    overdueCount,
+    newWaitlistCount,
+    newApplicationCount,
+  ] = await Promise.all([
+    getCoachDashboard(viewer),
+    getPlansAwaitingPublish(),
+    getUpcomingSessions(),
+    countNewLeads(),
+    getOverdueInvoiceCount(
+      new Date(),
+      viewer.role === "coach" ? viewer.id : null,
+    ),
+    countNewWaitlist(),
+    viewer.role === "admin" ? countNewApplications() : Promise.resolve(0),
+  ]);
   const now = new Date();
 
   return (
@@ -95,6 +110,36 @@ export default async function KocPanelPage() {
           </span>
           <span className="flex-1 text-sm font-medium">
             {formatInt(newLeadCount)} yeni lead ön görüşme bekliyor
+          </span>
+          <ArrowRightIcon className="size-4 text-muted-foreground" />
+        </Link>
+      )}
+
+      {newWaitlistCount > 0 && (
+        <Link
+          href="/koc/bekleme?durum=bekliyor"
+          className="flex items-center gap-3 rounded-xl bg-primary/8 p-4 ring-1 ring-primary/20 transition-colors hover:bg-primary/12"
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15">
+            <ClockIcon className="size-4.5 text-primary" />
+          </span>
+          <span className="flex-1 text-sm font-medium">
+            {formatInt(newWaitlistCount)} kişi bekleme listesinde sırada
+          </span>
+          <ArrowRightIcon className="size-4 text-muted-foreground" />
+        </Link>
+      )}
+
+      {viewer.role === "admin" && newApplicationCount > 0 && (
+        <Link
+          href="/koc/basvurular?durum=yeni"
+          className="flex items-center gap-3 rounded-xl bg-info/10 p-4 ring-1 ring-info/30 transition-colors hover:bg-info/15"
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-info/20">
+            <ClipboardCheckIcon className="size-4.5 text-info" />
+          </span>
+          <span className="flex-1 text-sm font-medium">
+            {formatInt(newApplicationCount)} yeni koç başvurusu inceleme bekliyor
           </span>
           <ArrowRightIcon className="size-4 text-muted-foreground" />
         </Link>
