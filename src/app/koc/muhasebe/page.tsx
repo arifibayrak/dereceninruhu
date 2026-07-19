@@ -4,6 +4,7 @@ import {
   BanknoteIcon,
   BellRingIcon,
   CircleCheckIcon,
+  FileSpreadsheetIcon,
   MessageCircleIcon,
   ReceiptTextIcon,
 } from "lucide-react";
@@ -87,6 +88,16 @@ export default async function MuhasebePage() {
             <BanknoteIcon data-icon="inline-start" />
             Ödemeler
           </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              render={<Link href="/koc/muhasebe/mutabakat" />}
+            >
+              <FileSpreadsheetIcon data-icon="inline-start" />
+              Ekstre mutabakatı
+            </Button>
+          )}
           {isAdmin && <BillingRunButton />}
           <PaymentRecordDialog students={paymentStudents} />
         </div>
