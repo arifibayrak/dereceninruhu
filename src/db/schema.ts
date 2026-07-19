@@ -397,6 +397,37 @@ export const questionLogs = sqliteTable(
   ],
 );
 
+/**
+ * Günlük çalışma süresi kaydı — kronometre + manuel giriş. Her satır BİR
+ * çalışma bloğu (oturum); günlük/ders toplamı SUM(minutes) GROUP BY ile
+ * hesaplanır, asla saklanmaz (bkz. questionLogs modeli). Money değil; dakika.
+ */
+export const studyLogs = sqliteTable(
+  "study_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    enrollmentId: integer("enrollment_id")
+      .notNull()
+      .references(() => enrollments.id),
+    /** Çalışmanın yapıldığı gün (TRT gün başı). */
+    logDate: integer("log_date", { mode: "timestamp" }).notNull(),
+    /** Ders — null = genel/karışık çalışma. */
+    subjectId: integer("subject_id").references(() => subjects.id),
+    /** Bu bloğun süresi (dakika). */
+    minutes: integer("minutes").notNull(),
+    source: text("source", { enum: ["timer", "manual"] }).notNull(),
+    note: text("note"),
+    /** R2 anahtarı — kanıt ekran görüntüsü (özel; yalnız sahibi/koç görür). */
+    proofKey: text("proof_key"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("study_logs_enrollment_date_idx").on(t.enrollmentId, t.logDate),
+    index("study_logs_enrollment_subject_idx").on(t.enrollmentId, t.subjectId),
+  ],
+);
+
 export const mockExams = sqliteTable(
   "mock_exams",
   {
@@ -625,7 +656,7 @@ export const feePlans = sqliteTable(
       .notNull()
       .references(() => enrollments.id),
     billingType: text("billing_type", {
-      enum: ["aylık", "paket", "tek_seferlik"],
+      enum: ["haftalık", "aylık", "paket", "tek_seferlik"],
     }).notNull(),
     amountKurus: integer("amount_kurus").notNull(),
     currency: text("currency").notNull().default("TRY"),
@@ -634,6 +665,15 @@ export const feePlans = sqliteTable(
     /** Day of month invoices fall due (aylık plans). */
     dueDay: integer("due_day"),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    /**
+     * Otomatik yenileme — haftalık/aylık planlarda her dönemin gününde fatura
+     * otomatik kesilir. Koç durdurunca (false) yeni fatura üretilmez.
+     */
+    autoRenew: integer("auto_renew", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    /** Sıradaki otomatik faturanın kesileceği gün (haftalık/aylık; yoksa null). */
+    nextBillingOn: integer("next_billing_on", { mode: "timestamp" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -688,6 +728,50 @@ export const payments = sqliteTable(
   (t) => [
     index("payments_enrollment_idx").on(t.enrollmentId),
     index("payments_invoice_idx").on(t.invoiceId),
+  ],
+);
+
+/**
+ * Öğrencinin "havale/ödeme bildirimi" — self-servis. Öğrenci ödemeyi
+ * bildirir; koç/yönetici onaylayınca gerçek bir `payments` satırına dönüşür.
+ * (Otomatik tahsilat YOK — insan onaylı.) Money = integer kuruş.
+ */
+export const paymentNotices = sqliteTable(
+  "payment_notices",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    enrollmentId: integer("enrollment_id")
+      .notNull()
+      .references(() => enrollments.id),
+    /** Öğrencinin bildirdiği fatura (varsa; serbest bildirim de olur). */
+    invoiceId: integer("invoice_id").references(() => invoices.id),
+    amountKurus: integer("amount_kurus").notNull(),
+    /** Öğrencinin belirttiği gönderim tarihi. */
+    paidOn: integer("paid_on", { mode: "timestamp" }).notNull(),
+    method: text("method", {
+      enum: ["havale", "nakit", "kart", "diğer"],
+    })
+      .notNull()
+      .default("havale"),
+    /** Öğrenci notu / dekont referansı. */
+    note: text("note"),
+    status: text("status", {
+      enum: ["bekliyor", "onaylandı", "reddedildi"],
+    })
+      .notNull()
+      .default("bekliyor"),
+    /** Onaylandığında oluşan gerçek ödeme kaydı. */
+    resolvedPaymentId: integer("resolved_payment_id").references(
+      () => payments.id,
+    ),
+    /** Bildirimi karara bağlayan koç/yönetici. */
+    resolvedByUserId: text("resolved_by_user_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("payment_notices_enrollment_idx").on(t.enrollmentId),
+    index("payment_notices_status_idx").on(t.status),
   ],
 );
 
@@ -1261,6 +1345,17 @@ export const questionLogsRelations = relations(questionLogs, ({ one }) => ({
   }),
 }));
 
+export const studyLogsRelations = relations(studyLogs, ({ one }) => ({
+  enrollment: one(enrollments, {
+    fields: [studyLogs.enrollmentId],
+    references: [enrollments.id],
+  }),
+  subject: one(subjects, {
+    fields: [studyLogs.subjectId],
+    references: [subjects.id],
+  }),
+}));
+
 export const mockExamsRelations = relations(mockExams, ({ one, many }) => ({
   enrollment: one(enrollments, {
     fields: [mockExams.enrollmentId],
@@ -1486,6 +1581,25 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
   }),
   receivedBy: one(users, {
     fields: [payments.receivedByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const paymentNoticesRelations = relations(paymentNotices, ({ one }) => ({
+  enrollment: one(enrollments, {
+    fields: [paymentNotices.enrollmentId],
+    references: [enrollments.id],
+  }),
+  invoice: one(invoices, {
+    fields: [paymentNotices.invoiceId],
+    references: [invoices.id],
+  }),
+  resolvedPayment: one(payments, {
+    fields: [paymentNotices.resolvedPaymentId],
+    references: [payments.id],
+  }),
+  resolvedBy: one(users, {
+    fields: [paymentNotices.resolvedByUserId],
     references: [users.id],
   }),
 }));

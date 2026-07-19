@@ -1,13 +1,29 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { enrollments, feePlans, invoices, payments } from "@/db/schema";
+import {
+  enrollments,
+  feePlans,
+  invoices,
+  paymentNotices,
+  payments,
+} from "@/db/schema";
 import { startOfTrtDay } from "@/lib/dates";
-import { resolveInvoiceStatus, type InvoiceStatus } from "@/lib/muhasebe";
+import { generateDueInvoices, type BillingRunResult } from "@/lib/billing";
+import { formatKurus } from "@/lib/format";
+import { notifyAfterResponse } from "@/lib/notify";
+import {
+  resolveInvoiceStatus,
+  type InvoiceStatus,
+  type PaymentNoticeStatus,
+} from "@/lib/muhasebe";
 import {
   createInvoiceSchema,
+  createPaymentNoticeSchema,
   recordPaymentSchema,
+  resolvePaymentNoticeSchema,
   updateInvoiceStatusSchema,
   upsertFeePlanSchema,
   voidInvoiceSchema,
@@ -16,10 +32,13 @@ import {
   actionError,
   fieldErrorsOf,
   guarded,
+  requireAdmin,
   requireCoach,
+  requireUser,
   type ActionResult,
   type SessionUser,
 } from "@/actions/_guard";
+import { assertEnrollmentAccess as assertOwnEnrollment } from "@/actions/_access";
 
 /**
  * Faz 4 — muhasebe aksiyonları. Tamamı koç/yönetici (requireCoach);
@@ -90,13 +109,23 @@ export async function upsertFeePlan(
       if (!existing || existing.enrollmentId !== v.enrollmentId) {
         return actionError("Ücret planı bulunamadı.");
       }
+      const recurring =
+        v.billingType === "haftalık" || v.billingType === "aylık";
+      const nextBillingOn = recurring
+        ? v.firstBillingOn
+          ? startOfTrtDay(v.firstBillingOn)
+          : (existing.nextBillingOn ?? startOfTrtDay(new Date()))
+        : null;
       await db
         .update(feePlans)
         .set({
           billingType: v.billingType,
           amountKurus: v.amountTl,
-          periodMonths: v.billingType === "aylık" ? null : (v.periodMonths ?? null),
+          periodMonths:
+            v.billingType === "paket" ? (v.periodMonths ?? null) : null,
           dueDay: v.dueDay ?? null,
+          autoRenew: v.autoRenew ?? existing.autoRenew,
+          nextBillingOn,
           ...(v.isActive !== undefined ? { isActive: v.isActive } : {}),
           updatedAt: new Date(),
         })
@@ -114,18 +143,41 @@ export async function upsertFeePlan(
           eq(feePlans.isActive, true),
         ),
       );
+    const recurring = v.billingType === "haftalık" || v.billingType === "aylık";
+    const nextBillingOn = recurring
+      ? startOfTrtDay(v.firstBillingOn ?? new Date())
+      : null;
     const [plan] = await db
       .insert(feePlans)
       .values({
         enrollmentId: v.enrollmentId,
         billingType: v.billingType,
         amountKurus: v.amountTl,
-        periodMonths: v.billingType === "aylık" ? null : (v.periodMonths ?? null),
+        periodMonths:
+          v.billingType === "paket" ? (v.periodMonths ?? null) : null,
         dueDay: v.dueDay ?? null,
+        autoRenew: v.autoRenew ?? true,
+        nextBillingOn,
         isActive: true,
       })
       .returning({ id: feePlans.id });
     return { ok: true, data: { feePlanId: plan.id } };
+  });
+}
+
+/**
+ * Vadesi gelen otomatik faturaları ELLE üretir (yönetici). Cron da aynı motoru
+ * çağırır; idempotent olduğundan iki tetikleyici çakışmaz.
+ */
+export async function runBillingNow(): Promise<
+  ActionResult<BillingRunResult>
+> {
+  return guarded<BillingRunResult>(async () => {
+    await requireAdmin();
+    const result = await generateDueInvoices(new Date());
+    revalidatePath("/koc/muhasebe");
+    revalidatePath("/koc/muhasebe/faturalar");
+    return { ok: true, data: result };
   });
 }
 
@@ -288,5 +340,150 @@ export async function deletePayment(
       await recomputeInvoiceStatus(payment.invoiceId);
     }
     return { ok: true, data: { paymentId } };
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Öğrenci self-servis: havale / ödeme bildirimi + koç onayı                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Öğrenci havale/ödeme bildirir (self-servis). Yetki: kullanıcı yalnız KENDİ
+ * kaydına bildirim açabilir (assertOwnEnrollment; koç/yönetici de geçer).
+ * Ödeme HENÜZ oluşmaz — koç onaylayınca gerçek `payments` satırına döner.
+ */
+export async function createPaymentNotice(
+  input: unknown,
+): Promise<ActionResult<{ noticeId: number }>> {
+  return guarded(async () => {
+    const user = await requireUser();
+    const parsed = createPaymentNoticeSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
+    }
+    const v = parsed.data;
+    const db = getDb();
+    // Öğrenci yalnız kendi kaydına; koç/yönetici serbest.
+    await assertOwnEnrollment(db, v.enrollmentId, user);
+
+    if (v.invoiceId) {
+      const invoice = await db.query.invoices.findFirst({
+        where: eq(invoices.id, v.invoiceId),
+      });
+      if (!invoice || invoice.enrollmentId !== v.enrollmentId) {
+        return actionError("Fatura bu kayda ait değil.");
+      }
+    }
+
+    const [notice] = await db
+      .insert(paymentNotices)
+      .values({
+        enrollmentId: v.enrollmentId,
+        invoiceId: v.invoiceId ?? null,
+        amountKurus: v.amountTl,
+        paidOn: startOfTrtDay(v.paidOn),
+        method: v.method,
+        note: v.note?.trim() || null,
+        status: "bekliyor",
+      })
+      .returning({ id: paymentNotices.id });
+
+    notifyAfterResponse({
+      title: "Yeni ödeme bildirimi",
+      lines: [
+        `Öğrenci: ${user.name}`,
+        `Tutar: ${formatKurus(v.amountTl)}`,
+        `Yöntem: ${v.method}`,
+        ...(v.note?.trim() ? [`Not: ${v.note.trim()}`] : []),
+      ],
+      url: "/koc/muhasebe",
+    });
+
+    // Koç panosuna "düşsün"; öğrenci kendi listesini de tazelesin.
+    revalidatePath("/koc/muhasebe");
+    revalidatePath("/ogrenci/odemeler");
+    return { ok: true, data: { noticeId: notice.id } };
+  });
+}
+
+/**
+ * Koç kararı: bildirimi onayla (→ gerçek ödeme + fatura durumunu yeniden
+ * hesapla) ya da reddet. Koç yalnız kendi öğrencilerinin bildirimlerine bakar.
+ */
+export async function resolvePaymentNotice(
+  input: unknown,
+): Promise<ActionResult<{ noticeId: number; status: PaymentNoticeStatus }>> {
+  return guarded<{ noticeId: number; status: PaymentNoticeStatus }>(async () => {
+    const user = await requireCoach();
+    const parsed = resolvePaymentNoticeSchema.safeParse(input);
+    if (!parsed.success) return actionError("Geçersiz giriş.");
+    const { noticeId, action } = parsed.data;
+    const db = getDb();
+
+    const notice = await db.query.paymentNotices.findFirst({
+      where: eq(paymentNotices.id, noticeId),
+    });
+    if (!notice) return actionError("Bildirim bulunamadı.");
+    await assertEnrollmentAccess(notice.enrollmentId, user);
+    if (notice.status !== "bekliyor") {
+      return actionError("Bu bildirim zaten sonuçlandı.");
+    }
+
+    if (action === "reddet") {
+      await db
+        .update(paymentNotices)
+        .set({
+          status: "reddedildi",
+          resolvedByUserId: user.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentNotices.id, noticeId));
+      revalidatePath("/koc/muhasebe");
+      revalidatePath("/ogrenci/odemeler");
+      return { ok: true, data: { noticeId, status: "reddedildi" } };
+    }
+
+    // Onayla → gerçek ödeme oluştur. İptal/başka kayda ait faturaya bağlama.
+    let invoiceId = notice.invoiceId;
+    if (invoiceId) {
+      const invoice = await db.query.invoices.findFirst({
+        where: eq(invoices.id, invoiceId),
+      });
+      if (!invoice || invoice.enrollmentId !== notice.enrollmentId) {
+        invoiceId = null;
+      } else if (invoice.status === "iptal") {
+        return actionError("İptal edilmiş faturaya ödeme onaylanamaz.");
+      }
+    }
+
+    const [payment] = await db
+      .insert(payments)
+      .values({
+        enrollmentId: notice.enrollmentId,
+        invoiceId: invoiceId ?? null,
+        amountKurus: notice.amountKurus,
+        paidOn: notice.paidOn,
+        method: notice.method,
+        receivedByUserId: user.id,
+        note: notice.note?.trim()
+          ? `Havale bildirimi: ${notice.note.trim()}`
+          : "Havale bildiriminden onaylandı",
+      })
+      .returning({ id: payments.id });
+
+    await db
+      .update(paymentNotices)
+      .set({
+        status: "onaylandı",
+        resolvedPaymentId: payment.id,
+        resolvedByUserId: user.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(paymentNotices.id, noticeId));
+
+    if (invoiceId) await recomputeInvoiceStatus(invoiceId);
+    revalidatePath("/koc/muhasebe");
+    revalidatePath("/ogrenci/odemeler");
+    return { ok: true, data: { noticeId, status: "onaylandı" } };
   });
 }

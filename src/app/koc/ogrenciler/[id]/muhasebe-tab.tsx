@@ -100,6 +100,8 @@ export async function MuhasebeTab({
                   amountTl: kurusToTryInput(plan.amountKurus),
                   periodMonths: plan.periodMonths,
                   dueDay: plan.dueDay,
+                  autoRenew: plan.autoRenew,
+                  nextBillingOn: plan.nextBillingOn,
                 }
               : null
           }
@@ -115,6 +117,25 @@ export async function MuhasebeTab({
           triggerVariant="outline"
         />
       </div>
+
+      {plan &&
+        (plan.billingType === "haftalık" || plan.billingType === "aylık") && (
+          <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
+            {plan.autoRenew ? (
+              <span className="text-muted-foreground">
+                🔁 Otomatik {BILLING_TYPE_LABELS[plan.billingType].toLowerCase()}{" "}
+                fatura açık
+                {plan.nextBillingOn
+                  ? ` · sonraki: ${dateFmt.format(plan.nextBillingOn)}`
+                  : ""}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                ⏸️ Otomatik faturalama durduruldu — plandan tekrar açabilirsin.
+              </span>
+            )}
+          </div>
+        )}
 
       <Card>
         <CardHeader>

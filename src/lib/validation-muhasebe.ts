@@ -25,7 +25,12 @@ export const positiveTlToKurusSchema = tlToKurusSchema.refine((k) => k > 0, {
   message: "Tutar 0'dan büyük olmalı.",
 });
 
-export const billingTypeSchema = z.enum(["aylık", "paket", "tek_seferlik"]);
+export const billingTypeSchema = z.enum([
+  "haftalık",
+  "aylık",
+  "paket",
+  "tek_seferlik",
+]);
 export const invoiceStatusSchema = z.enum([
   "taslak",
   "gönderildi",
@@ -45,6 +50,10 @@ export const upsertFeePlanSchema = z
     periodMonths: z.coerce.number().int().min(1).max(36).nullish(),
     dueDay: z.coerce.number().int().min(1).max(28).nullish(),
     isActive: z.boolean().optional(),
+    /** Haftalık/aylık planlarda otomatik fatura üretimi (koç durdurabilir). */
+    autoRenew: z.boolean().optional(),
+    /** İlk otomatik faturanın kesileceği gün (nextBillingOn); yoksa bugün. */
+    firstBillingOn: z.coerce.date().nullish(),
   })
   .refine((v) => v.billingType !== "paket" || v.periodMonths != null, {
     message: "Paket planlarda dönem (ay) gerekli.",
@@ -85,3 +94,27 @@ export const recordPaymentSchema = z.object({
   note: z.string().trim().max(200).optional().or(z.literal("")),
 });
 export type RecordPaymentInput = z.input<typeof recordPaymentSchema>;
+
+/**
+ * Öğrenci "havale/ödeme bildirimi" — self-servis. Öğrenci gönderdiği ödemeyi
+ * bildirir; koç onaylayınca gerçek ödemeye dönüşür. enrollmentId yetki
+ * katmanında öğrencinin kendi kaydıyla doğrulanır (asla client'a güvenilmez).
+ */
+export const createPaymentNoticeSchema = z.object({
+  enrollmentId: z.coerce.number().int().positive(),
+  invoiceId: z.coerce.number().int().positive().nullish(),
+  amountTl: positiveTlToKurusSchema,
+  paidOn: z.coerce.date(),
+  method: paymentMethodSchema.default("havale"),
+  note: z.string().trim().max(200).optional().or(z.literal("")),
+});
+export type CreatePaymentNoticeInput = z.input<typeof createPaymentNoticeSchema>;
+
+/** Koç kararı — bildirimi ödemeye çevir ya da reddet. */
+export const resolvePaymentNoticeSchema = z.object({
+  noticeId: z.coerce.number().int().positive(),
+  action: z.enum(["onayla", "reddet"]),
+});
+export type ResolvePaymentNoticeInput = z.input<
+  typeof resolvePaymentNoticeSchema
+>;

@@ -113,10 +113,70 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   diğer: "Diğer",
 };
 
-export type BillingType = "aylık" | "paket" | "tek_seferlik";
+export type PaymentNoticeStatus = "bekliyor" | "onaylandı" | "reddedildi";
+
+export const PAYMENT_NOTICE_STATUS_LABELS: Record<PaymentNoticeStatus, string> = {
+  bekliyor: "Onay bekliyor",
+  onaylandı: "Onaylandı",
+  reddedildi: "Reddedildi",
+};
+
+export type BillingType = "haftalık" | "aylık" | "paket" | "tek_seferlik";
 
 export const BILLING_TYPE_LABELS: Record<BillingType, string> = {
+  haftalık: "Haftalık",
   aylık: "Aylık",
   paket: "Paket",
   tek_seferlik: "Tek seferlik",
 };
+
+/** Otomatik yinelenen (abonelik) plan tipleri — fatura kendiliğinden kesilir. */
+export type RecurringBillingType = "haftalık" | "aylık";
+export const RECURRING_BILLING_TYPES: RecurringBillingType[] = [
+  "haftalık",
+  "aylık",
+];
+
+export function isRecurringBilling(t: BillingType): t is RecurringBillingType {
+  return t === "haftalık" || t === "aylık";
+}
+
+const dayMonthFmt = new Intl.DateTimeFormat("tr-TR", {
+  timeZone: "Europe/Istanbul",
+  day: "numeric",
+  month: "short",
+});
+
+/**
+ * Bir sonraki fatura tarihini döndürür (TRT gün başı hizalı):
+ * haftalık → +7 gün; aylık → +1 ay (aynı gün, ay kısaysa kırpılır).
+ */
+export function advanceBillingDate(
+  from: Date,
+  type: RecurringBillingType,
+): Date {
+  const base = startOfTrtDay(from);
+  if (type === "haftalık") {
+    return new Date(base.getTime() + 7 * 24 * 60 * 60 * 1000);
+  }
+  // aylık — TRT'ye kaydırıp ay ekle, gün taşarsa ay sonuna kırp.
+  const shifted = new Date(base.getTime() + TRT_OFFSET_MS);
+  const y = shifted.getUTCFullYear();
+  const m = shifted.getUTCMonth();
+  const d = shifted.getUTCDate();
+  const daysInNext = new Date(Date.UTC(y, m + 2, 0)).getUTCDate();
+  const day = Math.min(d, daysInNext);
+  return new Date(Date.UTC(y, m + 1, day) - TRT_OFFSET_MS);
+}
+
+/**
+ * Faturanın dönem etiketi — aynı zamanda idempotency anahtarı:
+ * aylık → "Temmuz 2026"; haftalık → "20 Tem haftası".
+ */
+export function billingPeriodLabel(
+  date: Date,
+  type: RecurringBillingType,
+): string {
+  if (type === "aylık") return trMonthLabel(date);
+  return `${dayMonthFmt.format(date)} haftası`;
+}
