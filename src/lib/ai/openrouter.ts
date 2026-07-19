@@ -13,8 +13,12 @@ export const AI_MODELS = {
   extraction: "meta-llama/llama-3.3-70b-instruct",
   /** Öğrenci yolculuk sohbeti. */
   chat: "meta-llama/llama-3.3-70b-instruct",
-  /** Koç ajanı (araç çağırma). */
-  agent: "meta-llama/llama-3.3-70b-instruct",
+  /**
+   * Koç ajanı (araç çağırma). İnteraktif, düşük hacimli yüzey — hız + Türkçe
+   * kalitesi + güvenilir araç çağırma için frontier model. Bütçe için tekrar
+   * ucuz modele dönmek: slug'ı "meta-llama/llama-3.3-70b-instruct" yap.
+   */
+  agent: "anthropic/claude-haiku-4.5",
   /** Ses -> metin (Türkçe). */
   whisper: "openai/whisper-large-v3-turbo",
 } as const;

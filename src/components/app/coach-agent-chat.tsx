@@ -32,28 +32,41 @@ export function CoachAgentChat({
   const [pending, setPending] = useState<PendingWrite[]>([]);
   const [threadId, setThreadId] = useState<number | null>(null);
   const [input, setInput] = useState("");
+  const [thinking, setThinking] = useState(false);
   const [busy, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToEnd = () =>
+    queueMicrotask(() =>
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }),
+    );
 
   const send = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
     setMessages((m) => [...m, { role: "user", content: trimmed }]);
     setInput("");
+    setThinking(true);
+    scrollToEnd();
     startTransition(async () => {
-      const res = await sendCoachAgentMessage({ threadId, text: trimmed });
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
+      try {
+        const res = await sendCoachAgentMessage({ threadId, text: trimmed });
+        if (!res.ok) {
+          toast.error(res.error);
+          return;
+        }
+        setThreadId(res.data.threadId);
+        if (res.data.text) {
+          setMessages((m) => [
+            ...m,
+            { role: "assistant", content: res.data.text },
+          ]);
+        }
+        setPending(res.data.pendingWrites);
+        scrollToEnd();
+      } finally {
+        setThinking(false);
       }
-      setThreadId(res.data.threadId);
-      if (res.data.text) {
-        setMessages((m) => [...m, { role: "assistant", content: res.data.text }]);
-      }
-      setPending(res.data.pendingWrites);
-      queueMicrotask(() =>
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }),
-      );
     });
   };
 
@@ -106,7 +119,8 @@ export function CoachAgentChat({
                 <button
                   key={s}
                   onClick={() => send(s)}
-                  className="rounded-full bg-card px-3 py-1.5 text-xs ring-1 ring-foreground/10 hover:ring-foreground/20"
+                  disabled={busy}
+                  className="rounded-full bg-card px-3 py-1.5 text-xs ring-1 ring-foreground/10 hover:ring-foreground/20 disabled:opacity-50"
                 >
                   {s}
                 </button>
@@ -135,6 +149,19 @@ export function CoachAgentChat({
             </div>
           </div>
         ))}
+
+        {thinking ? (
+          <div className="flex justify-start">
+            <div
+              className="flex items-center gap-1 rounded-2xl bg-card px-3.5 py-3 ring-1 ring-foreground/10"
+              aria-label="Asistan yazıyor"
+            >
+              <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.3s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-foreground/40 [animation-delay:-0.15s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-foreground/40" />
+            </div>
+          </div>
+        ) : null}
 
         {pending.map((w) => (
           <Card key={w.toolCallId} size="sm" className="border border-warning/30">
