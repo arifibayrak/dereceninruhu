@@ -12,6 +12,7 @@ import {
   LibraryIcon,
   MegaphoneIcon,
   NewspaperIcon,
+  SendHorizontalIcon,
   SettingsIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -62,6 +63,10 @@ const ENTRIES: NavEntry[] = [
   {
     kind: "link",
     item: { href: "/koc/denemeler", label: "Denemeler", icon: TargetIcon },
+  },
+  {
+    kind: "link",
+    item: { href: "/koc/duyuru", label: "Duyuru", icon: SendHorizontalIcon },
   },
   {
     kind: "link",
