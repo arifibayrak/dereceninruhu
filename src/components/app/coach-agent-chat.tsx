@@ -23,7 +23,11 @@ const SUGGESTIONS = [
   "En son görüşülmeyen öğrencileri özetle",
 ];
 
-export function CoachAgentChat() {
+export function CoachAgentChat({
+  heightClassName = "h-[calc(100vh-12rem)]",
+}: {
+  heightClassName?: string;
+}) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [pending, setPending] = useState<PendingWrite[]>([]);
   const [threadId, setThreadId] = useState<number | null>(null);
@@ -85,7 +89,7 @@ export function CoachAgentChat() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] flex-col gap-3">
+    <div className={cn("flex flex-col gap-3", heightClassName)}>
       <div
         ref={scrollRef}
         className="flex-1 space-y-3 overflow-y-auto rounded-xl bg-muted/30 p-4"

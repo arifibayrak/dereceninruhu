@@ -17,7 +17,11 @@ const SUGGESTIONS = [
   "En zayıf konularım neler?",
 ];
 
-export function StudentChat() {
+export function StudentChat({
+  heightClassName = "h-[calc(100vh-11rem)]",
+}: {
+  heightClassName?: string;
+}) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [threadId, setThreadId] = useState<number | null>(null);
   const [input, setInput] = useState("");
@@ -44,7 +48,7 @@ export function StudentChat() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-11rem)] flex-col gap-3">
+    <div className={cn("flex flex-col gap-3", heightClassName)}>
       <div
         ref={scrollRef}
         className="flex-1 space-y-3 overflow-y-auto rounded-xl bg-muted/30 p-3"
