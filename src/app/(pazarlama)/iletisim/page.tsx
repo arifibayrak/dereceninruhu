@@ -71,7 +71,18 @@ export default function IletisimPage() {
         </p>
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+      {/* 1. satır: takvim — tam genişlik (gün solda, saatler sağda) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Takvimden 30 dk ücretsiz görüşme seç</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CalBooking />
+        </CardContent>
+      </Card>
+
+      {/* 2. satır: sol süreç + güven, sağ "biz arayalım" formu */}
+      <div className="grid gap-8 lg:grid-cols-2">
         {/* Sol: süreç + güven */}
         <div className="flex flex-col gap-4">
           <ol className="flex flex-col gap-3">
@@ -113,25 +124,15 @@ export default function IletisimPage() {
           </div>
         </div>
 
-        {/* Sağ: takvim (birincil) + form (alternatif) */}
-        <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Takvimden 30 dk ücretsiz görüşme seç</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CalBooking />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Ya da bilgini bırak, biz arayalım</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <LeadForm />
-            </CardContent>
-          </Card>
-        </div>
+        {/* Sağ: "biz arayalım" formu (alternatif) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ya da bilgini bırak, biz arayalım</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LeadForm />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

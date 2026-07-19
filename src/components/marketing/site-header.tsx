@@ -64,6 +64,13 @@ export function SiteHeader() {
           <ThemeToggle className="hidden sm:inline-flex" />
           <Button
             variant="ghost"
+            className="hidden lg:inline-flex"
+            render={<Link href="/koc-basvuru" />}
+          >
+            Koç Ol
+          </Button>
+          <Button
+            variant="ghost"
             className="hidden md:inline-flex"
             render={<Link href="/giris" />}
           >
@@ -113,6 +120,13 @@ export function SiteHeader() {
                     </Link>
                   );
                 })}
+                <Link
+                  href="/koc-basvuru"
+                  onClick={() => setOpen(false)}
+                  className="flex h-10 items-center rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  Koç Ol
+                </Link>
                 <Link
                   href="/giris"
                   onClick={() => setOpen(false)}

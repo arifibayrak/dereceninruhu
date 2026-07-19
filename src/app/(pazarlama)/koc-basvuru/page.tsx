@@ -1,8 +1,12 @@
 import {
   AwardIcon,
+  ClockIcon,
   HeartHandshakeIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   TrendingUpIcon,
+  UsersIcon,
+  WalletIcon,
 } from "lucide-react";
 
 import { CoachApplicationForm } from "@/components/marketing/coach-application-form";
@@ -17,6 +21,29 @@ export const metadata = buildMetadata({
     "Derecenin Ruhu koç kadrosuna katıl. Derece yapmış, öğrencisini gerçekten önemseyen seçkin koçlarla birebir çalışıyoruz. Başvurunu bırak, tanışalım.",
   path: "/koc-basvuru",
 });
+
+const BENEFITS = [
+  {
+    icon: UsersIcon,
+    title: "Hazır öğrenci akışı",
+    body: "Öğrenci bulma derdi sende değil — pazarlamayı biz yapıyoruz, sana uygun öğrenciler eşleştirilir.",
+  },
+  {
+    icon: SparklesIcon,
+    title: "AI destekli koçluk paneli",
+    body: "Haftalık program, soru takibi, deneme analizi ve görüşme transkriptinden öneri — hepsi tek panelde.",
+  },
+  {
+    icon: ClockIcon,
+    title: "Esnek ve uzaktan",
+    body: "Saatlerini kendin belirle; görüşmeler online. Nerede olursan ol koçluk yapabilirsin.",
+  },
+  {
+    icon: WalletIcon,
+    title: "Adil kazanç, otomatik muhasebe",
+    body: "Şeffaf gelir paylaşımı; faturalama ve tahsilat takibi sistemde otomatik ilerler.",
+  },
+] as const;
 
 const CRITERIA = [
   {
@@ -57,6 +84,29 @@ export default function KocBasvuruPage() {
           çünkü kalite, kimi kadroya aldığımızla başlıyor. Kendini bu yolun
           parçası olarak görüyorsan, tanışalım.
         </p>
+      </section>
+
+      {/* Koça sunduklarımız (kazanımlar) */}
+      <section className="flex flex-col gap-4">
+        <h2 className="font-heading text-2xl font-semibold text-balance">
+          Koçlarımıza ne sunuyoruz?
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {BENEFITS.map((b) => (
+            <div
+              key={b.title}
+              className="flex flex-col gap-2 rounded-2xl bg-card p-5 ring-1 ring-foreground/10"
+            >
+              <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <b.icon className="size-5" />
+              </span>
+              <span className="text-sm font-semibold">{b.title}</span>
+              <span className="text-sm text-pretty text-muted-foreground">
+                {b.body}
+              </span>
+            </div>
+          ))}
+        </div>
       </section>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
