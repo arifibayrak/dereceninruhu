@@ -9,6 +9,7 @@ import {
   LibraryIcon,
   NotebookPenIcon,
   TargetIcon,
+  TimerIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -25,6 +26,12 @@ const LINKS = [
     href: "/ogrenci/soru-takibi",
     label: "Sorular",
     icon: NotebookPenIcon,
+    exact: false,
+  },
+  {
+    href: "/ogrenci/kronometre",
+    label: "Süre",
+    icon: TimerIcon,
     exact: false,
   },
   {
@@ -56,7 +63,7 @@ export function StudentBottomNav() {
       aria-label="Öğrenci gezinmesi"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur"
     >
-      <div className="mx-auto grid w-full max-w-lg grid-cols-6">
+      <div className="mx-auto grid w-full max-w-lg grid-cols-7">
         {LINKS.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
           return (
