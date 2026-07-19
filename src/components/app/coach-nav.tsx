@@ -15,6 +15,7 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  TargetIcon,
   UploadIcon,
   UserRoundIcon,
   UsersIcon,
@@ -57,6 +58,10 @@ const ENTRIES: NavEntry[] = [
   {
     kind: "link",
     item: { href: "/koc/ogrenciler", label: "Öğrenciler", icon: UsersIcon },
+  },
+  {
+    kind: "link",
+    item: { href: "/koc/denemeler", label: "Denemeler", icon: TargetIcon },
   },
   {
     kind: "link",

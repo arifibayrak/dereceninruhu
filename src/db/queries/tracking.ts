@@ -1,13 +1,17 @@
 import { and, asc, desc, eq, gt, gte, lt, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
+  enrollments,
   examSections,
+  examTemplates,
   mockExamResults,
   mockExams,
   questionLogs,
+  students,
 } from "@/db/schema";
 import { addDays, mondayOf, trDayKey, weekRange } from "@/lib/dates";
 import type { StudentInsightInput } from "@/lib/insights";
+import type { SessionViewer } from "@/lib/session";
 
 /* -------------------------------------------------------------------------- */
 /*  Soru takibi                                                               */
@@ -247,4 +251,78 @@ export async function getStudentInsightInput(
     netSeries: series.map((p) => ({ takenOn: p.takenOn, net: p.net })),
     now,
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Haftalık deneme panosu (koç/yönetici — kadro geneli)                      */
+/* -------------------------------------------------------------------------- */
+
+export type WeeklyMockRow = {
+  mockId: number;
+  studentId: number;
+  studentName: string;
+  examCode: string;
+  sectionName: string;
+  name: string | null;
+  publisher: string | null;
+  scope: "full" | "branch";
+  takenOn: Date;
+  totalNet: number;
+  analysisDone: boolean;
+};
+
+/**
+ * Bir haftada (Pzt–Paz) kadro genelinde girilen tüm denemeler + toplam net.
+ * Yönetici tüm kadroyu; koç yalnız kendi öğrencilerini görür (coachScope).
+ * Sıralama JS'te (tek haftalık küçük küme): net azalan ya da isim.
+ */
+export async function getWeeklyMockResults(opts: {
+  weekAnchor: Date;
+  viewer: SessionViewer;
+  sort?: "net" | "isim";
+}): Promise<WeeklyMockRow[]> {
+  const db = getDb();
+  const { start, end } = weekRange(opts.weekAnchor);
+  const scope =
+    opts.viewer.role === "coach"
+      ? eq(enrollments.coachUserId, opts.viewer.id)
+      : undefined;
+
+  const rows = await db
+    .select({
+      mockId: mockExams.id,
+      studentId: students.id,
+      studentName: students.fullName,
+      examCode: examTemplates.code,
+      sectionName: examSections.name,
+      name: mockExams.name,
+      publisher: mockExams.publisher,
+      scope: mockExams.scope,
+      takenOn: mockExams.takenOn,
+      analysisDone: mockExams.analysisDone,
+      totalNet: sql<number>`coalesce(sum(${mockExamResults.net}), 0)`,
+    })
+    .from(mockExams)
+    .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
+    .innerJoin(students, eq(students.id, enrollments.studentId))
+    .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
+    .innerJoin(
+      examTemplates,
+      eq(examTemplates.id, examSections.examTemplateId),
+    )
+    .leftJoin(mockExamResults, eq(mockExamResults.mockExamId, mockExams.id))
+    .where(and(gte(mockExams.takenOn, start), lt(mockExams.takenOn, end), scope))
+    .groupBy(mockExams.id);
+
+  const mapped: WeeklyMockRow[] = rows.map((r) => ({
+    ...r,
+    totalNet: Number(r.totalNet),
+  }));
+
+  if (opts.sort === "isim") {
+    mapped.sort((a, b) => a.studentName.localeCompare(b.studentName, "tr"));
+  } else {
+    mapped.sort((a, b) => b.totalNet - a.totalNet);
+  }
+  return mapped;
 }
