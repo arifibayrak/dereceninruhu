@@ -129,6 +129,8 @@ function toSessionItems(rows: EnrollmentSessionRow[]): SessionItem[] {
     studentVisibleNote: r.studentVisibleNote,
     nextPlanId: r.nextPlanId,
     nextPlanWeekKey: r.nextPlanWeekKey,
+    meetingUrl: r.meetingUrl,
+    meetingProvider: r.meetingProvider,
   }));
 }
 
@@ -585,6 +587,16 @@ export default async function OgrenciKokpitPage({
 
         {/* ---------------------------- Görüşmeler ---------------------------- */}
         <TabsContent value="gorusmeler" className="pt-2">
+          <div className="mb-3">
+            <Link
+              href={`/koc/ogrenciler/${student.id}/transkript`}
+              className="inline-flex items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-foreground/10 hover:ring-foreground/20"
+            >
+              <MessageCircleIcon className="size-4 text-muted-foreground" />
+              Görüşme transkriptleri (AI önerileri)
+              <ChevronRightIcon className="size-4 text-muted-foreground" />
+            </Link>
+          </div>
           <SessionsPanel
             enrollmentId={enrollment.id}
             studentId={student.id}

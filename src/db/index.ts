@@ -21,3 +21,17 @@ export async function getDbAsync() {
 }
 
 export type DB = ReturnType<typeof getDb>;
+
+/**
+ * Full Cloudflare env (bindings + secrets) for the current request.
+ * Prefer the typed accessors below; use this for secrets like
+ * `OPENROUTER_API_KEY`.
+ */
+export function getEnv(): CloudflareEnv {
+  return getCloudflareContext().env;
+}
+
+/** R2 bucket binding (`R2` → dereceninruhu-files): görüşme kayıtları/dosyalar. */
+export function getR2() {
+  return getCloudflareContext().env.R2;
+}

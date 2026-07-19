@@ -151,12 +151,20 @@ export const publishPlanSchema = z.object({
   planId: z.coerce.number().int().positive(),
 });
 
+/** Görüşme dış sağlayıcıda (Meet/Zoom…) yapılır; link uygulamadan açılır. */
+export const meetingUrlSchema = z
+  .url("Geçerli bir toplantı linki girin.")
+  .max(500)
+  .optional()
+  .or(z.literal(""));
+
 /** Görüşme planlama (koç). */
 export const createSessionSchema = z.object({
   enrollmentId: z.coerce.number().int().positive(),
   scheduledAt: z.coerce.date(),
   studentVisibleNote: z.string().trim().max(500).optional().or(z.literal("")),
   summary: z.string().trim().max(2000).optional().or(z.literal("")),
+  meetingUrl: meetingUrlSchema,
 });
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 
@@ -168,6 +176,7 @@ export const updateSessionSchema = z.object({
   summary: z.string().trim().max(2000).optional(),
   studentVisibleNote: z.string().trim().max(500).optional(),
   nextPlanId: z.coerce.number().int().positive().nullish(),
+  meetingUrl: meetingUrlSchema,
 });
 export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;
 

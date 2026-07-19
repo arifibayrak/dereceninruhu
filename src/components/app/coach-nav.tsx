@@ -11,6 +11,7 @@ import {
   NewspaperIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   UsersIcon,
   WalletIcon,
   type LucideIcon,
@@ -30,6 +31,7 @@ type NavLink = {
 const LINKS: NavLink[] = [
   { href: "/koc", label: "Panel", icon: LayoutDashboardIcon, exact: true },
   { href: "/koc/ogrenciler", label: "Öğrenciler", icon: UsersIcon, exact: false },
+  { href: "/koc/asistan", label: "Asistan", icon: SparklesIcon, exact: false },
   { href: "/koc/leadler", label: "Leadler", icon: InboxIcon, exact: false },
   {
     href: "/koc/gorusmeler",
