@@ -20,6 +20,7 @@ type ReminderCtx = {
   days?: number;
   amountTry?: string; // pre-formatted, e.g. "2.500 ₺"
   when?: string; // e.g. "yarın 19:00"
+  pin?: string; // yeni PIN — pinSifirla için
 };
 
 /** Turkish reminder message templates (warm, first-person from the coach). */
@@ -44,6 +45,12 @@ export const waTemplates = {
 
   davet: ({ studentName }: ReminderCtx) =>
     `Merhaba ${studentName}! Derecenin Ruhu takip sistemine davetlisin. Aşağıdaki bağlantıdan PIN'ini belirleyip başlayabilirsin 👇`,
+
+  /** Koç öğrencinin PIN'ini sıfırladı — yeni PIN + giriş bağlantısı. */
+  pinSifirla: ({ studentName, pin }: ReminderCtx) =>
+    `Merhaba ${studentName} 👋 Giriş PIN'ini yeniledim: ${
+      pin ?? "••••"
+    }. dereceninruhu.com/katil adresinden telefonun ve bu PIN ile girebilirsin. İstersen sonra kendine göre değiştirebilirsin 🙌`,
 
   /** Site formundan gelen lead'e ilk temas (ücretsiz ön görüşme planlama). */
   leadIlkTemas: ({ studentName }: ReminderCtx) =>

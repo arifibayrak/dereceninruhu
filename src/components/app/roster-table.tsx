@@ -16,6 +16,7 @@ import {
   CopyInviteButton,
   WaInviteButton,
 } from "@/components/app/invite-actions";
+import { PinResetButton } from "@/components/app/pin-reset-button";
 import { StalenessBadge } from "@/components/app/staleness-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -240,24 +241,32 @@ export function RosterTable({
                   <StalenessBadge staleDays={r.staleDays} />
                 </TableCell>
                 <TableCell className="pr-4">
-                  {r.inviteAccepted ? (
-                    <Badge className="bg-success/10 text-success">
-                      Kabul edildi
-                    </Badge>
-                  ) : r.inviteCode ? (
-                    <div className="flex items-center gap-1.5">
-                      <CopyInviteButton invitePath={`/davet/${r.inviteCode}`} />
-                      {r.phone && (
-                        <WaInviteButton
-                          phone={r.phone}
-                          studentName={r.fullName.split(" ")[0]}
-                          invitePath={`/davet/${r.inviteCode}`}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <Badge variant="outline">Davet yok</Badge>
-                  )}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {r.inviteAccepted ? (
+                      <Badge className="bg-success/10 text-success">
+                        Kabul edildi
+                      </Badge>
+                    ) : r.inviteCode ? (
+                      <>
+                        <CopyInviteButton invitePath={`/davet/${r.inviteCode}`} />
+                        {r.phone && (
+                          <WaInviteButton
+                            phone={r.phone}
+                            studentName={r.fullName.split(" ")[0]}
+                            invitePath={`/davet/${r.inviteCode}`}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <Badge variant="outline">Davet yok</Badge>
+                    )}
+                    <PinResetButton
+                      studentId={r.studentId}
+                      phone={r.phone}
+                      fullName={r.fullName}
+                      inviteAccepted={r.inviteAccepted}
+                    />
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
