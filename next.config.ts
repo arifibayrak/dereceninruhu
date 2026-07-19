@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   // Home-dizinindeki package-lock.json'ın workspace-root sanılmasını engelle
   // (aksi halde Turbopack yanlış kökü izleyip sürekli yeniden derliyor).
   turbopack: { root: import.meta.dirname },
+  // transformers.js canlı-transkript YALNIZ tarayıcıda (WebGPU) dinamik import
+  // edilir; sunucu/Cloudflare Worker paketine GİRMEMELİ. onnxruntime-node native
+  // .node ikilisi içerir (esbuild yükleyemez) → dışsal tut.
+  serverExternalPackages: ["@huggingface/transformers", "onnxruntime-node"],
   images: {
     // Marketing/blog may reference remote covers; keep tight and explicit.
     remotePatterns: [

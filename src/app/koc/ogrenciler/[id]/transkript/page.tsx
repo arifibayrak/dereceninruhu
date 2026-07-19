@@ -8,7 +8,7 @@ import { formatTrDate } from "@/lib/dates";
 import { Badge } from "@/components/ui/badge";
 import { TranscriptPasteForm } from "@/components/app/transcript-paste-form";
 import { AudioTranscribe } from "@/components/app/audio-transcribe";
-import { LiveTranscribe } from "@/components/app/live-transcribe";
+import { LiveTranscribeLoader } from "@/components/app/live-transcribe-loader";
 
 const STATUS_LABEL: Record<string, string> = {
   uploaded: "Yüklendi",
@@ -46,7 +46,7 @@ export default async function TranskriptListPage({
 
       <section className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
         <h2 className="mb-3 text-sm font-medium">Canlı (mikrofon)</h2>
-        <LiveTranscribe enrollmentId={enrollmentId} studentId={studentId} />
+        <LiveTranscribeLoader enrollmentId={enrollmentId} studentId={studentId} />
       </section>
 
       <section className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
