@@ -574,7 +574,11 @@ export default function MarkaPage() {
               5,0
             </span>
             <div className="flex flex-col">
-              <span className="flex items-center gap-0.5" aria-label="5 yıldız">
+              <span
+                className="flex items-center gap-0.5"
+                role="img"
+                aria-label="5 yıldız"
+              >
                 {Array.from({ length: 5 }).map((_, i) => (
                   <StarIcon key={i} className="size-4 fill-gold text-gold" />
                 ))}

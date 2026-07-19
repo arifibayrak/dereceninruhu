@@ -1,50 +1,56 @@
 # Derecenin Ruhu
 
 > LGS, YKS ve KPSS için birebir online sınav koçluğu (mentorluk). Derece yapmış bir
-> koçla haftalık program, soru takibi ve deneme analizi; ölçülen, grafikte görünen
-> net artışı. Türkiye geneli online; merkez Kartal, İstanbul.
+> koçla haftalık program, soru takibi ve deneme analizi; ölçülen, grafikte görünen net
+> artışı. Türkiye geneli online; merkez Kartal, İstanbul.
 
-Derecenin Ruhu, öğrencilere birebir sınav koçluğu sunan bir eğitim koçluğu
-hizmetidir. Motivasyon konuşması değil; her hafta işleyen bir döngüye dayanır:
-planla → çalış ve kaydet → deneme çöz → analiz et → programı güncelle.
-
-## Kurucu koç
-
-- **Ahmet Hakan Almak** — Eğitim Koçu, Derecenin Ruhu kurucusu.
-- Marmara Üniversitesi Hukuk Fakültesi öğrencisi.
-- YKS'de Türkiye 876., KPSS'de 93 puanla 712.
-- 3+ yıldır KPSS, YKS ve LGS öğrencilerine birebir koçluk.
-- Değerlendirme: Gigbi üzerinde 5,0 / 5 ortalama, 77 yorum (bağımsız doğrulanabilir).
-- Doğrulama: https://www.gigbi.com/p/ahmet-hakan-almak1723581674
+Derecenin Ruhu, öğrencilere birebir sınav koçluğu sunan bir eğitim koçluğu hizmetidir.
+Motivasyon konuşması değil; her hafta işleyen bir döngüye dayanır: planla → çalış ve
+kaydet → deneme çöz → analiz et → programı güncelle. Kurucu koç **Ahmet Hakan Almak**,
+Marmara Üniversitesi Hukuk Fakültesi öğrencisidir; YKS'de Türkiye 876., KPSS'de 93
+puanla 712. olmuştur ve 3+ yıldır KPSS, YKS ve LGS öğrencilerine birebir koçluk yapar.
+Değerlendirme: Gigbi üzerinde 5,0 / 5 ortalama, 77 yorum (bağımsız doğrulanabilir).
 
 ## Hizmetler
 
-- **YKS koçluğu (TYT-AYT):** https://dereceninruhu.com/yks-koclugu
-- **LGS koçluğu (8. sınıf):** https://dereceninruhu.com/lgs-koclugu
-- **KPSS koçluğu:** https://dereceninruhu.com/kpss-koclugu
-- Kapsam: haftalık birebir görüşme, sana özel program, soru/deneme takibi,
-  konu bazlı eksik haritası, net gelişim grafiği, veli bilgilendirmesi (LGS/YKS),
-  WhatsApp'tan koça doğrudan erişim.
+- [YKS Koçluğu (TYT-AYT)](https://dereceninruhu.com/yks-koclugu): TYT ve AYT için birebir online YKS koçluğu; haftalık program, deneme analizi, net takibi.
+- [LGS Koçluğu (8. sınıf)](https://dereceninruhu.com/lgs-koclugu): 8. sınıf için sürdürülebilir program, deneme analizi ve veli bilgilendirmesi.
+- [KPSS Koçluğu](https://dereceninruhu.com/kpss-koclugu): çalışan/öğrenci temposuna uyan gerçekçi program ve atama hedefine göre puan stratejisi.
 
 ## Önemli sayfalar
 
-- Ana sayfa: https://dereceninruhu.com/
-- Nasıl çalışır: https://dereceninruhu.com/nasil-calisir
-- Koç profili / hakkında: https://dereceninruhu.com/hakkinda
-- Koçlar: https://dereceninruhu.com/koclar
-- Fiyatlar / paketler: https://dereceninruhu.com/fiyatlar
-- Başarı hikayeleri (yorumlar): https://dereceninruhu.com/basarilar
-- Sıkça sorulan sorular: https://dereceninruhu.com/sss
-- Blog: https://dereceninruhu.com/blog
-- Sınav sayacı (LGS/YKS/KPSS geri sayım): https://dereceninruhu.com/sayac
-- Ücretsiz ön görüşme: https://dereceninruhu.com/iletisim
-- Bekleme listesi: https://dereceninruhu.com/bekleme-listesi
+- [Ana sayfa](https://dereceninruhu.com/): hizmetin özeti, koç, sınav kartları, fiyat ve SSS.
+- [Hakkında — Ahmet Hakan Almak](https://dereceninruhu.com/hakkinda): kurucu koçun özgeçmişi ve dereceleri.
+- [Koçlar](https://dereceninruhu.com/koclar): koç profili ve sosyal kanıt.
+- [Nasıl çalışır](https://dereceninruhu.com/nasil-calisir): koçluk süreci adım adım.
+- [Fiyatlar](https://dereceninruhu.com/fiyatlar): paketler; ücretsiz ön görüşmeyle başlar.
+- [Başarı hikayeleri](https://dereceninruhu.com/basarilar): gerçek öğrenci ve veli yorumları.
+- [Sıkça sorulan sorular](https://dereceninruhu.com/sss): süreç, görüşmeler ve ödeme.
+- [Sınav sayacı](https://dereceninruhu.com/sayac): LGS/YKS/KPSS geri sayımı.
+- [Ücretsiz ön görüşme](https://dereceninruhu.com/iletisim): hedefini konuş, yol haritanı al.
 
-## Sık sorulanlar (özet)
+## Blog
 
-- **Hangi sınavlara koçluk?** LGS, YKS (TYT-AYT) ve KPSS.
-- **Görüşmeler nerede?** Online (görüntülü/sesli); Kartal ve çevresinde yüz yüze de mümkün.
-- **Nasıl başlanır?** Ücretsiz ön görüşmeyle; ödeme yükümlülüğü yoktur.
-- **Kontenjan?** Her dönem sınırlı sayıda öğrenciyle çalışılır; dolduğunda bekleme listesi açılır.
+- [Deneme Analizi Nasıl Yapılır?](https://dereceninruhu.com/blog/deneme-analizi-nasil-yapilir)
+- [Haftalık Çalışma Programı Nasıl Olmalı?](https://dereceninruhu.com/blog/haftalik-calisma-programi-nasil-olmali)
+- [YKS'de Net Nasıl Artırılır?](https://dereceninruhu.com/blog/yks-net-nasil-artirilir)
+- [LGS'ye Nasıl Çalışılır? (8. sınıf)](https://dereceninruhu.com/blog/lgs-nasil-calisilir-8-sinif)
+- [KPSS'ye Nasıl Çalışılır?](https://dereceninruhu.com/blog/kpss-nasil-calisilir)
+- [TYT mi AYT mi? Zaman Yönetimi](https://dereceninruhu.com/blog/tyt-mi-ayt-mi-zaman-yonetimi)
+- [Sınav Kaygısıyla Başa Çıkmak](https://dereceninruhu.com/blog/sinav-kaygisi-ile-basa-cikma)
+- [Verimli Ders Çalışma Teknikleri](https://dereceninruhu.com/blog/verimli-ders-calisma-teknikleri)
+- [Sınav Koçluğu Nedir, Kime Gerekir?](https://dereceninruhu.com/blog/sinav-koclugu-nedir-kime-gerekir)
+- [Son 3 Ayda Net Yükseltme Stratejisi](https://dereceninruhu.com/blog/son-3-ay-net-yukseltme-stratejisi)
 
-Sitemap: https://dereceninruhu.com/sitemap.xml
+## Doğrulama ve bağlantılar
+
+- [Gigbi profili (5,0 / 5, 77 yorum)](https://www.gigbi.com/p/ahmet-hakan-almak1723581674): bağımsız yorum doğrulaması.
+- [Instagram](https://www.instagram.com/derecenin_ruhu/)
+- [YouTube](https://www.youtube.com/@Dereceninruhu)
+- [TikTok](https://www.tiktok.com/@dereceninruhu)
+- [Sitemap](https://dereceninruhu.com/sitemap.xml)
+
+## Optional
+
+- [Bekleme listesi](https://dereceninruhu.com/bekleme-listesi): kontenjan dolduğunda öncelik.
+- [Koç başvurusu](https://dereceninruhu.com/koc-basvuru): koç kadrosuna katılım.
