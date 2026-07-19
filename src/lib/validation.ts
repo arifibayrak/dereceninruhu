@@ -343,17 +343,47 @@ export const upsertFaqSchema = z.object({
 });
 export type UpsertFaqInput = z.infer<typeof upsertFaqSchema>;
 
-/** Koç profili — id yoksa mevcut koç kullanıcısına yeni profil açılır. */
-export const saveCoachProfileSchema = z.object({
-  id: z.coerce.number().int().positive().optional(),
+/** Koç profili bağlantısı — diğer platform/hesap linki (Instagram, YouTube…). */
+export const profileLinkSchema = z.object({
+  label: z.string().trim().min(1, "Etiket gerekli.").max(40),
+  url: z.url("Geçerli bir bağlantı girin."),
+});
+export type ProfileLink = z.infer<typeof profileLinkSchema>;
+
+/**
+ * Görsel referansı: harici bir http(s) bağlantısı VEYA panelden yüklenmiş
+ * dahili dosya yolu (`/api/uploads/…`). Boş string serbest (görsel yok).
+ */
+export const imageRefSchema = z
+  .string()
+  .trim()
+  .refine(
+    (v) =>
+      v === "" ||
+      v.startsWith("/api/uploads/") ||
+      /^https?:\/\/.+/i.test(v),
+    "Geçerli bir görsel bağlantısı girin (veya bir dosya yükleyin).",
+  );
+
+/**
+ * Koç kendi herkese açık profilini düzenler (/koc/profil). Kimlik oturumdan
+ * gelir — id/user_id GÖNDERİLMEZ; her koç yalnız kendi satırını yazar.
+ */
+export const saveMyProfileSchema = z.object({
   displayName: z.string().trim().min(2, "İsim gerekli.").max(80),
+  title: z.string().trim().max(60).optional().or(z.literal("")),
+  location: z.string().trim().max(80).optional().or(z.literal("")),
+  headline: z.string().trim().max(160).optional().or(z.literal("")),
   bio: z.string().trim().max(2000).optional().or(z.literal("")),
-  photoUrl: z.url("Geçerli bir URL girin.").optional().or(z.literal("")),
+  photoUrl: imageRefSchema,
+  coverImageUrl: imageRefSchema,
   subjects: z.array(z.string().trim().min(1).max(40)).max(10),
   achievements: z.array(z.string().trim().min(1).max(120)).max(12),
+  links: z.array(profileLinkSchema).max(8),
+  proofUrl: z.url("Geçerli bir URL girin.").optional().or(z.literal("")),
   isActive: z.boolean(),
 });
-export type SaveCoachProfileInput = z.infer<typeof saveCoachProfileSchema>;
+export type SaveMyProfileInput = z.infer<typeof saveMyProfileSchema>;
 
 /** Deneme girişi — net server-side hesaplanır (D − Y/divisor). */
 export const createMockSchema = z.object({

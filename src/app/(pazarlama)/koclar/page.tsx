@@ -8,7 +8,11 @@ import {
   StarIcon,
 } from "lucide-react";
 
-import { getPublicCoach, getPublicTestimonials } from "@/db/queries/cms";
+import {
+  getPublicCoach,
+  getPublicTestimonials,
+  listOtherPublicCoaches,
+} from "@/db/queries/cms";
 import { coachContent, coachStats } from "@/db/seed/cms-content";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { SectionHeading } from "@/components/brand/section-heading";
@@ -36,10 +40,14 @@ function initialsOf(name: string) {
 }
 
 export default async function KoclarPage() {
-  const [coach, testimonials] = await Promise.all([
+  const [coach, testimonials, team] = await Promise.all([
     getPublicCoach(),
     getPublicTestimonials(),
+    listOtherPublicCoaches(),
   ]);
+  const title = coach.title ?? coachContent.title;
+  const location = coach.location ?? coachContent.location;
+  const proofUrl = coach.proofUrl ?? coachStats.proofUrl;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-4 py-10 sm:px-6 md:gap-20 md:py-16">
@@ -66,11 +74,11 @@ export default async function KoclarPage() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <GraduationCapIcon className="size-4" />
-                  {coachContent.title}
+                  {title}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <MapPinIcon className="size-4" />
-                  {coachContent.location} · görüşmeler online
+                  {location} · görüşmeler online
                 </span>
               </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
@@ -125,11 +133,7 @@ export default async function KoclarPage() {
             <Button
               variant="outline"
               render={
-                <a
-                  href={coachStats.proofUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
+                <a href={proofUrl} target="_blank" rel="noopener noreferrer" />
               }
             >
               Gigbi profilini doğrula
@@ -138,6 +142,68 @@ export default async function KoclarPage() {
           </div>
         </div>
       </section>
+
+      {/* Ekip — diğer koçlar (varsa) */}
+      {team.length > 0 && (
+        <section className="flex flex-col gap-8">
+          <SectionHeading
+            eyebrow="Ekip"
+            title="Koçlarımız"
+            description="Her koçun kendi alanı ve yaklaşımı var; profillerinde ayrıntıya ulaşabilirsin."
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {team.map((member) => (
+              <Link
+                key={member.slug}
+                href={`/koclar/${member.slug}`}
+                className="group flex flex-col gap-4 rounded-2xl bg-card p-5 ring-1 ring-foreground/10 transition-shadow hover:ring-primary/30"
+              >
+                <div className="flex items-center gap-4">
+                  <Avatar className="size-14 ring-2 ring-primary/20">
+                    {member.photoUrl && (
+                      <AvatarImage
+                        src={member.photoUrl}
+                        alt={member.displayName}
+                      />
+                    )}
+                    <AvatarFallback className="bg-secondary font-heading font-bold text-secondary-foreground">
+                      {initialsOf(member.displayName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-heading text-lg font-semibold">
+                      {member.displayName}
+                    </span>
+                    {member.title && (
+                      <span className="text-sm text-muted-foreground">
+                        {member.title}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {member.headline && (
+                  <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
+                    {member.headline}
+                  </p>
+                )}
+                {member.subjects.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {member.subjects.map((s) => (
+                      <Badge key={s} variant="outline">
+                        {s}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                <span className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  Profili gör
+                  <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Öğrencilerinin sözleri */}
       <section className="flex flex-col gap-8">

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeftIcon } from "lucide-react";
 
 import { getSession, type Role } from "@/lib/session";
 import { LoginForm } from "@/components/app/login-form";
@@ -26,6 +28,15 @@ export default async function GirisPage() {
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute top-[12%] left-1/2 h-64 w-[min(30rem,90vw)] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
         <div className="absolute right-[12%] bottom-[18%] size-36 rounded-full bg-gold/15 blur-2xl" />
+      </div>
+      <div className="absolute top-4 left-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ArrowLeftIcon className="size-4" />
+          Ana sayfa
+        </Link>
       </div>
       <div className="absolute top-4 right-4">
         <ThemeToggle />

@@ -3,18 +3,12 @@ import { redirect } from "next/navigation";
 
 import {
   countActiveStudents,
-  getCoachProfileRow,
   getCohort,
   listAllFaqs,
   listAllPackages,
   listAllTestimonials,
 } from "@/db/queries/cms";
 import { getViewer } from "@/lib/session";
-import { coachContent } from "@/db/seed/cms-content";
-import {
-  CoachProfileForm,
-  type CoachProfileValues,
-} from "@/components/app/coach-profile-form";
 import {
   CohortSettingsForm,
   type CohortSettingsValues,
@@ -48,12 +42,11 @@ export default async function IcerikPage() {
   const viewer = await getViewer();
   if (viewer?.role !== "admin") redirect("/koc");
 
-  const [testimonialRows, packageRows, faqRows, profileRow, cohort, realActive] =
+  const [testimonialRows, packageRows, faqRows, cohort, realActive] =
     await Promise.all([
       listAllTestimonials(),
       listAllPackages(),
       listAllFaqs(),
-      getCoachProfileRow(),
       getCohort(),
       countActiveStudents(),
     ]);
@@ -67,27 +60,6 @@ export default async function IcerikPage() {
     waitlistOpen: cohort.waitlistOpen,
     scarcityVisible: cohort.scarcityVisible,
   };
-
-  const profile: CoachProfileValues = profileRow
-    ? {
-        id: profileRow.id,
-        displayName: profileRow.displayName,
-        bio: profileRow.bio ?? "",
-        photoUrl: profileRow.photoUrl ?? "",
-        subjects: parseJsonArray(profileRow.subjects),
-        achievements: parseJsonArray(profileRow.achievements),
-        isActive: profileRow.isActive,
-      }
-    : {
-        // Profil henüz yok — seed içeriğiyle ön dolu form; kaydedince oluşur.
-        id: null,
-        displayName: coachContent.displayName,
-        bio: coachContent.bio,
-        photoUrl: "",
-        subjects: [...coachContent.subjects],
-        achievements: [...coachContent.credentials],
-        isActive: true,
-      };
 
   return (
     <>
@@ -107,7 +79,6 @@ export default async function IcerikPage() {
             Paketler ({packageRows.length})
           </TabsTrigger>
           <TabsTrigger value="sss">SSS ({faqRows.length})</TabsTrigger>
-          <TabsTrigger value="profil">Koç profili</TabsTrigger>
         </TabsList>
 
         <TabsContent value="donem">
@@ -155,10 +126,6 @@ export default async function IcerikPage() {
               isActive: r.isActive,
             }))}
           />
-        </TabsContent>
-
-        <TabsContent value="profil">
-          <CoachProfileForm profile={profile} />
         </TabsContent>
       </Tabs>
     </>

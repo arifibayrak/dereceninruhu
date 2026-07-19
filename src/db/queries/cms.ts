@@ -17,6 +17,7 @@ import {
 } from "@/db/schema";
 import {
   coachContent,
+  coachStats,
   faqSeeds,
   packageSeeds,
   testimonialSeeds,
@@ -24,6 +25,7 @@ import {
 import type {
   CoachApplicationStatus,
   LeadStatus,
+  ProfileLink,
   WaitlistStatus,
 } from "@/lib/validation";
 
@@ -59,11 +61,28 @@ export type PublicPackage = {
 export type PublicFaq = { question: string; answer: string };
 
 export type PublicCoach = {
+  slug: string | null;
   displayName: string;
+  title: string | null;
+  location: string | null;
+  headline: string | null;
   bio: string | null;
   photoUrl: string | null;
+  coverImageUrl: string | null;
   subjects: string[];
   achievements: string[];
+  links: ProfileLink[];
+  proofUrl: string | null;
+};
+
+/** Ekip şeridi kartı — hafif; yalnız listelenebilir (slug'lı) profiller döner. */
+export type PublicCoachCard = {
+  slug: string;
+  displayName: string;
+  title: string | null;
+  headline: string | null;
+  photoUrl: string | null;
+  subjects: string[];
 };
 
 function parseJsonArray(raw: string | null): string[] {
@@ -79,6 +98,29 @@ function parseJsonArray(raw: string | null): string[] {
       .filter(Boolean);
   }
   return [];
+}
+
+/** {label,url}[] JSON'unu güvenle çözer — bozuk/eksik girdileri eler. */
+function parseLinks(raw: string | null): ProfileLink[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((x) => {
+      if (
+        x &&
+        typeof x === "object" &&
+        typeof (x as { label?: unknown }).label === "string" &&
+        typeof (x as { url?: unknown }).url === "string"
+      ) {
+        const l = x as { label: string; url: string };
+        return l.label.trim() && l.url.trim() ? [{ label: l.label, url: l.url }] : [];
+      }
+      return [];
+    });
+  } catch {
+    return [];
+  }
 }
 
 /* ---------------------------- Public okumalar ----------------------------- */
@@ -145,28 +187,91 @@ export async function getPublicFaqs(): Promise<PublicFaq[]> {
   return faqSeeds;
 }
 
+function rowToPublicCoach(row: typeof coachProfiles.$inferSelect): PublicCoach {
+  return {
+    slug: row.slug,
+    displayName: row.displayName,
+    title: row.title,
+    location: row.location,
+    headline: row.headline,
+    bio: row.bio,
+    photoUrl: row.photoUrl,
+    coverImageUrl: row.coverImageUrl,
+    subjects: parseJsonArray(row.subjects),
+    achievements: parseJsonArray(row.achievements),
+    links: parseLinks(row.links),
+    proofUrl: row.proofUrl,
+  };
+}
+
+/**
+ * Ana/öne çıkan koç (en düşük sort_order) — /koclar kahramanı + ana sayfa kartı.
+ * Tek marka konumlandırması: bu koç Ahmet Hakan'dır. DB boşsa seed'e düşer.
+ */
 export async function getPublicCoach(): Promise<PublicCoach> {
   const db = getDb();
   const row = await db.query.coachProfiles.findFirst({
     where: eq(coachProfiles.isActive, true),
     orderBy: [asc(coachProfiles.sortOrder), asc(coachProfiles.id)],
   });
-  if (row) {
-    return {
-      displayName: row.displayName,
-      bio: row.bio,
-      photoUrl: row.photoUrl,
-      subjects: parseJsonArray(row.subjects),
-      achievements: parseJsonArray(row.achievements),
-    };
-  }
+  if (row) return rowToPublicCoach(row);
   return {
+    slug: null,
     displayName: coachContent.displayName,
+    title: coachContent.title,
+    location: coachContent.location,
+    headline: null,
     bio: coachContent.bio,
     photoUrl: coachContent.photoUrl,
+    coverImageUrl: null,
     subjects: [...coachContent.subjects],
     achievements: [...coachContent.credentials],
+    links: [],
+    proofUrl: coachStats.proofUrl,
   };
+}
+
+/**
+ * Öne çıkan koç DIŞINDAKİ, linklenebilir (slug'lı) aktif koçlar — "Ekip" şeridi.
+ * En düşük sort_order öne çıkan sayıldığı için ilk satır atlanır.
+ */
+export async function listOtherPublicCoaches(): Promise<PublicCoachCard[]> {
+  const db = getDb();
+  const rows = await db.query.coachProfiles.findMany({
+    where: eq(coachProfiles.isActive, true),
+    orderBy: [asc(coachProfiles.sortOrder), asc(coachProfiles.id)],
+  });
+  // İlk satır = öne çıkan koç (/koclar kahramanı) → şeritte gösterme.
+  return rows
+    .slice(1)
+    .filter((r): r is typeof r & { slug: string } => !!r.slug)
+    .map((r) => ({
+      slug: r.slug,
+      displayName: r.displayName,
+      title: r.title,
+      headline: r.headline,
+      photoUrl: r.photoUrl,
+      subjects: parseJsonArray(r.subjects),
+    }));
+}
+
+/** Tek koç profili (slug ile) — /koclar/[slug]. Pasif/olmayan → null. */
+export async function getPublicCoachBySlug(
+  slug: string,
+): Promise<PublicCoach | null> {
+  const db = getDb();
+  const row = await db.query.coachProfiles.findFirst({
+    where: and(eq(coachProfiles.slug, slug), eq(coachProfiles.isActive, true)),
+  });
+  return row ? rowToPublicCoach(row) : null;
+}
+
+/** Oturumdaki koçun kendi profil satırı (editör için) — yoksa null. */
+export async function getMyCoachProfile(userId: string) {
+  const db = getDb();
+  return db.query.coachProfiles.findFirst({
+    where: eq(coachProfiles.userId, userId),
+  });
 }
 
 export async function getPublishedPosts() {
@@ -213,13 +318,6 @@ export async function listAllFaqs() {
   const db = getDb();
   return db.query.faqs.findMany({
     orderBy: [asc(faqs.sortOrder), asc(faqs.id)],
-  });
-}
-
-export async function getCoachProfileRow() {
-  const db = getDb();
-  return db.query.coachProfiles.findFirst({
-    orderBy: [asc(coachProfiles.sortOrder), asc(coachProfiles.id)],
   });
 }
 

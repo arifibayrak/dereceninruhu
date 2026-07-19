@@ -869,12 +869,26 @@ export const coachProfiles = sqliteTable("coach_profiles", {
     .notNull()
     .unique()
     .references(() => users.id),
+  /** Public URL slug (/koclar/[slug]); türetilir, benzersizdir. Null → linklenmez. */
+  slug: text("slug").unique(),
   displayName: text("display_name").notNull(),
+  /** Ünvan — "Eğitim Koçu" gibi. */
+  title: text("title"),
+  /** Konum — "Kartal, İstanbul" gibi. */
+  location: text("location"),
+  /** Kısa vurucu tanıtım (kart + profil üstü). */
+  headline: text("headline"),
   bio: text("bio"),
   photoUrl: text("photo_url"),
+  /** Profil arka planı (kapak görseli). */
+  coverImageUrl: text("cover_image_url"),
   /** JSON-encoded string[] of subject/exam labels. */
   subjects: text("subjects"),
   achievements: text("achievements"),
+  /** JSON-encoded {label,url}[] — diğer platform/hesap bağlantıları. */
+  links: text("links"),
+  /** Doğrulama/harici profil bağlantısı (Gigbi vb.). */
+  proofUrl: text("proof_url"),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: createdAt(),

@@ -17,6 +17,8 @@ export type SeedExam = "LGS" | "YKS" | "KPSS";
 export const coachContent = {
   /** Sitede tam ad görünür — koçun kendisi, öğrenci değil. */
   displayName: "Ahmet Hakan Almak",
+  /** /koclar/[slug] için sabit slug (öne çıkan koç). */
+  slug: "ahmet-hakan-almak",
   title: "Eğitim Koçu",
   location: "Kartal, İstanbul",
   bio:

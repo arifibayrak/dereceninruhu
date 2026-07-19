@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 
-import { getDb } from "@/db";
+import { getDb, getR2 } from "@/db";
 import {
   blogPosts,
   coachProfiles,
@@ -12,12 +12,13 @@ import {
   testimonials,
 } from "@/db/schema";
 import {
-  saveCoachProfileSchema,
+  saveMyProfileSchema,
   upsertBlogPostSchema,
   upsertFaqSchema,
   upsertPackageSchema,
   upsertTestimonialSchema,
 } from "@/lib/validation";
+import { slugifyTr } from "@/lib/slug";
 import {
   actionError,
   fieldErrorsOf,
@@ -191,14 +192,83 @@ export async function deleteFaq(input: unknown): Promise<ActionResult<void>> {
   });
 }
 
+/* --------------------------- Profil görsel yükleme ------------------------ */
+
+/** İzin verilen görsel türleri → dosya uzantısı. */
+const IMAGE_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+};
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+/**
+ * Koç, profil fotoğrafını/kapağını cihazından yükler → R2'ye yazılır, dahili
+ * `/api/uploads/…` yolu döner (form bunu photoUrl/coverImageUrl'a koyar).
+ * Her koç yalnız kendi klasörüne (profiles/{userId}/) yazar.
+ */
+export async function uploadProfileImage(
+  formData: FormData,
+): Promise<ActionResult<{ url: string }>> {
+  return guarded(async () => {
+    const coach = await requireCoach();
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      return actionError("Dosya bulunamadı.");
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      return actionError("Görsel en fazla 5 MB olabilir.");
+    }
+    const ext = IMAGE_EXT[file.type];
+    if (!ext) {
+      return actionError("Yalnız görsel yükleyebilirsin (JPG, PNG, WebP, GIF).");
+    }
+    const key = `profiles/${coach.id}/${crypto.randomUUID()}.${ext}`;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    await getR2().put(key, bytes, { httpMetadata: { contentType: file.type } });
+    return { ok: true, data: { url: `/api/uploads/${key}` } };
+  });
+}
+
 /* ------------------------------- Koç profili ------------------------------ */
 
-export async function saveCoachProfile(
+/**
+ * displayName'den benzersiz slug türetir. Aynı slug BAŞKA bir koça aitse
+ * `-2`, `-3`… ekler. `selfUserId` sahibinin kendi satırını çakışma saymaz.
+ */
+async function uniqueProfileSlug(
+  displayName: string,
+  selfUserId: string,
+): Promise<string> {
+  const db = getDb();
+  const base = slugifyTr(displayName) || "koc";
+  for (let i = 0; i < 50; i++) {
+    const candidate = i === 0 ? base : `${base}-${i + 1}`;
+    const clash = await db.query.coachProfiles.findFirst({
+      where: eq(coachProfiles.slug, candidate),
+      columns: { userId: true },
+    });
+    if (!clash || clash.userId === selfUserId) return candidate;
+  }
+  // Aşırı çakışma — kullanıcı id kuyruğuyla garanti benzersiz.
+  return `${base}-${selfUserId.slice(0, 6)}`;
+}
+
+/**
+ * Koç kendi herkese açık profilini kaydeder (/koc/profil). Kimlik oturumdan
+ * gelir; her koç YALNIZ kendi satırını yazar (user_id unique). Yeni profil,
+ * öne çıkan koçun (Ahmet, sort_order 0) altına eklenir.
+ */
+export async function saveMyProfile(
   input: unknown,
-): Promise<ActionResult<{ id: number }>> {
+): Promise<ActionResult<{ slug: string }>> {
   return guarded(async () => {
-    const coach = await requireAdmin();
-    const parsed = saveCoachProfileSchema.safeParse(input);
+    const coach = await requireCoach();
+    const parsed = saveMyProfileSchema.safeParse(input);
     if (!parsed.success) {
       return actionError(
         "Lütfen formu kontrol edin.",
@@ -207,21 +277,24 @@ export async function saveCoachProfile(
     }
     const v = parsed.data;
     const db = getDb();
+    const slug = await uniqueProfileSlug(v.displayName, coach.id);
     const values = {
+      slug,
       displayName: v.displayName.trim(),
+      title: clean(v.title),
+      location: clean(v.location),
+      headline: clean(v.headline),
       bio: clean(v.bio),
       photoUrl: clean(v.photoUrl),
+      coverImageUrl: clean(v.coverImageUrl),
       subjects: JSON.stringify(v.subjects),
       achievements: JSON.stringify(v.achievements),
+      links: JSON.stringify(v.links),
+      proofUrl: clean(v.proofUrl),
       isActive: v.isActive,
       updatedAt: new Date(),
     };
-    if (v.id) {
-      await db.update(coachProfiles).set(values).where(eq(coachProfiles.id, v.id));
-      revalidateMarketing();
-      return { ok: true, data: { id: v.id } };
-    }
-    // Profil yoksa mevcut koç kullanıcısına açılır (user_id unique).
+
     const existing = await db.query.coachProfiles.findFirst({
       where: eq(coachProfiles.userId, coach.id),
       columns: { id: true },
@@ -231,15 +304,20 @@ export async function saveCoachProfile(
         .update(coachProfiles)
         .set(values)
         .where(eq(coachProfiles.id, existing.id));
-      revalidateMarketing();
-      return { ok: true, data: { id: existing.id } };
+    } else {
+      // Yeni profil öne çıkan koçun altına: mevcut en yüksek sort_order + 1.
+      const rows = await db
+        .select({ sortOrder: coachProfiles.sortOrder })
+        .from(coachProfiles);
+      const nextSort = rows.reduce((m, r) => Math.max(m, r.sortOrder), 0) + 1;
+      await db
+        .insert(coachProfiles)
+        .values({ ...values, userId: coach.id, sortOrder: nextSort });
     }
-    const [row] = await db
-      .insert(coachProfiles)
-      .values({ ...values, userId: coach.id })
-      .returning({ id: coachProfiles.id });
     revalidateMarketing();
-    return { ok: true, data: { id: row.id } };
+    revalidatePath(`/koclar/${slug}`);
+    revalidatePath("/koc/profil");
+    return { ok: true, data: { slug } };
   });
 }
 
