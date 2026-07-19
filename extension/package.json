@@ -3,7 +3,7 @@
   "description": "Derecenin Ruhu — cihaz-içi canlı görüşme transkripti (Whisper Turbo / WebGPU)",
   "private": true,
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.8",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",

@@ -30,9 +30,20 @@ function getTabStreamId(tabId: number): Promise<string> {
   });
 }
 
-async function startCapture(tabId: number): Promise<void> {
+// Mikrofon birincil kaynaktır; sekme sesi EN İYİ ÇABA. tabCapture başarısızsa
+// (yanlış sekme, chrome:// sayfası, yetki yok) HATA FIRLATMAYIZ — streamId=null
+// gönderip yalnız-mikrofon başlatırız. Böylece WhatsApp / telefon / yüz yüze /
+// başka platform fark etmeksizin mikrofonla çalışır.
+async function startCapture(tabId: number | null): Promise<void> {
   await ensureOffscreen();
-  const streamId = await getTabStreamId(tabId);
+  let streamId: string | null = null;
+  if (tabId != null) {
+    try {
+      streamId = await getTabStreamId(tabId);
+    } catch {
+      streamId = null; // sekme sesi alınamadı → yalnız mikrofon
+    }
+  }
   sendMessage({ type: "OFFSCREEN_START", streamId });
 }
 
@@ -43,10 +54,21 @@ async function closeOffscreen(): Promise<void> {
 }
 
 export default defineBackground(() => {
-  // Eklenti simgesine tıklayınca yan panel açılsın.
+  // Simge tıklamasını ELLE ele al. Tıklama, action "invocation"ıdır → tabCapture
+  // için gereken `activeTab` yetkisini O SEKME için verir; ardından paneli o
+  // sekmede açarız. `openPanelOnActionClick` modunda tıklama invocation
+  // sayılmaz, activeTab verilmez ve tabCapture "bu sekmede yetkilenmedi" hatası
+  // verir — bu yüzden onu KAPALI tutuyoruz ve onClicked kullanıyoruz.
   chrome.sidePanel
-    ?.setPanelBehavior?.({ openPanelOnActionClick: true })
+    ?.setPanelBehavior?.({ openPanelOnActionClick: false })
     .catch(() => {});
+
+  chrome.action.onClicked.addListener((tab) => {
+    if (tab.id != null) {
+      // Bu çağrı kullanıcı hareketiyle (tıklama) yapıldığı için activeTab verilir.
+      void chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
+    }
+  });
 
   chrome.runtime.onMessage.addListener(
     (msg: ExtMessage, _sender, sendResponse) => {

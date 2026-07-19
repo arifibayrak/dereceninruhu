@@ -4,11 +4,11 @@ export type SegmentKind = "final" | "partial";
 export type CaptureState = "starting" | "running" | "stopped" | "error";
 
 export type ExtMessage =
-  // side panel → service worker
-  | { type: "START_CAPTURE"; tabId: number }
+  // side panel → service worker (tabId null → yalnız mikrofon)
+  | { type: "START_CAPTURE"; tabId: number | null }
   | { type: "STOP_CAPTURE" }
-  // service worker → offscreen
-  | { type: "OFFSCREEN_START"; streamId: string }
+  // service worker → offscreen (streamId null → sekme sesi yok, yalnız mikrofon)
+  | { type: "OFFSCREEN_START"; streamId: string | null }
   | { type: "OFFSCREEN_STOP" }
   // offscreen → side panel
   | { type: "SEGMENT"; text: string; kind: SegmentKind }
