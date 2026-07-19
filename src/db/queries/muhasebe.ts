@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   enrollments,
@@ -101,7 +101,7 @@ export async function listInvoices(opts?: {
 }): Promise<InvoiceRow[]> {
   const db = getDb();
   const now = opts?.now ?? new Date();
-  const conds = [];
+  const conds = [isNull(students.deletedAt)];
   if (opts?.enrollmentId) conds.push(eq(invoices.enrollmentId, opts.enrollmentId));
   if (opts?.coachUserId)
     conds.push(eq(enrollments.coachUserId, opts.coachUserId));
@@ -174,7 +174,7 @@ export async function listPayments(opts?: {
   limit?: number;
 }): Promise<PaymentRow[]> {
   const db = getDb();
-  const conds = [];
+  const conds = [isNull(students.deletedAt)];
   if (opts?.enrollmentId)
     conds.push(eq(payments.enrollmentId, opts.enrollmentId));
   if (opts?.coachUserId)
@@ -404,7 +404,7 @@ export async function listPaymentNotices(opts?: {
   limit?: number;
 }): Promise<PaymentNoticeRow[]> {
   const db = getDb();
-  const conds = [];
+  const conds = [isNull(students.deletedAt)];
   if (opts?.enrollmentId)
     conds.push(eq(paymentNotices.enrollmentId, opts.enrollmentId));
   if (opts?.coachUserId)

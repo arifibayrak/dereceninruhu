@@ -1,8 +1,16 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { getDb } from "@/db";
-import { enrollments, examTemplates, students, tracks } from "@/db/schema";
+import {
+  enrollments,
+  examTemplates,
+  sessions,
+  students,
+  tracks,
+} from "@/db/schema";
 import { normalizePhone } from "@/lib/phone";
 import {
   createStudentSchema,
@@ -12,6 +20,7 @@ import {
   actionError,
   fieldErrorsOf,
   guarded,
+  requireAdmin,
   requireCoach,
   requireUser,
   type ActionResult,
@@ -221,5 +230,105 @@ export async function updateMyProfile(
       );
 
     return { ok: true, data: undefined };
+  });
+}
+
+const studentIdSchema = z.object({
+  studentId: z.coerce.number().int().positive(),
+});
+
+/**
+ * Yönetici öğrenciyi GİZLER (soft-delete). Veri DB'de KALIR; öğrenci tüm
+ * koç/yönetici listelerinden düşer VE sisteme giremez: açık oturumları düşer ve
+ * aktif kaydı duraklatıldığı için (giriş yapsa bile) sayfaları boş görür.
+ * Yalnız yönetici. Geri getirmek: restoreStudent.
+ */
+export async function hideStudent(
+  input: unknown,
+): Promise<ActionResult<{ studentId: number }>> {
+  return guarded(async () => {
+    await requireAdmin();
+    const parsed = studentIdSchema.safeParse(input);
+    if (!parsed.success) return actionError("Geçersiz öğrenci.");
+    const { studentId } = parsed.data;
+    const db = getDb();
+
+    const student = await db.query.students.findFirst({
+      where: eq(students.id, studentId),
+      columns: { id: true, userId: true },
+    });
+    if (!student) return actionError("Öğrenci bulunamadı.");
+
+    const now = new Date();
+    await db
+      .update(students)
+      .set({ deletedAt: now, status: "inactive", updatedAt: now })
+      .where(eq(students.id, studentId));
+    // Aktif kaydı duraklat → öğrencinin verisi çözülemez, sayfaları boşalır.
+    await db
+      .update(enrollments)
+      .set({ status: "paused", updatedAt: now })
+      .where(
+        and(
+          eq(enrollments.studentId, studentId),
+          eq(enrollments.status, "active"),
+        ),
+      );
+    // Açık oturumları düşür — anında çıkış (giriş engeli).
+    if (student.userId) {
+      await db.delete(sessions).where(eq(sessions.userId, student.userId));
+    }
+
+    revalidatePath("/koc/ogrenciler");
+    revalidatePath("/koc");
+    return { ok: true, data: { studentId } };
+  });
+}
+
+/**
+ * Yönetici gizlenen öğrenciyi GERİ GETİRİR: deletedAt temizlenir, öğrenci yeniden
+ * aktifleşir ve (yeniden giriş yaparak) sisteme dönebilir. Yalnız yönetici.
+ */
+export async function restoreStudent(
+  input: unknown,
+): Promise<ActionResult<{ studentId: number }>> {
+  return guarded(async () => {
+    await requireAdmin();
+    const parsed = studentIdSchema.safeParse(input);
+    if (!parsed.success) return actionError("Geçersiz öğrenci.");
+    const { studentId } = parsed.data;
+    const db = getDb();
+
+    const student = await db.query.students.findFirst({
+      where: eq(students.id, studentId),
+      columns: { id: true },
+    });
+    if (!student) return actionError("Öğrenci bulunamadı.");
+
+    const now = new Date();
+    await db
+      .update(students)
+      .set({ deletedAt: null, status: "active", updatedAt: now })
+      .where(eq(students.id, studentId));
+    // Gizlerken duraklatılan EN SON kaydı yeniden aktifleştir (tek-aktif kuralı
+    // için yalnız bir satır; birden çok duraklatılmış kayıt varsa en yenisi).
+    const paused = await db.query.enrollments.findFirst({
+      where: and(
+        eq(enrollments.studentId, studentId),
+        eq(enrollments.status, "paused"),
+      ),
+      orderBy: desc(enrollments.id),
+      columns: { id: true },
+    });
+    if (paused) {
+      await db
+        .update(enrollments)
+        .set({ status: "active", updatedAt: now })
+        .where(eq(enrollments.id, paused.id));
+    }
+
+    revalidatePath("/koc/ogrenciler");
+    revalidatePath("/koc");
+    return { ok: true, data: { studentId } };
   });
 }

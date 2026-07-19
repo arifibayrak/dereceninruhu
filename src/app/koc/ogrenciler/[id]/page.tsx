@@ -50,6 +50,7 @@ import { cn } from "@/lib/utils";
 import { buildWaLink, waTemplates } from "@/lib/whatsapp";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
 import { CoachAssignSelect } from "@/components/app/coach-assign-select";
+import { HideStudentButton } from "@/components/app/hide-student-actions";
 import { InsightList } from "@/components/app/insight-list";
 import {
   CopyInviteButton,
@@ -334,6 +335,12 @@ export default async function OgrenciKokpitPage({
                   />
                 )}
               </>
+            )}
+            {isAdmin && (
+              <HideStudentButton
+                studentId={student.id}
+                fullName={student.fullName}
+              />
             )}
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, gte, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, isNull, lt, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   enrollments,
@@ -311,7 +311,14 @@ export async function getWeeklyMockResults(opts: {
       eq(examTemplates.id, examSections.examTemplateId),
     )
     .leftJoin(mockExamResults, eq(mockExamResults.mockExamId, mockExams.id))
-    .where(and(gte(mockExams.takenOn, start), lt(mockExams.takenOn, end), scope))
+    .where(
+      and(
+        gte(mockExams.takenOn, start),
+        lt(mockExams.takenOn, end),
+        isNull(students.deletedAt),
+        scope,
+      ),
+    )
     .groupBy(mockExams.id);
 
   const mapped: WeeklyMockRow[] = rows.map((r) => ({

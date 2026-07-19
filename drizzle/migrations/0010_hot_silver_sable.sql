@@ -1,0 +1,1 @@
+ALTER TABLE `students` ADD `deleted_at` integer;

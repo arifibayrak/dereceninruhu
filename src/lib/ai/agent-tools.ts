@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import { aiAuditLog, enrollments, examTemplates, students } from "@/db/schema";
 import {
@@ -96,7 +96,8 @@ export function buildAgentTools(coachUserId: string) {
           .innerJoin(
             examTemplates,
             eq(examTemplates.id, enrollments.examTemplateId),
-          );
+          )
+          .where(isNull(students.deletedAt));
         const q = query?.toLocaleLowerCase("tr").trim();
         const filtered = q
           ? rows.filter((r) => r.name.toLocaleLowerCase("tr").includes(q))

@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lt } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   coachingSessions,
@@ -170,7 +170,8 @@ export async function listAllSessions(
     .from(coachingSessions)
     .innerJoin(enrollments, eq(enrollments.id, coachingSessions.enrollmentId))
     .innerJoin(students, eq(students.id, enrollments.studentId))
-    .innerJoin(examTemplates, eq(examTemplates.id, enrollments.examTemplateId));
+    .innerJoin(examTemplates, eq(examTemplates.id, enrollments.examTemplateId))
+    .where(isNull(students.deletedAt));
 
   const todayStart = startOfTrtDay(now).getTime();
   const mapped = rows.map((r) => {
@@ -229,6 +230,7 @@ export async function getUpcomingSessions(
         eq(coachingSessions.status, "scheduled"),
         gte(coachingSessions.scheduledAt, start),
         lt(coachingSessions.scheduledAt, addDays(start, days)),
+        isNull(students.deletedAt),
       ),
     )
     .orderBy(asc(coachingSessions.scheduledAt));

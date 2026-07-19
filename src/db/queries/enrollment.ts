@@ -56,6 +56,9 @@ export async function getEnrollmentDetailByStudentId(
     where: eq(students.id, studentId),
   });
   if (!student) return null;
+  // Gizlenmiş (soft-delete) öğrenci: kokpit 404, öğrencinin kendi sayfaları
+  // boş (giriş engeli), ajan işlem yapamaz. Geri getirmek deletedAt'i temizler.
+  if (student.deletedAt) return null;
   const enrollment = await db.query.enrollments.findFirst({
     where: and(
       eq(enrollments.studentId, studentId),

@@ -249,6 +249,12 @@ export const students = sqliteTable(
     status: text("status", { enum: ["active", "inactive", "alumni"] })
       .notNull()
       .default("active"),
+    /**
+     * Soft-delete (yönetici "gizle"): dolu = öğrenci siteden gizli. Satır ve
+     * tüm verisi DB'de KALIR; listelerden düşer, öğrenci sisteme giremez.
+     * Geri getirmek için NULL'a çekilir. Bkz. hideStudent/restoreStudent.
+     */
+    deletedAt: integer("deleted_at", { mode: "timestamp" }),
     notes: text("notes"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

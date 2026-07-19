@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   enrollments,
@@ -59,7 +59,8 @@ export async function getCohortScoreboard(
         eq(enrollments.status, "active"),
       ),
     )
-    .innerJoin(examTemplates, eq(examTemplates.id, enrollments.examTemplateId));
+    .innerJoin(examTemplates, eq(examTemplates.id, enrollments.examTemplateId))
+    .where(isNull(students.deletedAt));
 
   if (roster.length === 0) return [];
   const enrollmentIds = roster.map((r) => r.enrollmentId);

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   enrollments,
@@ -77,6 +77,7 @@ export async function getRoster(
       and(
         eq(enrollments.status, "active"),
         eq(students.status, "active"),
+        isNull(students.deletedAt),
         coachScope(viewer),
       ),
     )
@@ -170,7 +171,13 @@ export async function getPendingAnalysisMocks(
     .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
     .innerJoin(students, eq(students.id, enrollments.studentId))
     .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
-    .where(and(eq(mockExams.analysisDone, false), coachScope(viewer)))
+    .where(
+      and(
+        eq(mockExams.analysisDone, false),
+        isNull(students.deletedAt),
+        coachScope(viewer),
+      ),
+    )
     .orderBy(desc(mockExams.takenOn))
     .limit(limit);
   return rows.map((r) => ({
@@ -226,4 +233,43 @@ export async function getCoachDashboard(
     pendingMocks: await getPendingAnalysisMocks(viewer),
     roster,
   };
+}
+
+export type HiddenStudentRow = {
+  studentId: number;
+  fullName: string;
+  examCode: string | null;
+  deletedAt: Date;
+};
+
+/** Gizlenen (soft-delete) öğrenciler — yönetici geri-getirme listesi. */
+export async function getHiddenStudents(): Promise<HiddenStudentRow[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      studentId: students.id,
+      fullName: students.fullName,
+      examCode: examTemplates.code,
+      deletedAt: students.deletedAt,
+    })
+    .from(students)
+    .leftJoin(enrollments, eq(enrollments.studentId, students.id))
+    .leftJoin(examTemplates, eq(examTemplates.id, enrollments.examTemplateId))
+    .where(isNotNull(students.deletedAt))
+    .orderBy(desc(students.deletedAt));
+
+  // Öğrencinin birden çok kaydı varsa satır tekrarlar → ilk (en yeni) satırı tut.
+  const seen = new Set<number>();
+  const out: HiddenStudentRow[] = [];
+  for (const r of rows) {
+    if (seen.has(r.studentId) || !r.deletedAt) continue;
+    seen.add(r.studentId);
+    out.push({
+      studentId: r.studentId,
+      fullName: r.fullName,
+      examCode: r.examCode,
+      deletedAt: r.deletedAt,
+    });
+  }
+  return out;
 }

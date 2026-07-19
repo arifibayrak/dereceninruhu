@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb, type DB } from "@/db";
 import {
   enrollments,
@@ -205,7 +205,7 @@ export async function getPlansAwaitingPublish(
     .innerJoin(enrollments, eq(enrollments.id, weeklyPlans.enrollmentId))
     .innerJoin(students, eq(students.id, enrollments.studentId))
     .leftJoin(planTasks, eq(planTasks.weeklyPlanId, weeklyPlans.id))
-    .where(eq(weeklyPlans.status, "draft"))
+    .where(and(eq(weeklyPlans.status, "draft"), isNull(students.deletedAt)))
     .groupBy(weeklyPlans.id)
     .orderBy(desc(weeklyPlans.weekStart))
     .limit(limit);

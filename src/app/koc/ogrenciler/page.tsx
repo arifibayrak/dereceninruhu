@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { PlusIcon, UsersIcon } from "lucide-react";
 
 import { listCoaches } from "@/db/queries/admin";
-import { getRoster } from "@/db/queries/roster";
+import { getHiddenStudents, getRoster } from "@/db/queries/roster";
 import { formatInt } from "@/lib/format";
 import { getViewer } from "@/lib/session";
+import { RestoreStudentButton } from "@/components/app/hide-student-actions";
 import { RosterTable } from "@/components/app/roster-table";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,8 @@ const FILTERS = ["KPSS", "YKS", "LGS"] as const;
 
 /** Atanmamış öğrenciler için ?koc= değeri. */
 const KOC_YOK = "yok";
+
+const HIDDEN_DATE_FMT = new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" });
 
 function rosterHref(params: { sinav?: string | null; koc?: string | null }) {
   const qs = new URLSearchParams();
@@ -36,9 +39,10 @@ export default async function OgrencilerPage({
   if (!viewer) redirect("/giris");
   const isAdmin = viewer.role === "admin";
 
-  const [roster, coaches] = await Promise.all([
+  const [roster, coaches, hidden] = await Promise.all([
     getRoster(viewer),
     isAdmin ? listCoaches() : Promise.resolve([]),
+    isAdmin ? getHiddenStudents() : Promise.resolve([]),
   ]);
 
   const activeFilter = FILTERS.find((f) => f === sinav) ?? null;
@@ -169,6 +173,40 @@ export default async function OgrencilerPage({
           coaches={coaches.map((c) => ({ id: c.id, name: c.name }))}
           isAdmin={isAdmin}
         />
+      )}
+
+      {isAdmin && hidden.length > 0 && (
+        <section className="flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+          <div className="flex flex-col gap-0.5">
+            <h2 className="font-heading text-lg font-semibold">
+              Gizlenen öğrenciler · {formatInt(hidden.length)}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Bu öğrenciler tüm ekranlardan gizli ve sisteme giremez. Geri
+              getirince yeniden aktifleşir; verileri hiç silinmedi.
+            </p>
+          </div>
+          <ul className="flex flex-col divide-y divide-foreground/5">
+            {hidden.map((h) => (
+              <li
+                key={h.studentId}
+                className="flex flex-wrap items-center justify-between gap-2 py-2"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">{h.fullName}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {h.examCode ?? "—"} ·{" "}
+                    {HIDDEN_DATE_FMT.format(h.deletedAt)} tarihinde gizlendi
+                  </span>
+                </div>
+                <RestoreStudentButton
+                  studentId={h.studentId}
+                  fullName={h.fullName}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </>
   );
