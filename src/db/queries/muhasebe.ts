@@ -4,11 +4,17 @@ import {
   enrollments,
   feePlans,
   invoices,
+  paymentNotices,
   payments,
   students,
 } from "@/db/schema";
 import { startOfTrtDay } from "@/lib/dates";
-import { trtMonthRange, type InvoiceStatus } from "@/lib/muhasebe";
+import {
+  trtMonthRange,
+  type BillingType,
+  type InvoiceStatus,
+  type PaymentNoticeStatus,
+} from "@/lib/muhasebe";
 
 /* -------------------------------------------------------------------------- */
 /*  Ortak görünüm tipleri                                                     */
@@ -275,12 +281,14 @@ export async function getMuhasebeDashboard(
 
 export type FeePlanRow = {
   id: number;
-  billingType: "aylık" | "paket" | "tek_seferlik";
+  billingType: BillingType;
   amountKurus: number;
   currency: string;
   periodMonths: number | null;
   dueDay: number | null;
   isActive: boolean;
+  autoRenew: boolean;
+  nextBillingOn: Date | null;
 };
 
 export type EnrollmentFinance = {
@@ -321,6 +329,8 @@ export async function getEnrollmentFinance(
           periodMonths: plan.periodMonths,
           dueDay: plan.dueDay,
           isActive: plan.isActive,
+          autoRenew: plan.autoRenew,
+          nextBillingOn: plan.nextBillingOn,
         }
       : null,
     invoices: invoiceRows,
@@ -361,4 +371,92 @@ export async function getEnrollmentOptions(
     )
     .orderBy(students.fullName);
   return rows;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Havale / ödeme bildirimleri (öğrenci self-servis → koç onayı)             */
+/* -------------------------------------------------------------------------- */
+
+export type PaymentNoticeRow = {
+  id: number;
+  enrollmentId: number;
+  studentId: number;
+  studentName: string;
+  invoiceId: number | null;
+  invoicePeriodLabel: string | null;
+  amountKurus: number;
+  paidOn: Date;
+  method: "havale" | "nakit" | "kart" | "diğer";
+  note: string | null;
+  status: PaymentNoticeStatus;
+  createdAt: Date;
+};
+
+/**
+ * Ödeme bildirimleri (öğrenci + fatura etiketiyle), yeniden eskiye.
+ * `enrollmentId` verilirse tek öğrenci (öğrenci kendi listesi); `coachUserId`
+ * verilirse yalnız o koça atanmış öğrenciler (koç görünümü); `status` filtreler.
+ */
+export async function listPaymentNotices(opts?: {
+  enrollmentId?: number;
+  coachUserId?: string | null;
+  status?: PaymentNoticeStatus;
+  limit?: number;
+}): Promise<PaymentNoticeRow[]> {
+  const db = getDb();
+  const conds = [];
+  if (opts?.enrollmentId)
+    conds.push(eq(paymentNotices.enrollmentId, opts.enrollmentId));
+  if (opts?.coachUserId)
+    conds.push(eq(enrollments.coachUserId, opts.coachUserId));
+  if (opts?.status) conds.push(eq(paymentNotices.status, opts.status));
+
+  const rows = await db
+    .select({
+      id: paymentNotices.id,
+      enrollmentId: paymentNotices.enrollmentId,
+      studentId: students.id,
+      studentName: students.fullName,
+      invoiceId: paymentNotices.invoiceId,
+      invoicePeriodLabel: invoices.periodLabel,
+      amountKurus: paymentNotices.amountKurus,
+      paidOn: paymentNotices.paidOn,
+      method: paymentNotices.method,
+      note: paymentNotices.note,
+      status: paymentNotices.status,
+      createdAt: paymentNotices.createdAt,
+    })
+    .from(paymentNotices)
+    .innerJoin(enrollments, eq(enrollments.id, paymentNotices.enrollmentId))
+    .innerJoin(students, eq(students.id, enrollments.studentId))
+    .leftJoin(invoices, eq(invoices.id, paymentNotices.invoiceId))
+    .where(conds.length ? and(...conds) : undefined)
+    .orderBy(desc(paymentNotices.createdAt), desc(paymentNotices.id))
+    .limit(opts?.limit ?? 100);
+  return rows;
+}
+
+/** Onay bekleyen bildirimler — koç panosu gelen kutusu. */
+export async function listPendingPaymentNotices(
+  coachUserId?: string | null,
+): Promise<PaymentNoticeRow[]> {
+  return listPaymentNotices({ status: "bekliyor", coachUserId });
+}
+
+/** Onay bekleyen bildirim sayısı — pano rozeti. */
+export async function countPendingPaymentNotices(
+  coachUserId?: string | null,
+): Promise<number> {
+  const db = getDb();
+  const [row] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(paymentNotices)
+    .innerJoin(enrollments, eq(enrollments.id, paymentNotices.enrollmentId))
+    .where(
+      and(
+        eq(paymentNotices.status, "bekliyor"),
+        coachUserId ? eq(enrollments.coachUserId, coachUserId) : undefined,
+      ),
+    );
+  return Number(row?.n ?? 0);
 }

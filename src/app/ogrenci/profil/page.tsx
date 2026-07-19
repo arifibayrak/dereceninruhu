@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { WalletIcon } from "lucide-react";
 
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { StudentProfileForm } from "@/components/app/student-profile-form";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -56,6 +59,23 @@ export default async function OgrenciProfilPage() {
               dershane: student.dershane ?? "",
             }}
           />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Ödemelerim</CardTitle>
+          <CardDescription>
+            Bakiyeni gör, gönderdiğin ödemeyi bildir.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            render={<Link href="/ogrenci/odemeler" />}
+          >
+            <WalletIcon data-icon="inline-start" />
+            Ödemelerime git
+          </Button>
         </CardContent>
       </Card>
     </div>

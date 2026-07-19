@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   BanknoteIcon,
+  BellRingIcon,
   CircleCheckIcon,
   MessageCircleIcon,
   ReceiptTextIcon,
@@ -11,12 +12,15 @@ import {
   getEnrollmentOptions,
   getMuhasebeDashboard,
   listInvoices,
+  listPendingPaymentNotices,
 } from "@/db/queries/muhasebe";
 import { formatKurus } from "@/lib/format";
 import { getViewer } from "@/lib/session";
-import { trMonthLabel } from "@/lib/muhasebe";
+import { PAYMENT_METHOD_LABELS, trMonthLabel } from "@/lib/muhasebe";
 import { buildPaymentStudentOptions } from "@/lib/muhasebe-view";
 import { buildWaLink, waTemplates } from "@/lib/whatsapp";
+import { BillingRunButton } from "@/components/app/billing-run-button";
+import { PaymentNoticeActions } from "@/components/app/payment-notice-actions";
 import { PaymentRecordDialog } from "@/components/app/payment-record-dialog";
 import { StatTile } from "@/components/brand/stat-tile";
 import { Badge } from "@/components/ui/badge";
@@ -47,10 +51,12 @@ export default async function MuhasebePage() {
   const viewer = await getViewer();
   // Koç yalnız kendi öğrencilerinin muhasebesini görür; yönetici tümünü.
   const coachUserId = viewer?.role === "coach" ? viewer.id : null;
-  const [dash, options, openInvoices] = await Promise.all([
+  const isAdmin = viewer?.role === "admin";
+  const [dash, options, openInvoices, pendingNotices] = await Promise.all([
     getMuhasebeDashboard(now, coachUserId),
     getEnrollmentOptions(coachUserId),
     listInvoices({ status: "açık", now, coachUserId }),
+    listPendingPaymentNotices(coachUserId),
   ]);
   const paymentStudents = buildPaymentStudentOptions(options, openInvoices);
 
@@ -81,6 +87,7 @@ export default async function MuhasebePage() {
             <BanknoteIcon data-icon="inline-start" />
             Ödemeler
           </Button>
+          {isAdmin && <BillingRunButton />}
           <PaymentRecordDialog students={paymentStudents} />
         </div>
       </div>
@@ -109,6 +116,51 @@ export default async function MuhasebePage() {
           hint="Vadesi geçen fatura"
         />
       </div>
+
+      {pendingNotices.length > 0 && (
+        <Card className="border-gold/40 bg-gold/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BellRingIcon className="size-4 text-gold" />
+              Bekleyen ödeme bildirimleri
+              <Badge variant="secondary">{pendingNotices.length}</Badge>
+            </CardTitle>
+            <CardDescription>
+              Öğrencilerin bildirdiği havale/ödemeler. Onayla — gerçek ödeme
+              kaydına döner; tutarı değiştirmek istersen reddedip elle
+              &quot;Ödeme al&quot; kullan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col divide-y">
+              {pendingNotices.map((n) => (
+                <li
+                  key={n.id}
+                  className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                >
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <Link
+                      href={`/koc/ogrenciler/${n.studentId}?tab=muhasebe`}
+                      className="truncate text-sm font-medium hover:text-primary"
+                    >
+                      {n.studentName}
+                    </Link>
+                    <span className="text-xs text-muted-foreground">
+                      {dateFmt.format(n.paidOn)} · {PAYMENT_METHOD_LABELS[n.method]}
+                      {n.invoicePeriodLabel ? ` · ${n.invoicePeriodLabel}` : ""}
+                      {n.note ? ` · ${n.note}` : ""}
+                    </span>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums">
+                    {formatKurus(n.amountKurus)}
+                  </span>
+                  <PaymentNoticeActions noticeId={n.id} />
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

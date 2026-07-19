@@ -9,9 +9,15 @@ import { toast } from "sonner";
 import type { z } from "zod";
 
 import { upsertFeePlan } from "@/actions/muhasebe";
-import { BILLING_TYPE_LABELS, type BillingType } from "@/lib/muhasebe";
+import { trDayKey } from "@/lib/dates";
+import {
+  BILLING_TYPE_LABELS,
+  isRecurringBilling,
+  type BillingType,
+} from "@/lib/muhasebe";
 import { upsertFeePlanSchema } from "@/lib/validation-muhasebe";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +55,8 @@ export type FeePlanDefaults = {
   amountTl: string;
   periodMonths: number | null;
   dueDay: number | null;
+  autoRenew: boolean;
+  nextBillingOn: Date | null;
 };
 
 /** Kokpit muhasebe sekmesi — ücret planı oluştur/düzenle diyaloğu. */
@@ -72,10 +80,15 @@ export function FeePlanDialog({
       amountTl: plan?.amountTl ?? "",
       periodMonths: plan?.periodMonths ?? undefined,
       dueDay: plan?.dueDay ?? undefined,
+      autoRenew: plan?.autoRenew ?? true,
+      firstBillingOn: plan?.nextBillingOn
+        ? trDayKey(plan.nextBillingOn)
+        : undefined,
     },
   });
   const { errors } = form.formState;
   const billingType = useWatch({ control: form.control, name: "billingType" });
+  const recurring = isRecurringBilling(billingType);
 
   const onSubmit = async (values: FormOutput) => {
     setSubmitting(true);
@@ -147,11 +160,13 @@ export function FeePlanDialog({
               />
               <FieldError errors={[errors.amountTl]} />
               <FieldDescription>
-                {billingType === "aylık"
-                  ? "Aylık ücret."
-                  : billingType === "paket"
-                    ? "Paketin toplam ücreti."
-                    : "Tek seferlik toplam ücret."}
+                {billingType === "haftalık"
+                  ? "Haftalık ücret."
+                  : billingType === "aylık"
+                    ? "Aylık ücret."
+                    : billingType === "paket"
+                      ? "Paketin toplam ücreti."
+                      : "Tek seferlik toplam ücret."}
               </FieldDescription>
             </Field>
 
@@ -171,21 +186,68 @@ export function FeePlanDialog({
                   <FieldError errors={[errors.periodMonths]} />
                 </Field>
               )}
-              <Field data-invalid={errors.dueDay ? true : undefined}>
-                <FieldLabel htmlFor="plan-vade">Vade günü</FieldLabel>
-                <Input
-                  id="plan-vade"
-                  type="number"
-                  min={1}
-                  max={28}
-                  placeholder="Örn. 5"
-                  aria-invalid={errors.dueDay ? true : undefined}
-                  {...form.register("dueDay")}
-                />
-                <FieldError errors={[errors.dueDay]} />
-                <FieldDescription>Ayın kaçında fatura vadesi dolsun (1–28).</FieldDescription>
-              </Field>
+              {(billingType === "aylık" || billingType === "paket") && (
+                <Field data-invalid={errors.dueDay ? true : undefined}>
+                  <FieldLabel htmlFor="plan-vade">Vade günü</FieldLabel>
+                  <Input
+                    id="plan-vade"
+                    type="number"
+                    min={1}
+                    max={28}
+                    placeholder="Örn. 5"
+                    aria-invalid={errors.dueDay ? true : undefined}
+                    {...form.register("dueDay")}
+                  />
+                  <FieldError errors={[errors.dueDay]} />
+                  <FieldDescription>
+                    Ayın kaçında fatura vadesi dolsun (1–28).
+                  </FieldDescription>
+                </Field>
+              )}
             </div>
+
+            {recurring && (
+              <div className="flex flex-col gap-4 rounded-xl bg-muted/40 p-3.5">
+                <Field data-invalid={errors.firstBillingOn ? true : undefined}>
+                  <FieldLabel htmlFor="plan-ilk-fatura">
+                    İlk fatura tarihi
+                  </FieldLabel>
+                  <Input
+                    id="plan-ilk-fatura"
+                    type="date"
+                    aria-invalid={errors.firstBillingOn ? true : undefined}
+                    {...form.register("firstBillingOn")}
+                  />
+                  <FieldError errors={[errors.firstBillingOn]} />
+                  <FieldDescription>
+                    {billingType === "haftalık"
+                      ? "Bu günden itibaren her hafta fatura otomatik kesilir."
+                      : "Bu günden itibaren her ay fatura otomatik kesilir."}{" "}
+                    Boş bırakırsan bugünden başlar.
+                  </FieldDescription>
+                </Field>
+                <Controller
+                  control={form.control}
+                  name="autoRenew"
+                  render={({ field }) => (
+                    <label className="flex items-start gap-2.5 text-sm">
+                      <Checkbox
+                        checked={field.value ?? true}
+                        onCheckedChange={(checked) => field.onChange(checked)}
+                        className="mt-0.5"
+                      />
+                      <span className="flex flex-col gap-0.5">
+                        <span className="font-medium">Otomatik yenileme</span>
+                        <span className="text-xs text-muted-foreground">
+                          Kapatırsan yeni dönem faturası kesilmez. İstediğin an
+                          tekrar açabilirsin.
+                        </span>
+                      </span>
+                    </label>
+                  )}
+                />
+              </div>
+            )}
 
             <Button type="submit" disabled={submitting} className="self-start">
               {submitting ? "Kaydediliyor…" : "Kaydet"}
