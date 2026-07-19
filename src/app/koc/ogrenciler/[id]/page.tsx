@@ -28,6 +28,7 @@ import {
   getWeekGrid,
   getWeekQuestionTotal,
 } from "@/db/queries/tracking";
+import { getStudyWeekTotal } from "@/db/queries/study";
 import {
   addDays,
   DAY_NAMES_TR,
@@ -38,6 +39,7 @@ import {
   weekDays,
 } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
+import { formatMinutes } from "@/lib/study";
 import { getViewer } from "@/lib/session";
 import {
   buildStudentInsights,
@@ -184,6 +186,7 @@ export default async function OgrenciKokpitPage({
     planWeeks,
     resources,
     sessions,
+    studyWeek,
   ] = await Promise.all([
     getWeekGrid(enrollment.id, now),
     getMockList(enrollment.id),
@@ -195,6 +198,7 @@ export default async function OgrenciKokpitPage({
     listWeeklyPlans(enrollment.id, 8),
     getResourcesForEnrollment(enrollment.id),
     listSessionsForEnrollment(enrollment.id, now),
+    getStudyWeekTotal(enrollment.id, now),
   ]);
 
   const insights = buildStudentInsights(insightInput);
@@ -363,6 +367,11 @@ export default async function OgrenciKokpitPage({
               label="Bu hafta"
               value={formatInt(weekTotal)}
               hint={formatWeekLabel(now)}
+            />
+            <StatTile
+              label="Bu hafta çalışma"
+              value={formatMinutes(studyWeek)}
+              hint="Kronometre + manuel"
             />
             <StatTile
               label="Son net"
