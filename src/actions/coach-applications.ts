@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { coachApplications } from "@/db/schema";
+import { notifyAfterResponse } from "@/lib/notify";
 import { normalizePhone } from "@/lib/phone";
 import {
   createCoachApplicationSchema,
@@ -50,6 +51,18 @@ export async function createCoachApplication(
         source: "site-formu",
       })
       .returning({ id: coachApplications.id });
+
+    notifyAfterResponse({
+      title: "Yeni koç başvurusu",
+      lines: [
+        `Ad: ${v.name.trim()}`,
+        `Telefon: ${normalizePhone(v.phone)}`,
+        `Dersler: ${v.subjects.trim()}`,
+        ...(v.email?.trim() ? [`E-posta: ${v.email.trim()}`] : []),
+        ...(v.link?.trim() ? [`Bağlantı: ${v.link.trim()}`] : []),
+      ],
+      url: "/koc/basvurular",
+    });
 
     revalidatePath("/koc/basvurular");
     revalidatePath("/koc");

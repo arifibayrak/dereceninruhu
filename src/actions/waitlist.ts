@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { waitlistEntries } from "@/db/schema";
+import { notifyAfterResponse } from "@/lib/notify";
 import { normalizePhone } from "@/lib/phone";
 import {
   createWaitlistSchema,
@@ -47,6 +48,17 @@ export async function createWaitlistEntry(
         source: "site-formu",
       })
       .returning({ id: waitlistEntries.id });
+
+    notifyAfterResponse({
+      title: "Yeni bekleme listesi kaydı",
+      lines: [
+        `Ad: ${v.name.trim()}`,
+        `Telefon: ${normalizePhone(v.phone)}`,
+        `Sınav: ${v.exam}`,
+        ...(v.message?.trim() ? [`Mesaj: ${v.message.trim()}`] : []),
+      ],
+      url: "/koc/bekleme",
+    });
 
     revalidatePath("/koc/bekleme");
     revalidatePath("/koc");

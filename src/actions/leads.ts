@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { leads } from "@/db/schema";
+import { notifyAfterResponse } from "@/lib/notify";
 import { normalizePhone } from "@/lib/phone";
 import { createLeadSchema, updateLeadStatusSchema } from "@/lib/validation";
 import {
@@ -44,6 +45,18 @@ export async function createLead(
         source: v.source?.trim() || "site-formu",
       })
       .returning({ id: leads.id });
+
+    notifyAfterResponse({
+      title: "Yeni iletişim formu",
+      lines: [
+        `Ad: ${v.name.trim()}`,
+        `Telefon: ${normalizePhone(v.phone)}`,
+        `Sınav: ${v.exam}`,
+        ...(v.message?.trim() ? [`Mesaj: ${v.message.trim()}`] : []),
+        ...(v.source?.trim() ? [`Kaynak: ${v.source.trim()}`] : []),
+      ],
+      url: "/koc/leadler",
+    });
 
     revalidatePath("/koc/leadler");
     return { ok: true, data: { leadId: lead.id } };
