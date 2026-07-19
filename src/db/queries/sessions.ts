@@ -8,6 +8,8 @@ import {
   weeklyPlans,
 } from "@/db/schema";
 import { addDays, startOfTrtDay, trDayKey } from "@/lib/dates";
+import type { SessionViewer } from "@/lib/session";
+import type { ExtensionPickerData } from "@/lib/validation-ext";
 
 export type SessionStatus = "scheduled" | "held" | "cancelled" | "missed";
 
@@ -231,4 +233,75 @@ export async function getUpcomingSessions(
     )
     .orderBy(asc(coachingSessions.scheduledAt));
   return rows.filter((r): r is UpcomingSession => r.scheduledAt != null);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Tarayıcı eklentisi seçici verisi (öğrenci + yaklaşan görüşme, koç-scope)  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Eklentinin görüşme/öğrenci seçicisi için veri: koçun aktif öğrencileri +
+ * bugünden itibaren planlı görüşmeleri (sekme-URL otomatik eşleşmesi için
+ * `meetingUrl` dahil). Görünürlük roster ile aynı: yönetici hepsini, koç yalnız
+ * kendi kayıtlarını görür. `scheduledAt` ISO 8601 string olarak döner (wire).
+ */
+export async function getExtensionPickerData(
+  viewer: SessionViewer,
+  now: Date = new Date(),
+): Promise<ExtensionPickerData> {
+  const db = getDb();
+  const scope =
+    viewer.role === "coach"
+      ? eq(enrollments.coachUserId, viewer.id)
+      : undefined;
+
+  const studentRows = await db
+    .select({
+      studentId: students.id,
+      enrollmentId: enrollments.id,
+      fullName: students.fullName,
+      examCode: examTemplates.code,
+    })
+    .from(enrollments)
+    .innerJoin(students, eq(students.id, enrollments.studentId))
+    .innerJoin(examTemplates, eq(examTemplates.id, enrollments.examTemplateId))
+    .where(and(eq(enrollments.status, "active"), scope))
+    .orderBy(asc(students.fullName));
+
+  const sessionRows = await db
+    .select({
+      id: coachingSessions.id,
+      enrollmentId: enrollments.id,
+      studentId: students.id,
+      studentName: students.fullName,
+      scheduledAt: coachingSessions.scheduledAt,
+      meetingUrl: coachingSessions.meetingUrl,
+      meetingProvider: coachingSessions.meetingProvider,
+    })
+    .from(coachingSessions)
+    .innerJoin(enrollments, eq(enrollments.id, coachingSessions.enrollmentId))
+    .innerJoin(students, eq(students.id, enrollments.studentId))
+    .where(
+      and(
+        eq(coachingSessions.status, "scheduled"),
+        gte(coachingSessions.scheduledAt, startOfTrtDay(now)),
+        scope,
+      ),
+    )
+    .orderBy(asc(coachingSessions.scheduledAt));
+
+  return {
+    students: studentRows,
+    sessions: sessionRows
+      .filter((r): r is typeof r & { scheduledAt: Date } => r.scheduledAt != null)
+      .map((r) => ({
+        id: r.id,
+        enrollmentId: r.enrollmentId,
+        studentId: r.studentId,
+        studentName: r.studentName,
+        scheduledAt: r.scheduledAt.toISOString(),
+        meetingUrl: r.meetingUrl,
+        meetingProvider: r.meetingProvider,
+      })),
+  };
 }

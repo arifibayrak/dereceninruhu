@@ -911,8 +911,9 @@ export const transcripts = sqliteTable(
     coachingSessionId: integer("coaching_session_id").references(
       () => coachingSessions.id,
     ),
-    /** audio = kayıt yüklendi (R2); paste = Meet/Zoom dökümü yapıştırıldı. */
-    source: text("source", { enum: ["audio", "paste"] }).notNull(),
+    /** audio = kayıt yüklendi (R2); paste = Meet/Zoom dökümü yapıştırıldı;
+     *  live = tarayıcı eklentisi görüşmeyi cihazda canlı çevirdi (ses saklanmaz). */
+    source: text("source", { enum: ["audio", "paste", "live"] }).notNull(),
     /** R2 nesne anahtarı (source=audio); onay sonrası silinebilir. */
     audioR2Key: text("audio_r2_key"),
     rawText: text("raw_text"),
@@ -1049,6 +1050,30 @@ export const aiAuditLog = sqliteTable(
     index("ai_audit_log_actor_idx").on(t.actorUserId, t.createdAt),
     index("ai_audit_log_enrollment_idx").on(t.enrollmentId),
   ],
+);
+
+/**
+ * Tarayıcı eklentisi kimliği: koç-başı uzun-ömürlü bearer token. Cookie
+ * oturumu cross-origin (chrome-extension://) çalışmadığından eklenti bu token'ı
+ * gönderir. Düz metin YALNIZ üretim anında bir kez gösterilir; DB'de yalnız
+ * SHA-256 hex tutulur. İptal = revoked_at doldur.
+ */
+export const extensionTokens = sqliteTable(
+  "extension_tokens",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    coachUserId: text("coach_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Sunulan bearer token'ının SHA-256 hex'i (unique). */
+    tokenHash: text("token_hash").notNull().unique(),
+    /** Koçun verdiği cihaz etiketi ("Chrome — iş dizüstü"). */
+    label: text("label"),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+    revokedAt: integer("revoked_at", { mode: "timestamp" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("extension_tokens_coach_idx").on(t.coachUserId)],
 );
 
 /* -------------------------------------------------------------------------- */
@@ -1479,6 +1504,16 @@ export const coachProfilesRelations = relations(coachProfiles, ({ one }) => ({
   }),
 }));
 
+export const extensionTokensRelations = relations(
+  extensionTokens,
+  ({ one }) => ({
+    coachUser: one(users, {
+      fields: [extensionTokens.coachUserId],
+      references: [users.id],
+    }),
+  }),
+);
+
 /* -------------------------------------------------------------------------- */
 /*  Inferred types                                                            */
 /* -------------------------------------------------------------------------- */
@@ -1532,3 +1567,5 @@ export type Testimonial = typeof testimonials.$inferSelect;
 export type Package = typeof packages.$inferSelect;
 export type Faq = typeof faqs.$inferSelect;
 export type CoachProfile = typeof coachProfiles.$inferSelect;
+export type ExtensionToken = typeof extensionTokens.$inferSelect;
+export type NewExtensionToken = typeof extensionTokens.$inferInsert;

@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRightIcon, ShieldCheckIcon, UserRoundIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  PuzzleIcon,
+  ShieldCheckIcon,
+  UserRoundIcon,
+} from "lucide-react";
 
 import { getCurrentUser, getViewer } from "@/lib/session";
 import { SectionHeading } from "@/components/brand/section-heading";
@@ -70,6 +75,25 @@ export default async function AyarlarPage() {
           <CardContent>
             <Button variant="outline" render={<Link href="/koc/profil" />}>
               Profilimi düzenle
+              <ArrowRightIcon data-icon="inline-end" />
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PuzzleIcon className="size-4" />
+              Canlı transkript eklentisi
+            </CardTitle>
+            <CardDescription>
+              Görüşmelerini tarayıcıda cihaz-içi canlı yazıya çevir (Whisper
+              Turbo); eklenti token&apos;ını buradan yönet.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" render={<Link href="/koc/eklenti" />}>
+              Eklentiyi bağla
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
           </CardContent>

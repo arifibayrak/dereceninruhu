@@ -1,0 +1,8 @@
+node_modules
+.output
+.wxt
+public/ort
+*.zip
+stats.html
+# Özel imza anahtarı — asla commit etme (public key wxt.config.ts'te gömülü).
+.keys/

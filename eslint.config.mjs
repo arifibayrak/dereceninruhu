@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     ".wrangler/**",
     // Harness workspace (agent worktrees) — never product code.
     ".claude/**",
+    // Tarayıcı eklentisi ayrı bir proje (WXT); kendi tsconfig/eslint'i var.
+    "extension/**",
   ]),
 ]);
 
