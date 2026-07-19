@@ -237,7 +237,10 @@ export function blogPostingSchema(post: BlogPostForSchema) {
     dateModified: (post.updatedAt ?? post.publishedAt)?.toISOString(),
     author: {
       "@type": "Person",
-      name: post.author?.name ?? coachContent.displayName,
+      // Tek marka: yazar her zaman öne çıkan koç (login hesabı değil).
+      "@id": PERSON_ID,
+      name: coachContent.displayName,
+      url: absoluteUrl("/hakkinda"),
     },
     publisher: { "@id": ORG_ID },
     mainEntityOfPage: absoluteUrl(path),

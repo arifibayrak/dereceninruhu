@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 
 import { getPublishedPost } from "@/db/queries/cms";
+import { coachContent } from "@/db/seed/cms-content";
 import { formatTrDate } from "@/lib/dates";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { Markdown } from "@/components/marketing/markdown";
@@ -79,12 +80,9 @@ export default async function BlogPostPage({ params }: { params: Params }) {
                 {formatTrDate(post.publishedAt)}
               </time>
             )}
-            {post.author?.name && (
-              <>
-                <span aria-hidden>·</span>
-                <span>{post.author.name}</span>
-              </>
-            )}
+            {/* Tek marka: tüm yazıların yazarı öne çıkan koç (kullanıcı hesabı değil). */}
+            <span aria-hidden>·</span>
+            <span>{coachContent.displayName}</span>
           </div>
         </header>
       </div>
