@@ -8,7 +8,7 @@ import { createCoachSchema, setupAdminSchema } from "@/lib/validation";
 import {
   actionError,
   guarded,
-  requireCoach,
+  requireAdmin,
   type ActionResult,
 } from "@/actions/_guard";
 
@@ -77,12 +77,15 @@ export async function setupFirstAdmin(
   });
 }
 
-/** Koç ekle — mevcut koç/yönetici ikinci koçu oluşturur (Ahmet + Arif). */
+/**
+ * Koç ekle — YALNIZ yönetici (Arif/Hakan) yeni koç hesabı oluşturur.
+ * Sıradan koçlar koç ekleyemez; ekip yönetimi admin-only /koc/yonetim'de.
+ */
 export async function createCoach(
   input: unknown,
 ): Promise<ActionResult<{ email: string }>> {
   return guarded(async () => {
-    await requireCoach();
+    await requireAdmin();
     const parsed = createCoachSchema.safeParse(input);
     if (!parsed.success) {
       return actionError(

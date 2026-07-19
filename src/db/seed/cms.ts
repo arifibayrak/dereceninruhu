@@ -20,6 +20,7 @@ import * as schema from "../schema";
 import {
   blogPostSeeds,
   coachContent,
+  coachStats,
   faqSeeds,
   packageSeeds,
   testimonialSeeds,
@@ -92,11 +93,15 @@ function seedCms(db: SeedDb): Record<string, Counts> {
       db.insert(coachProfiles)
         .values({
           userId: coachUser.id,
+          slug: coachContent.slug,
           displayName: coachContent.displayName,
+          title: coachContent.title,
+          location: coachContent.location,
           bio: coachContent.bio,
           photoUrl: coachContent.photoUrl,
           subjects: JSON.stringify(coachContent.subjects),
           achievements: JSON.stringify(coachContent.credentials),
+          proofUrl: coachStats.proofUrl,
           sortOrder: 0,
           isActive: true,
         })

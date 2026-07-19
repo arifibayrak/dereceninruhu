@@ -14,6 +14,7 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  UserRoundIcon,
   UsersIcon,
   WalletIcon,
   type LucideIcon,
@@ -67,6 +68,8 @@ const LINKS: NavLink[] = [
     exact: false,
     adminOnly: true,
   },
+  // Herkese açık koç profili — her koç kendi sayfasını düzenler.
+  { href: "/koc/profil", label: "Profil", icon: UserRoundIcon, exact: false },
   { href: "/koc/ayarlar", label: "Ayarlar", icon: SettingsIcon, exact: false },
 ];
 
