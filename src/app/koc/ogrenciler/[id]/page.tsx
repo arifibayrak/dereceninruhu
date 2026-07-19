@@ -349,7 +349,7 @@ export default async function OgrenciKokpitPage({
       {/* Sekmeler — ?tab= değişince yeniden kurulur (görüşme → program akışı) */}
       <Tabs key={initialTab} defaultValue={initialTab}>
         <div className="overflow-x-auto pb-1">
-          <TabsList className="w-max">
+          <TabsList className="w-full min-w-max">
             <TabsTrigger value="ozet">Özet</TabsTrigger>
             <TabsTrigger value="soru-takibi">Soru Takibi</TabsTrigger>
             <TabsTrigger value="denemeler">Denemeler</TabsTrigger>
