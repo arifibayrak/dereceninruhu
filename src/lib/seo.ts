@@ -28,9 +28,9 @@ export const DEFAULT_DESCRIPTION =
  */
 export const SOCIAL_LINKS = {
   gigbi: "https://www.gigbi.com/p/ahmet-hakan-almak1723581674",
-  instagram: "", // örn. "https://www.instagram.com/kullaniciadi"
-  youtube: "", // örn. "https://www.youtube.com/@kanaladi"
-  tiktok: "", // örn. "https://www.tiktok.com/@kullaniciadi"
+  instagram: "https://www.instagram.com/derecenin_ruhu/",
+  youtube: "https://www.youtube.com/@Dereceninruhu",
+  tiktok: "https://www.tiktok.com/@dereceninruhu",
 } as const;
 
 /** Boş olmayan sosyal/kanıt bağlantılarını `sameAs` dizisi olarak döndürür. */
