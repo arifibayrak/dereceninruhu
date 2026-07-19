@@ -56,6 +56,30 @@ Cloudflare.
 Visit `https://dereceninruhu.com/kurulum` to create the first admin (koç) account,
 then sign in at `/giris`. Add the second coach from the koç panel.
 
+## 7. SEO / GEO go-live — human tasks (Cloudflare dashboard / DNS / Search Console) **(you)**
+
+The code side is done (metadataBase, OpenGraph/Twitter + `public/og.png`, JSON-LD,
+`sitemap.ts`, `robots.ts`, `manifest.ts`, `llms.txt`, keyword landing pages, `/hakkinda`).
+These steps can't be automated from the sandbox:
+
+1. **robots.txt override.** Cloudflare's zone-managed "Content Signals / managed robots.txt"
+   intercepts `/robots.txt` at the edge (live one is `text/html`, no `Sitemap:`). Dashboard →
+   `dereceninruhu.com` zone → disable managed robots.txt (AI Audit / Scrape Shield area) so the
+   Worker's `robots.ts` (`text/plain`, with `Sitemap:` + AI-crawler allows) is served. Verify:
+   `curl -sI https://dereceninruhu.com/robots.txt` → `content-type: text/plain`.
+2. **www → apex.** `www.dereceninruhu.com` is currently NXDOMAIN. Add a proxied `www` DNS record,
+   then create a **Redirect Rule**: `http.host == "www.dereceninruhu.com"` → 308 to
+   `https://dereceninruhu.com` (preserve path + query).
+3. **Google Search Console** (+ optionally Bing Webmaster): add & verify the property, submit
+   `https://dereceninruhu.com/sitemap.xml`, request indexing of `/`, `/hakkinda`, `/yks-koclugu`,
+   `/lgs-koclugu`, `/kpss-koclugu`, `/fiyatlar`.
+4. **Social `sameAs`.** Fill the real Instagram / YouTube / TikTok URLs in `SOCIAL_LINKS`
+   (`src/lib/seo.ts`) — they flow into Organization + Person JSON-LD (`sameAs`).
+5. After deploy, test OG rendering in the WhatsApp / X / Facebook share debuggers, and run the
+   **Google Rich Results Test** on `/`, `/koclar`, `/fiyatlar`, a `/blog/[slug]`, a `/{sınav}-koclugu`.
+
+> Brand OG image: `node scripts/generate-og.cjs` regenerates `public/og.png` + `src/app/apple-icon.png`.
+
 ---
 
 ### Notes

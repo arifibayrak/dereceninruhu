@@ -6,10 +6,20 @@ import { Logo } from "@/components/brand/logo";
 
 const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
   {
+    title: "Koçluk",
+    links: [
+      { href: "/yks-koclugu", label: "YKS Koçluğu" },
+      { href: "/lgs-koclugu", label: "LGS Koçluğu" },
+      { href: "/kpss-koclugu", label: "KPSS Koçluğu" },
+      { href: "/sayac", label: "Sınav Sayacı" },
+    ],
+  },
+  {
     title: "Keşfet",
     links: [
       { href: "/nasil-calisir", label: "Nasıl Çalışır" },
       { href: "/koclar", label: "Koçlar" },
+      { href: "/hakkinda", label: "Hakkında" },
       { href: "/fiyatlar", label: "Fiyatlar" },
     ],
   },
@@ -37,7 +47,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t bg-card/50">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-10 sm:px-6 md:py-12">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div className="flex flex-col items-start gap-3">
             <Logo size={28} />
             <p className="max-w-xs text-sm text-pretty text-muted-foreground">

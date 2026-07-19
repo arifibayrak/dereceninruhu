@@ -1,25 +1,34 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRightIcon, BookOpenIcon } from "lucide-react";
 
 import { getPublishedPosts } from "@/db/queries/cms";
 import { formatTrDate } from "@/lib/dates";
 import { CtaBand } from "@/components/marketing/cta-band";
+import { JsonLd } from "@/components/seo/json-ld";
+import { buildMetadata } from "@/lib/seo";
+import { breadcrumbSchema } from "@/lib/schema";
 
 // Yazılar D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Blog",
   description:
     "Derecenin Ruhu blog: deneme analizi, haftalık program, net artırma ve sınav stratejisi üzerine uygulanabilir yazılar.",
-};
+  path: "/blog",
+});
 
 export default async function BlogPage() {
   const posts = await getPublishedPosts();
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-12 px-4 py-10 sm:px-6 md:gap-16 md:py-16">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Ana Sayfa", path: "/" },
+          { name: "Blog", path: "/blog" },
+        ])}
+      />
       <section className="relative flex flex-col items-start gap-4">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/3 h-64 w-[min(28rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />

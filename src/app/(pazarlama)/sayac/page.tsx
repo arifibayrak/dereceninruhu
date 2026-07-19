@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
-
 import { CtaBand } from "@/components/marketing/cta-band";
 import { ExamCountdown } from "@/components/marketing/exam-countdown";
 import { SectionHeading } from "@/components/brand/section-heading";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Sayaç",
+export const metadata = buildMetadata({
+  title: "Sayaç — Sınava Kaç Gün Kaldı?",
   description:
     "LGS, YKS ve KPSS (Lisans, Ön Lisans, Ortaöğretim) için sınav geri sayımı. Sınava kaç gün kaldığını canlı takip et.",
-};
+  path: "/sayac",
+});
 
 export default function SayacPage() {
   return (

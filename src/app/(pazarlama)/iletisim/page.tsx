@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import {
   CalendarCheckIcon,
   MapPinIcon,
@@ -11,15 +10,19 @@ import {
 import { coachStats } from "@/db/seed/cms-content";
 import { LeadForm } from "@/components/marketing/lead-form";
 import { CalBooking } from "@/components/marketing/cal-booking";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buildMetadata } from "@/lib/seo";
+import { breadcrumbSchema } from "@/lib/schema";
 
 // Statik sayfa — D1 okumaz; form gönderimi Server Action ile çalışır.
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Ücretsiz Ön Görüşme",
   description:
     "Derecenin Ruhu ile ücretsiz ön görüşme planla: hedefini ve seviyeni konuşalım, sana özel yol haritanı çıkaralım. Ödeme yükümlülüğü yok.",
-};
+  path: "/iletisim",
+});
 
 const STEPS = [
   {
@@ -42,6 +45,12 @@ const STEPS = [
 export default function IletisimPage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-10 sm:px-6 md:py-16">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Ana Sayfa", path: "/" },
+          { name: "Ücretsiz Ön Görüşme", path: "/iletisim" },
+        ])}
+      />
       <section className="relative flex flex-col items-start gap-4">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/3 h-64 w-[min(30rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />

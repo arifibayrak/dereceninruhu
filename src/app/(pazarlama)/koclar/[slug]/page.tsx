@@ -12,9 +12,12 @@ import {
 
 import { getPublicCoachBySlug } from "@/db/queries/cms";
 import { CtaBand } from "@/components/marketing/cta-band";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { absoluteUrl, buildMetadata } from "@/lib/seo";
+import { breadcrumbSchema, profilePageSchema } from "@/lib/schema";
 
 // Koç profili D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
@@ -36,12 +39,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const coach = await getPublicCoachBySlug(slug);
-  if (!coach) return { title: "Koç bulunamadı" };
+  if (!coach) return { title: "Koç bulunamadı", robots: { index: false } };
   const desc =
     coach.headline ??
     coach.bio?.slice(0, 155) ??
     `${coach.displayName} — Derecenin Ruhu koçu.`;
-  return { title: coach.displayName, description: desc };
+  return buildMetadata({
+    title: coach.displayName,
+    description: desc,
+    path: `/koclar/${slug}`,
+    type: "profile",
+  });
 }
 
 export default async function KoachProfilePage({ params }: { params: Params }) {
@@ -50,9 +58,24 @@ export default async function KoachProfilePage({ params }: { params: Params }) {
   if (!coach) notFound();
 
   const highlight = (a: string) => a.includes("Türkiye") || a.includes("KPSS 9");
+  const profilePath = `/koclar/${slug}`;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-12 px-4 py-10 sm:px-6 md:gap-16 md:py-16">
+      {/* Yapısal veri: bu koçun profili (slug'a özgü @id). */}
+      <JsonLd
+        data={[
+          profilePageSchema(coach, {
+            profilePath,
+            id: `${absoluteUrl(profilePath)}#person`,
+          }),
+          breadcrumbSchema([
+            { name: "Ana Sayfa", path: "/" },
+            { name: "Koçlar", path: "/koclar" },
+            { name: coach.displayName, path: profilePath },
+          ]),
+        ]}
+      />
       <Button
         variant="ghost"
         size="sm"

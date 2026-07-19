@@ -46,6 +46,8 @@ export const metadata: Metadata = {
   title: "Marka Rehberi",
   description:
     "Derecenin Ruhu marka kimliği: logo, renk paleti, tipografi ve bileşenler.",
+  // Dahili referans sayfası — arama sonuçlarında görünmesin.
+  robots: { index: false, follow: false },
 };
 
 /* ----------------------------- Renk verileri ----------------------------- */

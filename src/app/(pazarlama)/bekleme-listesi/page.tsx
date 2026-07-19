@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ClockIcon, ShieldCheckIcon, StarIcon } from "lucide-react";
 
@@ -8,15 +7,17 @@ import { cohortView } from "@/lib/cohort";
 import { WaitlistForm } from "@/components/marketing/waitlist-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buildMetadata } from "@/lib/seo";
 
 // Dönem durumu D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Bekleme Listesi",
   description:
     "Derecenin Ruhu birebir koçlukta her dönem sınırlı kontenjanla çalışır. Kontenjan açıldığında ilk haber alanlardan olmak için bekleme listesine katıl.",
-};
+  path: "/bekleme-listesi",
+});
 
 export default async function BeklemeListesiPage() {
   const cohort = await getCohort();

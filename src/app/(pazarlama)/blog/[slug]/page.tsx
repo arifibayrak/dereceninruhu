@@ -7,8 +7,11 @@ import { getPublishedPost } from "@/db/queries/cms";
 import { formatTrDate } from "@/lib/dates";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { Markdown } from "@/components/marketing/markdown";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { buildMetadata } from "@/lib/seo";
+import { blogPostingSchema, breadcrumbSchema } from "@/lib/schema";
 
 // Yazı D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
@@ -22,11 +25,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPublishedPost(slug);
-  if (!post) return { title: "Yazı bulunamadı" };
-  return {
+  if (!post) return { title: "Yazı bulunamadı", robots: { index: false } };
+  return buildMetadata({
     title: post.title,
     description: post.excerpt ?? undefined,
-  };
+    path: `/blog/${slug}`,
+    type: "article",
+    publishedTime: post.publishedAt?.toISOString(),
+    modifiedTime: (post.updatedAt ?? post.publishedAt)?.toISOString(),
+  });
 }
 
 export default async function BlogPostPage({ params }: { params: Params }) {
@@ -36,6 +43,17 @@ export default async function BlogPostPage({ params }: { params: Params }) {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-10 sm:px-6 md:py-16">
+      {/* Yapısal veri: BlogPosting + gezinme izi. */}
+      <JsonLd
+        data={[
+          blogPostingSchema(post),
+          breadcrumbSchema([
+            { name: "Ana Sayfa", path: "/" },
+            { name: "Blog", path: "/blog" },
+            { name: post.title, path: `/blog/${slug}` },
+          ]),
+        ]}
+      />
       <div className="flex flex-col gap-6">
         <Button
           variant="ghost"

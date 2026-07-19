@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import {
   AwardIcon,
   HeartHandshakeIcon,
@@ -8,14 +7,16 @@ import {
 
 import { CoachApplicationForm } from "@/components/marketing/coach-application-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buildMetadata } from "@/lib/seo";
 
 // Statik sayfa — D1 okumaz; form gönderimi Server Action ile çalışır.
 
-export const metadata: Metadata = {
+export const metadata = buildMetadata({
   title: "Koç Başvurusu",
   description:
     "Derecenin Ruhu koç kadrosuna katıl. Derece yapmış, öğrencisini gerçekten önemseyen seçkin koçlarla birebir çalışıyoruz. Başvurunu bırak, tanışalım.",
-};
+  path: "/koc-basvuru",
+});
 
 const CRITERIA = [
   {
