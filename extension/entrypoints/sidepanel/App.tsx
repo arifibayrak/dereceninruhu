@@ -2,12 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   clearToken,
   fetchPickerData,
+  getSelection,
   getSettings,
+  maskToken,
   postTranscript,
+  saveSelection,
   saveSettings,
   transcriptLink,
   type ExtSession,
   type ExtStudent,
+  type Selection,
   type Settings,
 } from "@/lib/api";
 import { matchSession } from "@/lib/match";
@@ -19,6 +23,57 @@ type Saved = {
   proposalCount: number;
   extractionFailed?: boolean;
 };
+
+const VERSION = chrome.runtime?.getManifest?.().version ?? "";
+
+function BrandMark() {
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="9" fill="url(#dr-g)" />
+        <rect x="8" y="18" width="3.6" height="6" rx="1.8" fill="#fff" opacity="0.9" />
+        <rect x="14.2" y="13" width="3.6" height="11" rx="1.8" fill="#fff" opacity="0.95" />
+        <rect x="20.4" y="8.5" width="3.6" height="15.5" rx="1.8" fill="#fff" />
+        <defs>
+          <linearGradient
+            id="dr-g"
+            x1="0"
+            y1="0"
+            x2="32"
+            y2="32"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#8b5cf6" />
+            <stop offset="1" stopColor="#6d28d9" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </span>
+  );
+}
+
+function Brand() {
+  return (
+    <div className="brand">
+      <BrandMark />
+      <div className="brand-text">
+        <span className="brand-title">Canlı Transkript</span>
+        <span className="brand-sub">Derecenin Ruhu</span>
+      </div>
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="footer">
+      <span className="footer-note">
+        Ses kaydedilmez · yazıya çevirme cihazında (WebGPU)
+      </span>
+      {VERSION ? <span className="ver">v{VERSION}</span> : null}
+    </footer>
+  );
+}
 
 export function App() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -43,7 +98,7 @@ export function App() {
 
   const transcriptRef = useRef<HTMLDivElement>(null);
 
-  const loadData = useCallback(async (s: Settings) => {
+  const loadData = useCallback(async (s: Settings, saved?: Selection) => {
     setLoading(true);
     setLoadError(null);
     try {
@@ -56,9 +111,22 @@ export function App() {
       });
       const match = matchSession(tab?.url, data.sessions);
       if (match) {
+        // Aktif sekme bir planlı görüşmeyle eşleşiyorsa o kazanır.
         setAutoMatched(match);
         setEnrollmentId(match.enrollmentId);
         setSessionId(match.id);
+      } else if (
+        saved?.enrollmentId != null &&
+        data.students.some((st) => st.enrollmentId === saved.enrollmentId)
+      ) {
+        // Eşleşme yoksa son seçimi geri yükle (hâlâ geçerliyse).
+        setEnrollmentId(saved.enrollmentId);
+        setSessionId(
+          saved.sessionId != null &&
+            data.sessions.some((se) => se.id === saved.sessionId)
+            ? saved.sessionId
+            : null,
+        );
       }
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Veri alınamadı.");
@@ -67,15 +135,24 @@ export function App() {
     }
   }, []);
 
-  // İlk yükleme: ayarlar + (token varsa) veri + aktif sekme eşlemesi.
+  // İlk yükleme: ayarlar + (token varsa) veri + aktif sekme eşlemesi / son seçim.
   useEffect(() => {
     void (async () => {
       const s = await getSettings();
       setSettings(s);
       setBaseInput(s.baseUrl);
-      if (s.token) await loadData(s);
+      if (s.token) {
+        const saved = await getSelection();
+        await loadData(s, saved);
+      }
     })();
   }, [loadData]);
+
+  // Seçim değişince kalıcılaştır (panel yeniden açılınca geri gelsin).
+  useEffect(() => {
+    if (!settings?.token) return;
+    void saveSelection({ enrollmentId, sessionId });
+  }, [enrollmentId, sessionId, settings?.token]);
 
   // Offscreen / service worker mesajlarını dinle.
   useEffect(() => {
@@ -153,22 +230,42 @@ export function App() {
     setPartial("");
     setSaved(null);
     setNotice(null);
+
+    // Mikrofon izni. Yan panel & offscreen belge tarayıcı iznini GÖSTEREMEZ
+    // (adres çubuğu yok) → istem hiç çıkmadan reddedilir. İzin zaten verilmişse
+    // bu prob sessizce geçer; değilse izni NORMAL SEKMEDE isteyen sayfayı açarız
+    // (orada tarayıcı istemi + adres çubuğu mikrofon simgesi görünür).
+    try {
+      const probe = await navigator.mediaDevices?.getUserMedia({ audio: true });
+      probe?.getTracks().forEach((t) => t.stop());
+    } catch {
+      setCapture("error");
+      setNotice(
+        "Mikrofon izni gerekli. Açılan sekmede 'İzin ver'e bas (ya da adres çubuğundaki mikrofon simgesinden bu eklentiye izin ver), sonra panele dönüp yeniden Başlat'a bas.",
+      );
+      void chrome.tabs.create({ url: chrome.runtime.getURL("permission.html") });
+      return;
+    }
+
+    // Sekme sesi opsiyonel: aktif sekme varsa en iyi çabayla eklenir, yoksa
+    // yalnız mikrofonla devam (telefon/WhatsApp/yüz yüze görüşmeler için).
     const [tab] = await chrome.tabs.query({
       active: true,
       currentWindow: true,
     });
-    if (!tab?.id) {
-      setNotice("Aktif sekme bulunamadı.");
-      return;
-    }
     setCapture("starting");
     const res = (await chrome.runtime.sendMessage({
       type: "START_CAPTURE",
-      tabId: tab.id,
+      tabId: tab?.id ?? null,
     })) as { ok: boolean; error?: string } | undefined;
     if (res && !res.ok) {
       setCapture("error");
-      setNotice(res.error || "Kayıt başlatılamadı.");
+      const raw = res.error || "";
+      // Chrome'un ham tabCapture hatasını eyleme dönük Türkçe mesaja çevir.
+      const friendly = /invoked|activeTab|Chrome pages/i.test(raw)
+        ? "Bu sekmede eklenti henüz yetkilenmedi. Bu Meet/Zoom sekmesindeyken araç çubuğundaki eklenti simgesine bir kez tıkla (panel yeniden açılır), sonra hemen Başlat'a bas. Not: chrome:// ve Yeni Sekme sayfaları yakalanamaz."
+        : raw || "Kayıt başlatılamadı.";
+      setNotice(friendly);
     }
   };
 
@@ -207,56 +304,81 @@ export function App() {
   // --- Bağlı değil: token ekranı ---
   if (!settings?.token) {
     return (
-      <div className="wrap">
-        <h1>Canlı Transkript</h1>
-        <p className="small muted">
-          Eklentiyi Derecenin Ruhu hesabına bağlamak için koç panelinden
-          (Ayarlar → Eklenti) bir token oluştur ve buraya yapıştır.
-        </p>
-        <div className="card">
-          <div>
+      <div className="app app--center">
+        <header className="topbar">
+          <Brand />
+        </header>
+
+        <section className="section">
+          <div className="section-head">
+            <span className="section-title">Bağlantı</span>
+          </div>
+          <p className="hint">
+            Hesabına bağlamak için koç panelinde{" "}
+            <strong>Ayarlar → Eklenti</strong> sayfasından bir token oluştur ve
+            buraya yapıştır.
+          </p>
+          <div className="field">
             <label htmlFor="token">Eklenti token&apos;ı</label>
             <input
               id="token"
               type="password"
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void connect();
+              }}
               placeholder="drx_…"
             />
           </div>
-          <div>
+          <div className="field">
             <label htmlFor="base">Sunucu adresi</label>
             <input
               id="base"
               value={baseInput}
               onChange={(e) => setBaseInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void connect();
+              }}
               placeholder="https://dereceninruhu.com"
             />
           </div>
-          <button className="btn btn-primary" onClick={connect}>
+          <button className="btn btn-primary btn-block" onClick={connect}>
             Bağla
           </button>
-        </div>
-        {notice ? <div className="note">{notice}</div> : null}
+          {notice ? <div className="note">{notice}</div> : null}
+        </section>
+
+        <Footer />
       </div>
     );
   }
 
   // --- Bağlı: ana ekran ---
   return (
-    <div className="wrap">
-      <div className="row between">
-        <h1>Canlı Transkript</h1>
-        <button className="btn btn-sm" onClick={disconnect}>
-          Bağlantıyı kes
+    <div className="app">
+      <header className="topbar">
+        <Brand />
+        <button className="btn btn-ghost btn-sm" onClick={disconnect}>
+          Çıkış
         </button>
+      </header>
+
+      <div className="conn">
+        <span className="dot-ok" />
+        <span className="conn-text">
+          Bağlı · <code>{maskToken(settings.token)}</code>
+        </span>
+        <span className="conn-host">
+          {settings.baseUrl.replace(/^https?:\/\//, "")}
+        </span>
       </div>
 
       {loadError ? (
         <div className="err">
           {loadError}{" "}
           <button
-            className="btn btn-sm"
+            className="btn btn-sm btn-ghost"
             onClick={() => settings && loadData(settings)}
           >
             Tekrar dene
@@ -264,20 +386,32 @@ export function App() {
         </div>
       ) : null}
 
-      <div className="card">
+      <section className="section">
+        <div className="section-head">
+          <span className="section-title">Görüşme</span>
+          {isRunning ? (
+            <span className="rec">
+              <span className="rec-dot" /> Kaydediliyor
+            </span>
+          ) : null}
+        </div>
+
         {autoMatched ? (
-          <div className="ok small">
-            Görüşme algılandı: <strong>{autoMatched.studentName}</strong> —{" "}
-            {new Date(autoMatched.scheduledAt).toLocaleString("tr-TR", {
-              day: "2-digit",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+          <div className="matched">
+            <span className="matched-label">Algılandı</span>
+            <strong>{autoMatched.studentName}</strong>
+            <span className="muted">
+              {new Date(autoMatched.scheduledAt).toLocaleString("tr-TR", {
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
           </div>
         ) : null}
 
-        <div>
+        <div className="field">
           <label htmlFor="student">Öğrenci</label>
           <select
             id="student"
@@ -300,7 +434,7 @@ export function App() {
         </div>
 
         {enrollmentSessions.length > 0 ? (
-          <div>
+          <div className="field">
             <label htmlFor="session">Görüşme (opsiyonel)</label>
             <select
               id="session"
@@ -325,48 +459,55 @@ export function App() {
           </div>
         ) : null}
 
-        <div className="row">
-          {!isRunning ? (
-            <button
-              className="btn btn-primary grow"
-              onClick={start}
-              disabled={!enrollmentId}
-            >
-              Başlat
-            </button>
+        {!isRunning ? (
+          <button
+            className="btn btn-rec btn-block"
+            onClick={start}
+            disabled={!enrollmentId}
+          >
+            Başlat
+          </button>
+        ) : (
+          <button className="btn btn-danger btn-block" onClick={stop}>
+            <span className="rec-dot" /> Durdur
+          </button>
+        )}
+
+        {modelStatus ? <div className="progress">{modelStatus}</div> : null}
+      </section>
+
+      <section className="section section--grow">
+        <div className="section-head">
+          <span className="section-title">Transkript</span>
+        </div>
+        <div className="transcript" ref={transcriptRef}>
+          {finals.length === 0 && !partial ? (
+            <span className="muted small">
+              {isRunning
+                ? "Dinleniyor… konuşuldukça metin burada akacak."
+                : "Başlat'a basınca canlı transkript burada görünür."}
+            </span>
           ) : (
-            <button className="btn btn-danger grow" onClick={stop}>
-              <span className="dot" /> Durdur
-            </button>
+            <>
+              {finals.join(" ")}
+              {partial ? <span className="partial"> {partial}</span> : null}
+            </>
           )}
         </div>
-
-        {modelStatus ? <div className="note">{modelStatus}</div> : null}
-      </div>
-
-      <div className="transcript" ref={transcriptRef}>
-        {finals.length === 0 && !partial ? (
-          <span className="muted small">
-            {isRunning
-              ? "Dinleniyor… konuşuldukça metin burada akacak."
-              : "Başlat'a basınca canlı transkript burada görünür."}
-          </span>
-        ) : (
-          <>
-            {finals.join(" ")}
-            {partial ? <span className="partial"> {partial}</span> : null}
-          </>
-        )}
-      </div>
+      </section>
 
       {isStopped && fullText.length >= 20 && !saved ? (
-        <button className="btn btn-primary" onClick={save} disabled={saving}>
+        <button
+          className="btn btn-primary btn-block"
+          onClick={save}
+          disabled={saving}
+        >
           {saving ? "Kaydediliyor…" : "Kaydet ve önerileri çıkar"}
         </button>
       ) : null}
 
       {saved ? (
-        <div className="ok small">
+        <div className="ok">
           Kaydedildi.{" "}
           {saved.extractionFailed
             ? "AI çıkarımı şimdilik yapılamadı; uygulamadan tekrar deneyebilirsin. "
@@ -379,10 +520,7 @@ export function App() {
 
       {notice ? <div className="note">{notice}</div> : null}
 
-      <p className="footer small muted">
-        Ses hiçbir zaman kaydedilmez ya da sunucuya gönderilmez; yazıya çevirme
-        tamamen bu cihazda (WebGPU) çalışır.
-      </p>
+      <Footer />
     </div>
   );
 }

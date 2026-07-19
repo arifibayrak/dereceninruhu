@@ -30,6 +30,11 @@ pnpm dev              # WXT dev sunucusu; Chrome'a otomatik yükler (ya da .outp
 Manuel yükleme: `chrome://extensions` → Geliştirici modu → "Paketlenmemiş yükle"
 → `extension/.output/chrome-mv3`.
 
+> **Yeni sürüm alırken "Paketlenmemiş yükle"yi TEKRAR kullanma.** Eklentiyi
+> **kaldırıp yeniden eklemek** tüm depoyu (`chrome.storage`) siler → kayıtlı
+> token kaybolur. Yeni build'i almak için kartın üzerindeki **↻ yeniden yükle**
+> düğmesine bas; depo korunur. "Load unpacked" yalnız ilk kurulumda bir kez.
+
 ### Sonra (uygulama tarafı)
 
 1. Koç panelinde **Ayarlar → Eklenti** (`/koc/eklenti`) sayfasından bir token
@@ -58,8 +63,12 @@ Manuel yükleme: `chrome://extensions` → Geliştirici modu → "Paketlenmemiş
 - **Mikrofon izni.** Offscreen `getUserMedia` mikrofon ister; reddedilirse
   yalnız **sekme sesi** çevrilir (koçun sesi düşer). İzni önceden vermek için
   eklentiye mikrofon erişimi tanımlaman gerekebilir.
-- **Model indirme.** İlk kullanımda ~200–800 MB (dtype'a göre) indirilir ve
-  tarayıcı önbelleğinde kalır. WebGPU yoksa (`navigator.gpu` tanımsız) çalışmaz.
+- **Model indirme.** Varsayılan `whisper-small` (encoder fp16 + decoder q4) ilk
+  kullanımda ~250 MB indirilir ve tarayıcı önbelleğinde kalır (sonra anında/
+  çevrimdışı). Daha küçük/hızlı için `offscreen/main.ts` içindeki `MODEL_ID`'yi
+  `whisper-base` (~70 MB, TR daha zayıf) ya da en yüksek doğruluk için
+  `whisper-large-v3-turbo` (~800 MB+, dtype'ı fp16 yap) ile değiştir. WebGPU
+  yoksa (`navigator.gpu` tanımsız) çalışmaz.
 - **Doğruluk / pencere.** Basit kayan-pencere yaklaşımı; ~24 sn'lik bloklar
   hâlinde işler, sınırda 2 sn taşıma bırakır. Uzun görüşmelerde küçük sözcük
   tekrarları olabilir; istenirse VAD tabanlı segmentasyona geçilebilir.

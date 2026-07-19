@@ -19,6 +19,12 @@ export default defineConfig({
       "https://*.huggingface.co/*",
     ],
     action: { default_title: "Canlı Transkript" },
+    // MV3 varsayılan CSP'si (`script-src 'self'`) WebAssembly instantiate'i
+    // yasaklar. ONNX Runtime / transformers.js wasm'ı çalışabilsin diye
+    // 'wasm-unsafe-eval' EKLENİR — yoksa "CompileError: … violates CSP" alınır.
+    content_security_policy: {
+      extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    },
     // Sabit eklenti id'si: chgfdngapkpilefnccpijdfomddeepjh
     // (chrome-extension://chgfdngapkpilefnccpijdfomddeepjh). Public SPKI key;
     // id bundan türetilir → dev ve paketlenmiş yüklemede AYNI, app'teki

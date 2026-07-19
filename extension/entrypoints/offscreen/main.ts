@@ -13,17 +13,35 @@ import { sendMessage, type ExtMessage } from "@/lib/messages";
  */
 
 env.allowLocalModels = false; // ağırlıklar HF hub CDN'inden
+env.useBrowserCache = true; // model bir kez inip Cache Storage'da kalsın (tekrar inmesin)
+// Model önbelleği depo baskısında atılmasın diye kalıcı depo iste (en iyi çaba).
+// NOT: eklentiyi "kaldırıp yeniden ekleyince" bu önbellek de silinir → model
+// yeniden iner. Yeni sürüm için "kaldır+yükle" yerine ↻ yeniden yükle kullan.
+void navigator.storage?.persist?.()?.catch(() => {});
 // MV3 uzak-kod yasağı: ONNX Runtime wasm dosyaları eklenti içinden yüklenir
 // (public/ort/ altına `pnpm copy-ort` ile kopyalanır).
 if (env.backends?.onnx?.wasm) {
   env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL("/ort/");
 }
 
-const MODEL_ID = "onnx-community/whisper-large-v3-turbo";
+// Model seçimi — indirme boyutu ↔ Türkçe doğruluk dengesi. Tek yerden değiştir.
+// Boyutlar YAKLAŞIKTIR (ilk kullanımda bir kez inip tarayıcı önbelleğine alınır;
+// sonra anında ve çevrimdışı):
+//   whisper-base           + {enc fp16, dec q4} ≈ ~70 MB   (en küçük/hızlı; TR orta)
+//   whisper-small          + {enc fp16, dec q4} ≈ ~250 MB  (TR belirgin daha iyi)
+//   whisper-large-v3-turbo + fp16               ≈ ~800 MB+ (en yüksek doğruluk)
+// `encoder fp16 + decoder q4` WebGPU'da kanıtlanmış konfig (transformers.js
+// gerçek-zamanlı Whisper örneğiyle aynı). Doğruluk yetmezse MODEL_ID'yi büyüt
+// (ve gerekirse aşağıdaki dtype'ı fp16'ya çek).
+const MODEL_ID = "onnx-community/whisper-small";
 const SAMPLE_RATE = 16000;
 const COMMIT_SECONDS = 24;
 const CARRYOVER_SECONDS = 2;
 const TICK_MS = 4000;
+// Sessizlik eşiği (RMS, 0..1). Bunun altındaki bloklar Whisper'a VERİLMEZ —
+// aksi halde model boşluğu "halüsinasyonla" (tekrar eden saçma token'lar)
+// doldurur. Sesli konuşma ~0.02+; sessizlik ~0.001–0.005.
+const SILENCE_RMS = 0.008;
 
 type Transcriber = (
   audio: Float32Array,
@@ -40,6 +58,13 @@ let bufferedSamples = 0;
 let running = false;
 let busy = false;
 let tickTimer: ReturnType<typeof setInterval> | null = null;
+
+function rms(samples: Float32Array): number {
+  if (samples.length === 0) return 0;
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+  return Math.sqrt(sum / samples.length);
+}
 
 function takeBuffer(): Float32Array {
   const out = new Float32Array(bufferedSamples);
@@ -64,7 +89,8 @@ async function ensureModel(): Promise<void> {
   sendMessage({ type: "MODEL_PROGRESS", status: "Model yükleniyor…", progress: 0 });
   transcriber = (await pipeline("automatic-speech-recognition", MODEL_ID, {
     device: "webgpu",
-    dtype: "fp16",
+    // Encoder fp16 (WebGPU dostu) + decoder q4 (asıl boyut kazancı).
+    dtype: { encoder_model: "fp16", decoder_model_merged: "q4" },
     progress_callback: (p: unknown) => {
       const prog = p as { status?: string; progress?: number };
       if (prog.status === "progress" && typeof prog.progress === "number") {
@@ -81,11 +107,16 @@ async function ensureModel(): Promise<void> {
 
 async function transcribe(samples: Float32Array): Promise<string> {
   if (!transcriber || samples.length < SAMPLE_RATE) return "";
+  // Sessiz blokları modele hiç verme — halüsinasyonu (tekrar eden saçma çıktı)
+  // baştan engeller.
+  if (rms(samples) < SILENCE_RMS) return "";
   const out = await transcriber(samples, {
     language: "tr",
     task: "transcribe",
     chunk_length_s: 30,
     stride_length_s: 5,
+    no_repeat_ngram_size: 3, // "-A -A -A" gibi tekrar döngülerini kır
+    temperature: 0,
   });
   const text = Array.isArray(out) ? out.map((o) => o.text).join(" ") : out.text;
   return (text ?? "").trim();
@@ -111,31 +142,16 @@ async function tick(): Promise<void> {
   }
 }
 
-async function start(streamId: string): Promise<void> {
+async function start(streamId: string | null): Promise<void> {
   if (running) return;
   sendMessage({ type: "CAPTURE_STATE", state: "starting" });
   try {
     await ensureModel();
     audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
-
-    // Sekme sesi (uzak taraf / öğrenci).
-    tabStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        mandatory: {
-          chromeMediaSource: "tab",
-          chromeMediaSourceId: streamId,
-        },
-      } as unknown as MediaTrackConstraints,
-      video: false,
-    });
-
     const mix = audioContext.createGain();
-    const tabSource = audioContext.createMediaStreamSource(tabStream);
-    tabSource.connect(mix);
-    // Sekme sesini hoparlöre geri ver — yoksa koç görüşmeyi duymaz.
-    tabSource.connect(audioContext.destination);
 
-    // Mikrofon (koç) — en iyi çaba. Reddedilirse yalnız sekme sesiyle devam.
+    // Mikrofon = BİRİNCİL kaynak (koç + hoparlörden gelen karşı taraf). ZORUNLU;
+    // görüşme hangi platformda olursa olsun (WhatsApp/telefon/yüz yüze) çalışır.
     try {
       micStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -145,9 +161,35 @@ async function start(streamId: string): Promise<void> {
     } catch {
       sendMessage({
         type: "CAPTURE_STATE",
-        state: "running",
-        error: "Mikrofon erişimi yok; yalnız sekme sesi çevriliyor.",
+        state: "error",
+        error:
+          "Mikrofon izni yok. Panelde Başlat'a basınca çıkan izni ver; daha önce reddettiysen adres çubuğundaki eklenti/kilit simgesinden mikrofonu Aç ve tekrar dene.",
       });
+      await stop();
+      return;
+    }
+
+    // Sekme sesi = EN İYİ ÇABA (tarayıcı içi Meet/Zoom'da öğrenciyi de duymak
+    // için). streamId yoksa/alınamıyorsa yalnız mikrofonla devam.
+    let tabNote: string | undefined;
+    if (streamId) {
+      try {
+        tabStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            mandatory: {
+              chromeMediaSource: "tab",
+              chromeMediaSourceId: streamId,
+            },
+          } as unknown as MediaTrackConstraints,
+          video: false,
+        });
+        const tabSource = audioContext.createMediaStreamSource(tabStream);
+        tabSource.connect(mix);
+        // Sekme sesini hoparlöre geri ver — yoksa koç sekme sesini duymaz.
+        tabSource.connect(audioContext.destination);
+      } catch {
+        tabNote = "Sekme sesi alınamadı; yalnız mikrofon çevriliyor.";
+      }
     }
 
     // Float32 örnek topla. ScriptProcessor kullanımdan kalkıyor ama basit/güvenilir.
@@ -168,7 +210,7 @@ async function start(streamId: string): Promise<void> {
 
     running = true;
     tickTimer = setInterval(() => void tick(), TICK_MS);
-    sendMessage({ type: "CAPTURE_STATE", state: "running" });
+    sendMessage({ type: "CAPTURE_STATE", state: "running", error: tabNote });
   } catch (e) {
     sendMessage({
       type: "CAPTURE_STATE",

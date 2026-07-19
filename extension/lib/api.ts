@@ -24,23 +24,77 @@ export type PickerData = { students: ExtStudent[]; sessions: ExtSession[] };
 
 export type Settings = { token: string | null; baseUrl: string };
 
+/** Son seçili öğrenci/görüşme — panel yeniden açılınca geri yüklenir. */
+export type Selection = { enrollmentId: number | null; sessionId: number | null };
+
 export async function getSettings(): Promise<Settings> {
-  const { token, baseUrl } = await chrome.storage.local.get(["token", "baseUrl"]);
-  return { token: token ?? null, baseUrl: baseUrl || DEFAULT_BASE };
+  const local = await chrome.storage.local.get(["token", "baseUrl"]);
+  let token = (local.token as string | undefined) ?? null;
+  let baseUrl = (local.baseUrl as string | undefined) || DEFAULT_BASE;
+  // Yerel depo temizlenmişse (tarayıcı "çıkışta veri temizle" vb.) sync
+  // yedeğinden geri yükle — token'ı yeniden yapıştırmak gerekmesin.
+  if (!token) {
+    try {
+      const synced = await chrome.storage.sync.get(["token", "baseUrl"]);
+      if (synced.token) {
+        token = synced.token as string;
+        baseUrl = (synced.baseUrl as string | undefined) || baseUrl;
+        await chrome.storage.local.set({ token, baseUrl }); // yerele geri yaz
+      }
+    } catch {
+      // sync kapalı/kotasızsa sessiz geç.
+    }
+  }
+  return { token, baseUrl };
 }
 
 export async function saveSettings(s: {
   token: string;
   baseUrl?: string;
 }): Promise<void> {
-  await chrome.storage.local.set({
-    token: s.token.trim(),
-    baseUrl: (s.baseUrl?.trim() || DEFAULT_BASE).replace(/\/+$/, ""),
-  });
+  const token = s.token.trim();
+  const baseUrl = (s.baseUrl?.trim() || DEFAULT_BASE).replace(/\/+$/, "");
+  await chrome.storage.local.set({ token, baseUrl });
+  // En iyi çaba yedek: yerel depo temizlenirse getSettings buradan geri yükler.
+  try {
+    await chrome.storage.sync.set({ token, baseUrl });
+  } catch {
+    // yok say.
+  }
 }
 
 export async function clearToken(): Promise<void> {
   await chrome.storage.local.remove("token");
+  try {
+    await chrome.storage.sync.remove("token");
+  } catch {
+    // yok say.
+  }
+}
+
+export async function getSelection(): Promise<Selection> {
+  const { enrollmentId, sessionId } = await chrome.storage.local.get([
+    "enrollmentId",
+    "sessionId",
+  ]);
+  return {
+    enrollmentId: typeof enrollmentId === "number" ? enrollmentId : null,
+    sessionId: typeof sessionId === "number" ? sessionId : null,
+  };
+}
+
+export async function saveSelection(sel: Selection): Promise<void> {
+  await chrome.storage.local.set({
+    enrollmentId: sel.enrollmentId,
+    sessionId: sel.sessionId,
+  });
+}
+
+/** Kayıtlı token'ın maskeli önizlemesi (hatırlandığını göstermek için). */
+export function maskToken(token: string | null): string {
+  if (!token) return "";
+  if (token.length <= 12) return "drx_…";
+  return `${token.slice(0, 7)}…${token.slice(-4)}`;
 }
 
 async function api<T>(
