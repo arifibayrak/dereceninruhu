@@ -54,7 +54,7 @@ export function HideStudentButton({
         render={
           <Button
             variant="destructive"
-            size="sm"
+            size="lg"
             aria-label={`${firstName} gizle`}
           />
         }

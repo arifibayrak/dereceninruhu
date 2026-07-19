@@ -305,7 +305,7 @@ export default async function OgrenciKokpitPage({
             {student.phone && (
               <Button
                 variant="outline"
-                size="sm"
+                size="lg"
                 render={
                   <a
                     href={buildWaLink(
@@ -325,13 +325,13 @@ export default async function OgrenciKokpitPage({
             )}
             {!student.userId && invitePath && (
               <>
-                <CopyInviteButton invitePath={invitePath} size="sm" />
+                <CopyInviteButton invitePath={invitePath} size="lg" />
                 {student.phone && (
                   <WaInviteButton
                     phone={student.phone}
                     studentName={student.fullName.split(" ")[0]}
                     invitePath={invitePath}
-                    size="sm"
+                    size="lg"
                   />
                 )}
               </>

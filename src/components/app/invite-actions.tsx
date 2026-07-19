@@ -13,7 +13,7 @@ export function CopyInviteButton({
   label = "Linki kopyala",
 }: {
   invitePath: string;
-  size?: "xs" | "sm" | "default";
+  size?: "xs" | "sm" | "default" | "lg";
   label?: string;
 }) {
   return (
@@ -46,7 +46,7 @@ export function WaInviteButton({
   phone: string;
   studentName: string;
   invitePath: string;
-  size?: "xs" | "sm" | "default";
+  size?: "xs" | "sm" | "default" | "lg";
 }) {
   return (
     <Button
