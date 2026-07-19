@@ -79,6 +79,10 @@ export async function createStudent(
         field: clean(v.field),
         school: clean(v.school),
         dershane: clean(v.dershane),
+        email: clean(v.email),
+        telegram: clean(v.telegram),
+        city: clean(v.city),
+        birthYear: v.birthYear ?? null,
         inviteCode,
         status: "active",
       })
@@ -136,6 +140,10 @@ export async function updateStudent(
         field: clean(v.field),
         school: clean(v.school),
         dershane: clean(v.dershane),
+        email: clean(v.email),
+        telegram: clean(v.telegram),
+        city: clean(v.city),
+        birthYear: v.birthYear ?? null,
         updatedAt: new Date(),
       })
       .where(eq(students.id, studentId));
@@ -194,6 +202,10 @@ export async function updateMyProfile(
         field: clean(v.field),
         school: clean(v.school),
         dershane: clean(v.dershane),
+        email: clean(v.email),
+        telegram: clean(v.telegram),
+        city: clean(v.city),
+        birthYear: v.birthYear ?? null,
         updatedAt: new Date(),
       })
       .where(eq(students.id, student.id));

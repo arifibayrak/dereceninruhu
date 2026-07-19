@@ -62,6 +62,10 @@ const FIELD_NAMES: FieldName[] = [
   "school",
   "dershane",
   "parentPhone",
+  "email",
+  "telegram",
+  "city",
+  "birthYear",
 ];
 
 /** Lead'den "Öğrenciye çevir" ile gelen ön dolgu (querystring). */
@@ -91,6 +95,10 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
       school: "",
       dershane: "",
       parentPhone: "",
+      email: "",
+      telegram: "",
+      city: "",
+      birthYear: "",
     },
   });
   const { errors } = form.formState;
@@ -286,6 +294,31 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
           </Field>
         </div>
 
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field data-invalid={errors.email ? true : undefined}>
+            <FieldLabel htmlFor="ogr-email">E-posta</FieldLabel>
+            <Input
+              id="ogr-email"
+              type="email"
+              inputMode="email"
+              placeholder="ornek@eposta.com"
+              aria-invalid={errors.email ? true : undefined}
+              {...form.register("email")}
+            />
+            <FieldError errors={[errors.email]} />
+          </Field>
+          <Field data-invalid={errors.telegram ? true : undefined}>
+            <FieldLabel htmlFor="ogr-telegram">Telegram</FieldLabel>
+            <Input
+              id="ogr-telegram"
+              placeholder="@kullaniciadi"
+              aria-invalid={errors.telegram ? true : undefined}
+              {...form.register("telegram")}
+            />
+            <FieldError errors={[errors.telegram]} />
+          </Field>
+        </div>
+
         <Field data-invalid={errors.targetText ? true : undefined}>
           <FieldLabel htmlFor="ogr-hedef">Hedef</FieldLabel>
           <Input
@@ -325,6 +358,27 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
             <FieldLabel htmlFor="ogr-dershane">Dershane</FieldLabel>
             <Input id="ogr-dershane" {...form.register("dershane")} />
             <FieldError errors={[errors.dershane]} />
+          </Field>
+          <Field data-invalid={errors.city ? true : undefined}>
+            <FieldLabel htmlFor="ogr-sehir">Şehir</FieldLabel>
+            <Input
+              id="ogr-sehir"
+              placeholder="Örn. İstanbul"
+              {...form.register("city")}
+            />
+            <FieldError errors={[errors.city]} />
+          </Field>
+          <Field data-invalid={errors.birthYear ? true : undefined}>
+            <FieldLabel htmlFor="ogr-dogum">Doğum yılı</FieldLabel>
+            <Input
+              id="ogr-dogum"
+              type="number"
+              inputMode="numeric"
+              placeholder="Örn. 2008"
+              aria-invalid={errors.birthYear ? true : undefined}
+              {...form.register("birthYear")}
+            />
+            <FieldError errors={[errors.birthYear]} />
           </Field>
         </div>
 

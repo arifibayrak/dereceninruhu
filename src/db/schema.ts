@@ -57,6 +57,12 @@ export const users = sqliteTable("users", {
   role: text("role", { enum: ["admin", "coach", "student"] })
     .notNull()
     .default("student"),
+  /** Koç iletişim/tanıtım — Telegram kullanıcı adı (@ile ya da sade). */
+  telegram: text("telegram"),
+  /** Koç sosyal — Instagram kullanıcı adı/bağlantısı. */
+  instagram: text("instagram"),
+  /** Koç ödeme bilgisi — IBAN (hassas; yalnız yönetim görünümü). */
+  iban: text("iban"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -231,6 +237,14 @@ export const students = sqliteTable(
     dershane: text("dershane"),
     phone: text("phone"),
     parentPhone: text("parent_phone"),
+    /** Öğrenci gerçek e-postası (auth'taki telefon-türevi e-posta DEĞİL). */
+    email: text("email"),
+    /** Telegram kullanıcı adı. */
+    telegram: text("telegram"),
+    /** Şehir / il. */
+    city: text("city"),
+    /** Doğum yılı (yaş/sınıf bağlamı). */
+    birthYear: integer("birth_year"),
     inviteCode: text("invite_code").unique(),
     status: text("status", { enum: ["active", "inactive", "alumni"] })
       .notNull()

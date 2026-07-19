@@ -4,11 +4,17 @@ import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { getAuth } from "@/lib/auth";
-import { createCoachSchema, setupAdminSchema } from "@/lib/validation";
+import { normalizePhone } from "@/lib/phone";
+import {
+  createCoachSchema,
+  setupAdminSchema,
+  updateMyContactSchema,
+} from "@/lib/validation";
 import {
   actionError,
   guarded,
   requireAdmin,
+  requireCoach,
   type ActionResult,
 } from "@/actions/_guard";
 
@@ -93,7 +99,8 @@ export async function createCoach(
         fieldErrorsOf(parsed.error.issues),
       );
     }
-    const { name, email, password } = parsed.data;
+    const { name, email, password, phone, telegram, instagram, iban } =
+      parsed.data;
     const db = getDb();
 
     let userId: string;
@@ -108,9 +115,47 @@ export async function createCoach(
 
     await db
       .update(users)
-      .set({ role: "coach", updatedAt: new Date() })
+      .set({
+        role: "coach",
+        phoneNumber: phone ? normalizePhone(phone) : null,
+        telegram: telegram?.trim() || null,
+        instagram: instagram?.trim() || null,
+        iban: iban?.trim() || null,
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, userId));
 
     return { ok: true, data: { email } };
+  });
+}
+
+/** Koç kendi iletişim/ödeme bilgisini günceller (telefon/telegram/instagram/IBAN). */
+export async function updateMyContact(
+  input: unknown,
+): Promise<ActionResult<void>> {
+  return guarded(async () => {
+    const user = await requireCoach();
+    const parsed = updateMyContactSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError(
+        "Lütfen formu kontrol edin.",
+        fieldErrorsOf(parsed.error.issues),
+      );
+    }
+    const { phone, telegram, instagram, iban } = parsed.data;
+    const db = getDb();
+
+    await db
+      .update(users)
+      .set({
+        phoneNumber: phone ? normalizePhone(phone) : null,
+        telegram: telegram?.trim() || null,
+        instagram: instagram?.trim() || null,
+        iban: iban?.trim() || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    return { ok: true, data: undefined };
   });
 }

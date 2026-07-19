@@ -31,7 +31,15 @@ export function CoachAddForm({
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<CreateCoachInput>({
     resolver: zodResolver(createCoachSchema),
-    defaultValues: { name: initialName, email: initialEmail, password: "" },
+    defaultValues: {
+      name: initialName,
+      email: initialEmail,
+      password: "",
+      phone: "",
+      telegram: "",
+      instagram: "",
+      iban: "",
+    },
   });
   const { errors } = form.formState;
 
@@ -41,9 +49,18 @@ export function CoachAddForm({
     setSubmitting(false);
     if (!res.ok) {
       if (res.fieldErrors) {
+        const known = [
+          "name",
+          "email",
+          "password",
+          "phone",
+          "telegram",
+          "instagram",
+          "iban",
+        ] as const;
         for (const [name, message] of Object.entries(res.fieldErrors)) {
-          if (name === "name" || name === "email" || name === "password") {
-            form.setError(name, { message });
+          if ((known as readonly string[]).includes(name)) {
+            form.setError(name as (typeof known)[number], { message });
           }
         }
       }
@@ -100,6 +117,55 @@ export function CoachAddForm({
           Şifreyi yeni koça güvenli bir kanaldan ilet.
         </FieldDescription>
       </Field>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field data-invalid={errors.phone ? true : undefined}>
+          <FieldLabel htmlFor="koc-tel">Telefon</FieldLabel>
+          <Input
+            id="koc-tel"
+            inputMode="tel"
+            autoComplete="off"
+            placeholder="5XX XXX XX XX"
+            aria-invalid={errors.phone ? true : undefined}
+            {...form.register("phone")}
+          />
+          <FieldError errors={[errors.phone]} />
+        </Field>
+        <Field data-invalid={errors.telegram ? true : undefined}>
+          <FieldLabel htmlFor="koc-telegram">Telegram</FieldLabel>
+          <Input
+            id="koc-telegram"
+            autoComplete="off"
+            placeholder="@kullaniciadi"
+            aria-invalid={errors.telegram ? true : undefined}
+            {...form.register("telegram")}
+          />
+          <FieldError errors={[errors.telegram]} />
+        </Field>
+        <Field data-invalid={errors.instagram ? true : undefined}>
+          <FieldLabel htmlFor="koc-instagram">Instagram</FieldLabel>
+          <Input
+            id="koc-instagram"
+            autoComplete="off"
+            placeholder="@kullaniciadi"
+            aria-invalid={errors.instagram ? true : undefined}
+            {...form.register("instagram")}
+          />
+          <FieldError errors={[errors.instagram]} />
+        </Field>
+        <Field data-invalid={errors.iban ? true : undefined}>
+          <FieldLabel htmlFor="koc-iban">IBAN</FieldLabel>
+          <Input
+            id="koc-iban"
+            autoComplete="off"
+            placeholder="TR__ ____ ____ ____ ____ __"
+            aria-invalid={errors.iban ? true : undefined}
+            {...form.register("iban")}
+          />
+          <FieldError errors={[errors.iban]} />
+        </Field>
+      </div>
+
       <Button type="submit" disabled={submitting} className="self-start">
         <UserPlusIcon data-icon="inline-start" />
         {submitting ? "Oluşturuluyor…" : "Koç ekle"}
