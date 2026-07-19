@@ -77,3 +77,29 @@ export async function revokeExtensionToken(
     return { ok: true, data: { revoked: true } };
   });
 }
+
+/** Koç — kendi token'ını listeden kalıcı siler (self-scoped; aktif ya da iptal
+ *  edilmiş fark etmez). Aktif bir token'ı silmek erişimini de sonlandırır. */
+export async function deleteExtensionToken(
+  id: number,
+): Promise<ActionResult<{ deleted: true }>> {
+  return guarded(async () => {
+    const coach = await requireCoach();
+    if (!Number.isInteger(id) || id <= 0) return actionError("Geçersiz token.");
+    const db = getDb();
+    const scoped = and(
+      eq(extensionTokens.id, id),
+      eq(extensionTokens.coachUserId, coach.id),
+    );
+    const existing = await db.query.extensionTokens.findFirst({
+      where: scoped,
+      columns: { id: true },
+    });
+    if (!existing) return actionError("Token bulunamadı.");
+
+    await db.delete(extensionTokens).where(scoped);
+
+    revalidatePath("/koc/eklenti");
+    return { ok: true, data: { deleted: true } };
+  });
+}

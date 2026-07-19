@@ -6,11 +6,13 @@ import {
   CopyIcon,
   KeyRoundIcon,
   PlusIcon,
+  Trash2Icon,
   TriangleAlertIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  deleteExtensionToken,
   mintExtensionToken,
   revokeExtensionToken,
 } from "@/actions/extension-tokens";
@@ -68,6 +70,18 @@ export function ExtensionTokensManager({
       const res = await revokeExtensionToken(id);
       if (res.ok) {
         toast.success("Token iptal edildi.");
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  };
+
+  const remove = (id: number) => {
+    startTransition(async () => {
+      const res = await deleteExtensionToken(id);
+      if (res.ok) {
+        toast.success("Token silindi.");
         router.refresh();
       } else {
         toast.error(res.error);
@@ -180,7 +194,18 @@ export function ExtensionTokensManager({
                     >
                       İptal et
                     </Button>
-                  ) : null}
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-destructive hover:text-destructive"
+                      disabled={pending}
+                      onClick={() => remove(t.id)}
+                    >
+                      <Trash2Icon className="size-4" />
+                      Sil
+                    </Button>
+                  )}
                 </div>
               );
             })

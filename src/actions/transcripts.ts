@@ -76,6 +76,34 @@ export async function createPastedTranscript(
   });
 }
 
+/**
+ * Canlı (cihaz-içi) transkript kaydı. Ses TARAYICIDA (WebGPU Whisper) yazıya
+ * çevrilir; buraya YALNIZ üretilen metin gelir — ses hiçbir zaman yüklenmez,
+ * KVKK ses-kaydı onayı bu yola uygulanmaz (yapıştırma ile aynı). Çekirdek
+ * paylaşılır; `source="live"`.
+ */
+export async function createLiveTranscript(
+  input: unknown,
+): Promise<ActionResult<{ transcriptId: number }>> {
+  return guarded(async () => {
+    const user = await requireCoach();
+    const parsed = pasteSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
+    }
+    const { enrollmentId, coachingSessionId, rawText } = parsed.data;
+    const db = getDb();
+    await assertEnrollmentAccess(db, enrollmentId, user);
+
+    const { transcriptId } = await insertTranscriptCore(
+      db,
+      { enrollmentId, coachingSessionId, rawText, source: "live" },
+      user,
+    );
+    return { ok: true, data: { transcriptId } };
+  });
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Ses yolu: kayıt yükle -> R2 + Whisper (parça parça) -> transkript          */
 /*  Parçalama istemcide yapılır (16 kHz mono WAV); burada her parça R2'ye       */
