@@ -1,11 +1,14 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, getR2 } from "@/db";
 import { aiProposals, transcripts } from "@/db/schema";
-import { extractFromTranscript } from "@/lib/ai/extraction";
 import { transcribeChunk } from "@/lib/ai/openrouter";
+import {
+  insertTranscriptCore,
+  runExtractionCore,
+} from "@/actions/_transcripts-core";
 import {
   aiProposalSchema,
   reconstructActionInput,
@@ -63,24 +66,13 @@ export async function createPastedTranscript(
     const db = getDb();
     await assertEnrollmentAccess(db, enrollmentId, user);
 
-    const wordCount = rawText.split(/\s+/).filter(Boolean).length;
-    const [row] = await db
-      .insert(transcripts)
-      .values({
-        enrollmentId,
-        coachingSessionId: coachingSessionId ?? null,
-        source: "paste",
-        rawText,
-        language: "tr",
-        wordCount,
-        status: "transcribed",
-        // Yapıştırılan metin bir ses kaydı değil; KVKK ses-kaydı onayı bu yola uygulanmaz.
-        consentState: "granted",
-        createdByUserId: user.id,
-      })
-      .returning({ id: transcripts.id });
-
-    return { ok: true, data: { transcriptId: row.id } };
+    // Ortak çekirdek: yapıştır (source="paste") ve eklenti (source="live") aynı yolu kullanır.
+    const { transcriptId } = await insertTranscriptCore(
+      db,
+      { enrollmentId, coachingSessionId, rawText, source: "paste" },
+      user,
+    );
+    return { ok: true, data: { transcriptId } };
   });
 }
 
@@ -212,63 +204,13 @@ export async function runTranscriptExtraction(
     const db = getDb();
     const t = await db.query.transcripts.findFirst({
       where: eq(transcripts.id, transcriptId),
+      columns: { id: true, enrollmentId: true },
     });
     if (!t) return actionError("Transkript bulunamadı.");
     await assertEnrollmentAccess(db, t.enrollmentId, user);
-    if (!t.rawText?.trim()) return actionError("Transkript metni boş.");
 
-    try {
-      const result = await extractFromTranscript({
-        enrollmentId: t.enrollmentId,
-        transcriptText: t.rawText,
-      });
-
-      await db
-        .delete(aiProposals)
-        .where(
-          and(
-            eq(aiProposals.transcriptId, transcriptId),
-            eq(aiProposals.status, "proposed"),
-          ),
-        );
-
-      if (result.proposals.length > 0) {
-        await db.insert(aiProposals).values(
-          result.proposals.map((p) => ({
-            transcriptId,
-            enrollmentId: t.enrollmentId,
-            kind: p.kind,
-            // Date -> ISO string; apply anında action'ın coerce.date'i geri çevirir.
-            payloadJson: JSON.stringify(p.payload),
-            sourceQuote: p.sourceQuote ?? null,
-            confidence: p.confidence ?? null,
-            status: "proposed" as const,
-          })),
-        );
-      }
-
-      await db
-        .update(transcripts)
-        .set({
-          digest: result.digest || null,
-          status: "extracted",
-          errorMessage: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(transcripts.id, transcriptId));
-
-      return { ok: true, data: { proposalCount: result.proposals.length } };
-    } catch (e) {
-      await db
-        .update(transcripts)
-        .set({
-          status: "failed",
-          errorMessage: e instanceof Error ? e.message.slice(0, 500) : null,
-          updatedAt: new Date(),
-        })
-        .where(eq(transcripts.id, transcriptId));
-      throw e;
-    }
+    // Çıkarım mantığı çekirdekte; bearer route (eklenti) de aynı çekirdeği çağırır.
+    return { ok: true, data: await runExtractionCore(db, transcriptId) };
   });
 }
 

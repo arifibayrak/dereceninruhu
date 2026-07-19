@@ -1,0 +1,4 @@
+# Bu dosya `extension/`'ı KENDİ pnpm kök projesi yapar; pnpm yukarı çıkıp ana
+# uygulamanın lockfile'ını kullanmaz. Böylece burada düz `pnpm install` yeterli
+# (ana repo bir workspace değil; bu marker olmadan pnpm eklenti deps'ini kurmaz).
+packages: []

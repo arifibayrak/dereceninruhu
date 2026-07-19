@@ -13,7 +13,11 @@
   },
   "vars": {
     // Must match where the app is served (Better Auth baseURL + trusted origin).
-    "BETTER_AUTH_URL": "https://dereceninruhu.com"
+    "BETTER_AUTH_URL": "https://dereceninruhu.com",
+    // Canlı-transkript tarayıcı eklentisi için CORS allowlist'i (virgülle çoklu).
+    // Sabit id, extension/wxt.config.ts'teki manifest `key`'inden türetilir.
+    // Mağazadan yayınlarsan, mağaza id'sini de virgülle buraya ekle.
+    "EXTENSION_ORIGIN": "chrome-extension://chgfdngapkpilefnccpijdfomddeepjh"
   },
   "routes": [
     { "pattern": "dereceninruhu.com", "custom_domain": true }
