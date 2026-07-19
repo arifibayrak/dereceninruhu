@@ -52,7 +52,11 @@ export function TestimonialCard({
         className
       )}
     >
-      <div className="flex items-center gap-1" aria-label={`${stars} yıldız`}>
+      <div
+        className="flex items-center gap-1"
+        role="img"
+        aria-label={`${stars} yıldız`}
+      >
         {Array.from({ length: stars }).map((_, i) => (
           <StarIcon key={i} className="size-3.5 fill-gold text-gold" />
         ))}
