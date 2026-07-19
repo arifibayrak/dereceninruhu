@@ -118,9 +118,13 @@ export function ReconcileForm() {
       return;
     }
     toast.success(
-      `${formatInt(res.data.recorded)} ödeme kaydedildi${
-        res.data.skipped > 0 ? ` · ${formatInt(res.data.skipped)} atlandı (zaten var)` : ""
-      }`,
+      `${formatInt(res.data.recorded)} ödeme kaydedildi` +
+        (res.data.linked > 0
+          ? ` · ${formatInt(res.data.linked)} faturaya bağlandı`
+          : "") +
+        (res.data.skipped > 0
+          ? ` · ${formatInt(res.data.skipped)} atlandı (zaten var)`
+          : ""),
     );
     setPreview(null);
     setRows([]);

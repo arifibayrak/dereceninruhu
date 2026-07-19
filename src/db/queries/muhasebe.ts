@@ -50,7 +50,8 @@ export type PaymentRow = {
   note: string | null;
 };
 
-const OPEN_STATUSES: InvoiceStatus[] = ["taslak", "gönderildi", "gecikmiş"];
+/** Açık (henüz kapanmamış) fatura durumları — ödeme bekleyen. */
+export const OPEN_STATUSES: InvoiceStatus[] = ["taslak", "gönderildi", "gecikmiş"];
 
 function isOverdueRow(
   status: InvoiceStatus,

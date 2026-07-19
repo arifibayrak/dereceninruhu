@@ -1,12 +1,12 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
 import { getDb } from "@/db";
-import { enrollments, payments } from "@/db/schema";
-import { getEnrollmentOptions } from "@/db/queries/muhasebe";
+import { enrollments, invoices, payments } from "@/db/schema";
+import { getEnrollmentOptions, OPEN_STATUSES } from "@/db/queries/muhasebe";
 import {
   matchSender,
   parseStatementCsv,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/reconcile";
 import { extractTransfersFromText } from "@/lib/ai/statement";
 import { startOfTrtDay } from "@/lib/dates";
+import { resolveInvoiceStatus } from "@/lib/muhasebe";
 import {
   actionError,
   guarded,
@@ -95,6 +96,69 @@ export async function previewStatement(
   });
 }
 
+/** Kaydın EN ESKİ açık (bakiyesi kalan) faturası — otomatik eşleme hedefi. */
+async function findOldestOpenInvoiceId(
+  enrollmentId: number,
+): Promise<number | null> {
+  const db = getDb();
+  const open = await db
+    .select({ id: invoices.id, amountKurus: invoices.amountKurus })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.enrollmentId, enrollmentId),
+        inArray(invoices.status, OPEN_STATUSES),
+      ),
+    )
+    .orderBy(asc(invoices.issuedOn), asc(invoices.id));
+  if (open.length === 0) return null;
+
+  const ids = open.map((o) => o.id);
+  const paidRows = await db
+    .select({
+      invoiceId: payments.invoiceId,
+      paid: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
+    })
+    .from(payments)
+    .where(inArray(payments.invoiceId, ids))
+    .groupBy(payments.invoiceId);
+  const paidBy = new Map<number, number>();
+  for (const r of paidRows) {
+    if (r.invoiceId != null) paidBy.set(r.invoiceId, Number(r.paid));
+  }
+  // En eskiden yeniye: ilk bakiyesi kalan faturayı döndür.
+  for (const inv of open) {
+    if (inv.amountKurus - (paidBy.get(inv.id) ?? 0) > 0) return inv.id;
+  }
+  return null;
+}
+
+/** Faturanın ödeme durumunu yeniden hesapla (ödeme bağlandıktan sonra). */
+async function recomputeInvoice(invoiceId: number, now: Date): Promise<void> {
+  const db = getDb();
+  const invoice = await db.query.invoices.findFirst({
+    where: eq(invoices.id, invoiceId),
+  });
+  if (!invoice) return;
+  const [paidRow] = await db
+    .select({ paid: sql<number>`coalesce(sum(${payments.amountKurus}), 0)` })
+    .from(payments)
+    .where(eq(payments.invoiceId, invoiceId));
+  const next = resolveInvoiceStatus({
+    current: invoice.status,
+    amountKurus: invoice.amountKurus,
+    paidKurus: Number(paidRow?.paid ?? 0),
+    dueOn: invoice.dueOn,
+    now,
+  });
+  if (next !== invoice.status) {
+    await db
+      .update(invoices)
+      .set({ status: next, updatedAt: new Date() })
+      .where(eq(invoices.id, invoiceId));
+  }
+}
+
 const commitSchema = z.object({
   rows: z
     .array(
@@ -111,15 +175,17 @@ const commitSchema = z.object({
 
 export async function commitReconciliation(
   input: unknown,
-): Promise<ActionResult<{ recorded: number; skipped: number }>> {
+): Promise<ActionResult<{ recorded: number; skipped: number; linked: number }>> {
   return guarded(async () => {
     const user = await requireAdmin();
     const parsed = commitSchema.safeParse(input);
     if (!parsed.success) return actionError("Geçersiz giriş.");
     const db = getDb();
+    const now = new Date();
 
     let recorded = 0;
     let skipped = 0;
+    let linked = 0;
     for (const row of parsed.data.rows) {
       const enr = await db.query.enrollments.findFirst({
         where: eq(enrollments.id, row.enrollmentId),
@@ -147,9 +213,12 @@ export async function commitReconciliation(
         continue;
       }
 
+      // Ödemeyi öğrencinin EN ESKİ açık faturasına otomatik bağla (varsa).
+      const invoiceId = await findOldestOpenInvoiceId(row.enrollmentId);
+
       await db.insert(payments).values({
         enrollmentId: row.enrollmentId,
-        invoiceId: null,
+        invoiceId,
         amountKurus: row.amountKurus,
         paidOn,
         method: "havale",
@@ -157,10 +226,15 @@ export async function commitReconciliation(
         note: row.senderName ? `Ekstre mutabakatı · ${row.senderName}` : "Ekstre mutabakatı",
       });
       recorded++;
+      if (invoiceId) {
+        await recomputeInvoice(invoiceId, now);
+        linked++;
+      }
     }
 
     revalidatePath("/koc/muhasebe");
     revalidatePath("/koc/muhasebe/odemeler");
-    return { ok: true, data: { recorded, skipped } };
+    revalidatePath("/koc/muhasebe/faturalar");
+    return { ok: true, data: { recorded, skipped, linked } };
   });
 }
