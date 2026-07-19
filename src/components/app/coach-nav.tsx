@@ -11,6 +11,7 @@ import {
   LayoutDashboardIcon,
   LibraryIcon,
   MegaphoneIcon,
+  MicIcon,
   NewspaperIcon,
   SendHorizontalIcon,
   SettingsIcon,
@@ -75,6 +76,10 @@ const ENTRIES: NavEntry[] = [
   {
     kind: "link",
     item: { href: "/koc/gorusmeler", label: "Görüşmeler", icon: CalendarDaysIcon },
+  },
+  {
+    kind: "link",
+    item: { href: "/koc/canli-transkript", label: "Canlı", icon: MicIcon },
   },
   {
     kind: "link",
