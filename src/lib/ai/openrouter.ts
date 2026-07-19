@@ -4,22 +4,18 @@ import { getEnv } from "@/db";
 /**
  * OpenRouter istemcisi — tüm AI (transkript + LLM) tek anahtardan geçer.
  *
- * Model kimlikleri: bilinçli olarak UCUZ AÇIK modeller (bütçe ~$5-15/ay). Türkçe
- * kalite yetersiz kalırsa KAÇIŞ KAPISI tek satır: aşağıdaki slug'ı bir frontier
- * modelle değiştirin (ör. "anthropic/claude-haiku-4.5") — entegrasyon değişmez.
+ * Metin LLM'leri Claude Haiku 4.5'te birleşik: hız + Türkçe kalitesi +
+ * güvenilir araç çağırma. Bütçe için tekrar ucuz açık modele dönmek isteyen
+ * ilgili slug'ı "meta-llama/llama-3.3-70b-instruct" yapar — entegrasyon değişmez.
  */
 export const AI_MODELS = {
   /** Transkript -> yapılandırılmış öneri çıkarımı (doğruluk kritik). */
-  extraction: "meta-llama/llama-3.3-70b-instruct",
+  extraction: "anthropic/claude-haiku-4.5",
   /** Öğrenci yolculuk sohbeti. */
-  chat: "meta-llama/llama-3.3-70b-instruct",
-  /**
-   * Koç ajanı (araç çağırma). İnteraktif, düşük hacimli yüzey — hız + Türkçe
-   * kalitesi + güvenilir araç çağırma için frontier model. Bütçe için tekrar
-   * ucuz modele dönmek: slug'ı "meta-llama/llama-3.3-70b-instruct" yap.
-   */
+  chat: "anthropic/claude-haiku-4.5",
+  /** Koç ajanı (araç çağırma). İnteraktif — hız + güvenilir araç çağırma. */
   agent: "anthropic/claude-haiku-4.5",
-  /** Ses -> metin (Türkçe). */
+  /** Ses -> metin (Türkçe) — ayrı ses modeli; Haiku ses işleyemez. */
   whisper: "openai/whisper-large-v3-turbo",
 } as const;
 
