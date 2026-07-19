@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { UserRoundIcon } from "lucide-react";
 
 import { getSession, type Role } from "@/lib/session";
+import { FloatingAssistant } from "@/components/app/floating-assistant";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { StudentBottomNav } from "@/components/app/student-nav";
 import { Logo } from "@/components/brand/logo";
@@ -55,6 +56,8 @@ export default async function OgrenciLayout({
         {children}
       </main>
       <StudentBottomNav />
+      {/* Koç önizlemesinde öğrenci sohbeti (kendi verisi) çalışmaz; yalnız öğrenciye göster. */}
+      {!isCoachPreview && <FloatingAssistant role="student" />}
     </div>
   );
 }

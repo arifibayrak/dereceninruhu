@@ -14,18 +14,22 @@ import {
 } from "lucide-react";
 
 import {
+  getCohort,
   getPublicCoach,
   getPublicFaqs,
   getPublicPackages,
   getPublicTestimonials,
 } from "@/db/queries/cms";
 import { coachContent, coachStats } from "@/db/seed/cms-content";
+import { cohortView, enrollmentOpen } from "@/lib/cohort";
 import { formatKurus } from "@/lib/format";
+import { CohortBanner } from "@/components/marketing/cohort-banner";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { ExamCountdown } from "@/components/marketing/exam-countdown";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { HeroVisual } from "@/components/marketing/hero-visual";
 import { ProofStrip } from "@/components/marketing/proof-strip";
+import { ScarcityBadge } from "@/components/marketing/scarcity-badge";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { TestimonialCard } from "@/components/brand/testimonial-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -89,15 +93,24 @@ function initialsOf(name: string) {
 }
 
 export default async function HomePage() {
-  const [testimonials, packages, faqs, coach] = await Promise.all([
+  const [testimonials, packages, faqs, coach, cohort] = await Promise.all([
     getPublicTestimonials(),
     getPublicPackages(),
     getPublicFaqs(),
     getPublicCoach(),
+    getCohort(),
   ]);
 
   const featured = testimonials.slice(0, 6);
   const strip = testimonials.slice(6);
+
+  const cohortVm = cohortView(cohort);
+  const enrollOpen = enrollmentOpen(cohort);
+  // Kayıtlar kapalıysa ana CTA bekleme listesine döner (genuine FOMO).
+  const heroCtaHref = enrollOpen ? "/iletisim" : "/bekleme-listesi";
+  const heroCtaLabel = enrollOpen
+    ? "Ücretsiz Ön Görüşme"
+    : "Bekleme listesine katıl";
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-20 px-4 py-10 sm:px-6 md:gap-28 md:py-16">
@@ -123,10 +136,18 @@ export default async function HomePage() {
               Derece yapmış bir koçla haftalık program, soru takibi ve deneme
               analizi. Motivasyon konuşması değil; ölçülen, görünen ilerleme.
             </p>
+            {cohortVm.visible && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/10 px-3 py-1 text-xs font-semibold text-gold-foreground ring-1 ring-gold/25 dark:text-gold">
+                <span aria-hidden className="size-1.5 rounded-full bg-gold" />
+                {cohortVm.isFull
+                  ? `${cohortVm.label} doldu · bekleme listesi açık`
+                  : `${cohortVm.label} · sınırlı kontenjan`}
+              </span>
+            )}
             <div className="flex flex-wrap items-center gap-3">
-              <Button size="lg" render={<Link href="/iletisim" />}>
+              <Button size="lg" render={<Link href={heroCtaHref} />}>
                 <SparklesIcon data-icon="inline-start" />
-                Ücretsiz Ön Görüşme
+                {heroCtaLabel}
               </Button>
               <Button size="lg" variant="outline" render={<Link href="/nasil-calisir" />}>
                 Nasıl çalışır?
@@ -151,6 +172,9 @@ export default async function HomePage() {
       <section className="-mt-8 md:-mt-14">
         <ProofStrip credentials={coach.achievements.slice(1, 4)} />
       </section>
+
+      {/* ------------------------------ Dönem/kontenjan ---------------------- */}
+      <CohortBanner cohort={cohort} />
 
       {/* ---------------------------- Nasıl çalışır -------------------------- */}
       <section className="flex flex-col gap-8">
@@ -377,6 +401,15 @@ export default async function HomePage() {
                 </span>
                 {i === 1 && <Badge>En popüler</Badge>}
               </div>
+              {i === 1 &&
+                cohortVm.visible &&
+                !cohortVm.isFull &&
+                cohortVm.remaining != null && (
+                  <ScarcityBadge
+                    remaining={cohortVm.remaining}
+                    className="w-fit"
+                  />
+                )}
               <div className="flex items-baseline gap-1.5">
                 <span className="font-heading text-2xl font-bold tabular-nums">
                   {formatKurus(pkg.priceKurus)}

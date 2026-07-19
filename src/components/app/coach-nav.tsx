@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDaysIcon,
+  ClipboardCheckIcon,
+  ClockIcon,
   InboxIcon,
   LayoutDashboardIcon,
   LibraryIcon,
@@ -11,6 +13,7 @@ import {
   NewspaperIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   UsersIcon,
   WalletIcon,
   type LucideIcon,
@@ -30,7 +33,9 @@ type NavLink = {
 const LINKS: NavLink[] = [
   { href: "/koc", label: "Panel", icon: LayoutDashboardIcon, exact: true },
   { href: "/koc/ogrenciler", label: "Öğrenciler", icon: UsersIcon, exact: false },
+  { href: "/koc/asistan", label: "Asistan", icon: SparklesIcon, exact: false },
   { href: "/koc/leadler", label: "Leadler", icon: InboxIcon, exact: false },
+  { href: "/koc/bekleme", label: "Bekleme", icon: ClockIcon, exact: false },
   {
     href: "/koc/gorusmeler",
     label: "Görüşmeler",
@@ -45,6 +50,13 @@ const LINKS: NavLink[] = [
     href: "/koc/site",
     label: "Site",
     icon: MegaphoneIcon,
+    exact: false,
+    adminOnly: true,
+  },
+  {
+    href: "/koc/basvurular",
+    label: "Başvurular",
+    icon: ClipboardCheckIcon,
     exact: false,
     adminOnly: true,
   },

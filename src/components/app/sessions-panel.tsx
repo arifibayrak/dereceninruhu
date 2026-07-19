@@ -10,6 +10,7 @@ import {
   PencilIcon,
   PlusIcon,
   UserXIcon,
+  VideoIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,6 +44,8 @@ export type SessionItem = {
   studentVisibleNote: string | null;
   nextPlanId: number | null;
   nextPlanWeekKey: string | null;
+  meetingUrl: string | null;
+  meetingProvider: string | null;
 };
 
 type Props = {
@@ -280,6 +283,18 @@ function SessionCard({
         </p>
       )}
       <div className="flex flex-wrap items-center gap-1.5">
+        {s.meetingUrl && (
+          <Button
+            size="xs"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            render={
+              <a href={s.meetingUrl} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <VideoIcon data-icon="inline-start" />
+            Görüşmeye katıl
+          </Button>
+        )}
         {onHeld && (
           <Button size="xs" variant="outline" disabled={pending} onClick={onHeld}>
             <CheckIcon data-icon="inline-start" />
@@ -360,6 +375,7 @@ function SessionForm({
   );
   const [note, setNote] = useState(session?.studentVisibleNote ?? "");
   const [summary, setSummary] = useState(session?.summary ?? "");
+  const [meetingUrl, setMeetingUrl] = useState(session?.meetingUrl ?? "");
 
   const submit = async () => {
     if (!date || !time) {
@@ -375,12 +391,14 @@ function SessionForm({
             enrollmentId,
             scheduledAt,
             studentVisibleNote: note,
+            meetingUrl,
           })
         : await updateSession({
             sessionId: session!.id,
             scheduledAt,
             studentVisibleNote: note,
             summary,
+            meetingUrl,
           });
     setSaving(false);
     if (res.ok) {
@@ -416,6 +434,20 @@ function SessionForm({
           />
         </Field>
       </div>
+      <Field>
+        <FieldLabel htmlFor="gorusme-link">Toplantı linki</FieldLabel>
+        <Input
+          id="gorusme-link"
+          type="url"
+          inputMode="url"
+          placeholder="https://meet.google.com/… veya Zoom linki"
+          value={meetingUrl}
+          onChange={(e) => setMeetingUrl(e.target.value)}
+        />
+        <FieldDescription>
+          Google Meet / Zoom linki — öğrenci &quot;Görüşmeye katıl&quot; ile açar.
+        </FieldDescription>
+      </Field>
       <Field>
         <FieldLabel htmlFor="gorusme-not">Öğrenciye not</FieldLabel>
         <Textarea

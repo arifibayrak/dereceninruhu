@@ -35,3 +35,38 @@ export const bulkAssignCoachSchema = z.object({
   coachUserId: z.string().min(1).nullable(),
 });
 export type BulkAssignCoachInput = z.infer<typeof bulkAssignCoachSchema>;
+
+/* ------------------------ Dönem / kontenjan ayarları ---------------------- */
+
+export const cohortStatusSchema = z.enum([
+  "acik",
+  "son_kontenjan",
+  "dolu",
+  "kapali",
+]);
+export type CohortStatus = z.infer<typeof cohortStatusSchema>;
+
+/**
+ * Yönetici dönem/kontenjan ayarını günceller. Buradaki sayılar sitede
+ * gösterilen PAZARLAMA değerleridir — gerçek kapasite/kayıt değil.
+ * `displayCapacity` boş bırakılırsa site yalnız "sınırlı kontenjan" ifadesini
+ * gösterir (sayı yok).
+ */
+export const updateCohortSettingsSchema = z.object({
+  donemLabel: z.string().trim().min(2, "Dönem adı gerekli.").max(120),
+  displayCapacity: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(9999)
+    .nullable()
+    .optional(),
+  displayFilled: z.coerce.number().int().min(0).max(9999),
+  closesOn: z.coerce.date().nullable().optional(),
+  status: cohortStatusSchema,
+  waitlistOpen: z.coerce.boolean(),
+  scarcityVisible: z.coerce.boolean(),
+});
+export type UpdateCohortSettingsInput = z.infer<
+  typeof updateCohortSettingsSchema
+>;

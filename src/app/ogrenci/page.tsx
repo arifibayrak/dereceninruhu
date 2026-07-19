@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarClockIcon } from "lucide-react";
+import { CalendarClockIcon, SparklesIcon, VideoIcon } from "lucide-react";
 
 import {
   getEnrollmentDetailByUserId,
@@ -150,7 +151,33 @@ export default async function OgrenciBugunPage() {
               : "Planlanmış görüşme yok — koçun seninle iletişime geçecek."}
           </span>
         </div>
+        {nextSession?.meetingUrl && (
+          <a
+            href={nextSession.meetingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <VideoIcon className="size-4" />
+            Katıl
+          </a>
+        )}
       </div>
+
+      <Link
+        href="/ogrenci/asistan"
+        className="flex items-center gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10 hover:ring-foreground/20"
+      >
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <SparklesIcon className="size-4 text-primary" />
+        </span>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-sm font-medium">Asistana sor</span>
+          <span className="text-xs text-muted-foreground">
+            Gelişimin hakkında merak ettiğini sor.
+          </span>
+        </div>
+      </Link>
 
       <div className="flex flex-col gap-3">
         <h2 className="font-heading text-base font-semibold">

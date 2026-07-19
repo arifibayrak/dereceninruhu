@@ -25,8 +25,17 @@
       "database_id": "99be7c0d-45d7-4f79-adb0-57b32fd1a2a1",
       "migrations_dir": "drizzle/migrations"
     }
+  ],
+  // Görüşme kayıtları (AI transkript hattı). Uzak dağıtımdan önce hesapta R2'yi
+  // etkinleştirip bucket'ı oluşturun: `wrangler r2 bucket create dereceninruhu-files`.
+  // Yerel geliştirmede Miniflare R2'yi simüle eder; hesap etkinleştirmesi gerekmez.
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "dereceninruhu-files"
+    }
   ]
-  // R2 binding removed until R2 is enabled on the account (Cloudflare dashboard).
-  // Nothing uses R2 yet; re-add when file storage (makbuz/içerik) ships.
+  // OPENROUTER_API_KEY bir secret'tır (wrangler.jsonc'a yazılmaz): yerelde .dev.vars,
+  // dağıtımda `wrangler secret put OPENROUTER_API_KEY`.
   // Cron triggers (haftalık roll-up, aylık fatura) added later with a scheduled handler.
 }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getSession, type Role } from "@/lib/session";
 import { CoachNav } from "@/components/app/coach-nav";
+import { FloatingAssistant } from "@/components/app/floating-assistant";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -46,6 +47,7 @@ export default async function KocLayout({
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-6 sm:px-6 md:py-8">
         {children}
       </main>
+      <FloatingAssistant role="coach" />
     </div>
   );
 }

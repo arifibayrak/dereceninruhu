@@ -26,6 +26,9 @@ export type EnrollmentSessionRow = {
   nextPlanId: number | null;
   /** Bağlı planın hafta anahtarı (yyyy-mm-dd) — program sekmesine link. */
   nextPlanWeekKey: string | null;
+  /** Dış görüşme linki + sağlayıcı (uygulamadan "Katıl"). */
+  meetingUrl: string | null;
+  meetingProvider: string | null;
 };
 
 /** Kaydın görüşmeleri: yaklaşanlar (artan) + geçmiş (azalan). */
@@ -43,6 +46,8 @@ export async function listSessionsForEnrollment(
       summary: coachingSessions.summary,
       studentVisibleNote: coachingSessions.studentVisibleNote,
       nextPlanId: coachingSessions.nextPlanId,
+      meetingUrl: coachingSessions.meetingUrl,
+      meetingProvider: coachingSessions.meetingProvider,
       createdAt: coachingSessions.createdAt,
       nextPlanWeekStart: weeklyPlans.weekStart,
     })
@@ -61,6 +66,8 @@ export async function listSessionsForEnrollment(
       studentVisibleNote: r.studentVisibleNote,
       nextPlanId: r.nextPlanId,
       nextPlanWeekKey: r.nextPlanWeekStart ? trDayKey(r.nextPlanWeekStart) : null,
+      meetingUrl: r.meetingUrl,
+      meetingProvider: r.meetingProvider,
     } satisfies EnrollmentSessionRow,
     sortAt: (r.heldAt ?? r.scheduledAt ?? r.createdAt).getTime(),
     isUpcoming:
@@ -85,6 +92,8 @@ export type NextSession = {
   id: number;
   scheduledAt: Date;
   studentVisibleNote: string | null;
+  meetingUrl: string | null;
+  meetingProvider: string | null;
 };
 
 /** Öğrencinin sıradaki planlı görüşmesi (bugün dahil), yoksa null. */
@@ -98,6 +107,8 @@ export async function getNextSessionForEnrollment(
       id: coachingSessions.id,
       scheduledAt: coachingSessions.scheduledAt,
       studentVisibleNote: coachingSessions.studentVisibleNote,
+      meetingUrl: coachingSessions.meetingUrl,
+      meetingProvider: coachingSessions.meetingProvider,
     })
     .from(coachingSessions)
     .where(
@@ -114,6 +125,8 @@ export async function getNextSessionForEnrollment(
     id: row.id,
     scheduledAt: row.scheduledAt,
     studentVisibleNote: row.studentVisibleNote,
+    meetingUrl: row.meetingUrl,
+    meetingProvider: row.meetingProvider,
   };
 }
 

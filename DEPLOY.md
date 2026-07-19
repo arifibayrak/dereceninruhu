@@ -42,7 +42,7 @@ wrangler d1 execute dereceninruhu-db --remote --command \
 ## 4. Deploy
 
 ```bash
-pnpm deploy                                       # opennextjs-cloudflare build && deploy
+pnpm run deploy                                   # opennextjs-cloudflare build && deploy (bare `pnpm deploy` hits pnpm's workspace-deploy builtin)
 ```
 
 ## 5. Custom domain **(you)**

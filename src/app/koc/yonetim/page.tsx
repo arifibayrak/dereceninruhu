@@ -39,10 +39,20 @@ const dateFmt = new Intl.DateTimeFormat("tr-TR", {
 });
 
 /** Ekip yönetimi — yalnız yönetici (koçlar /koc'a yönlendirilir). */
-export default async function YonetimPage() {
+export default async function YonetimPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const viewer = await getViewer();
   if (!viewer) redirect("/giris");
   if (viewer.role !== "admin") redirect("/koc");
+
+  // "Koça çevir" akışı — başvurudan gelen ad/e-posta koç ekleme formunu doldurur.
+  const sp = await searchParams;
+  const prefillName = typeof sp.ad === "string" ? sp.ad : "";
+  const prefillEmail = typeof sp.email === "string" ? sp.email : "";
+  const fromApplication = sp.yeniKoc === "1";
 
   const staff = await listStaff();
   const adminCount = staff.filter((s) => s.role === "admin").length;
@@ -132,16 +142,17 @@ export default async function YonetimPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className={fromApplication ? "ring-2 ring-primary/40" : undefined}>
           <CardHeader>
             <CardTitle>Koç ekle</CardTitle>
             <CardDescription>
-              Yeni koç e-posta ve şifresiyle giriş yapar; yalnız kendisine
-              atanan öğrencileri görür.
+              {fromApplication
+                ? "Başvurudan geldi — bilgiler ön-dolu; geçici şifre belirleyip hesabı oluştur."
+                : "Yeni koç e-posta ve şifresiyle giriş yapar; yalnız kendisine atanan öğrencileri görür."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <CoachAddForm />
+            <CoachAddForm initialName={prefillName} initialEmail={prefillEmail} />
           </CardContent>
         </Card>
         <Card>

@@ -521,6 +521,11 @@ export const coachingSessions = sqliteTable(
     studentVisibleNote: text("student_visible_note"),
     /** "Plan bu görüşmeden çıktı" link. */
     nextPlanId: integer("next_plan_id").references(() => weeklyPlans.id),
+    /** Görüşme dış sağlayıcıda yapılır; katılım linki uygulamadan açılır. */
+    meetingUrl: text("meeting_url"),
+    meetingProvider: text("meeting_provider", {
+      enum: ["google_meet", "zoom", "other"],
+    }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -711,6 +716,100 @@ export const leads = sqliteTable(
   (t) => [index("leads_status_idx").on(t.status)],
 );
 
+/**
+ * Dönem / kontenjan ayarları — TEK satır (id=1). Sitedeki "sınırlı kontenjan"
+ * mesajını besleyen YÖNETİCİ KONTROLÜNDEKİ gösterim değerleri. Gerçek kapasite
+ * ve kayıt sayısı ASLA public gösterilmez; buradaki sayılar yalnızca yöneticinin
+ * yayımlamayı seçtiği pazarlama değerleridir (bkz. AGENTS.md — premium
+ * konumlandırma). Gerçek aktif öğrenci sayısı yalnız admin panelinde, referans
+ * olarak, bu değerin yanında gösterilir.
+ */
+export const cohortSettings = sqliteTable("cohort_settings", {
+  /** Singleton — daima id=1. */
+  id: integer("id").primaryKey(),
+  /** Dönem etiketi, ör. "2026 Güz Dönemi". */
+  donemLabel: text("donem_label").notNull().default("Güncel Dönem"),
+  /** Gösterilen kontenjan (boş → yalnız "sınırlı kontenjan" ifadesi, sayı yok). */
+  displayCapacity: integer("display_capacity"),
+  /** Gösterilen dolu sayısı — pazarlama değeri, GERÇEK kayıt sayısı DEĞİL. */
+  displayFilled: integer("display_filled").notNull().default(0),
+  /** Kayıtların kapandığı tarih — public geri sayımı besler. */
+  closesOn: integer("closes_on", { mode: "timestamp" }),
+  status: text("status", {
+    enum: ["acik", "son_kontenjan", "dolu", "kapali"],
+  })
+    .notNull()
+    .default("acik"),
+  /** Bekleme listesi başvuru alıyor mu. */
+  waitlistOpen: integer("waitlist_open", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  /** Kıtlık/kontenjan mesajları sitede görünsün mü (ana şalter). */
+  scarcityVisible: integer("scarcity_visible", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * Bekleme listesi — dönem dolduğunda talebi yakalar; sıra pozisyonu okuma
+ * anında hesaplanır (bekleyenler createdAt'e göre sıralanır). `leads` ile aynı
+ * kalıp: public form → honeypot + Zod → koç/yönetici havuzdan yönetir.
+ */
+export const waitlistEntries = sqliteTable(
+  "waitlist_entries",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    /** Hangi sınav (serbest metin: LGS/YKS/KPSS/…). */
+    exam: text("exam"),
+    message: text("message"),
+    status: text("status", {
+      enum: ["bekliyor", "davet_edildi", "kayit", "ayrildi"],
+    })
+      .notNull()
+      .default("bekliyor"),
+    source: text("source"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("waitlist_status_idx").on(t.status)],
+);
+
+/**
+ * Koç başvuruları — public başvuru formu → YALNIZ YÖNETİCİ inceler. Statü
+ * boru hattı `aiProposals` inceleme kalıbını izler (`reviewedByUserId`). Kabul
+ * otomatik hesap açmaz; yönetici "Koça çevir" ile mevcut ekleme formuna geçer.
+ */
+export const coachApplications = sqliteTable(
+  "coach_applications",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    email: text("email"),
+    /** Branş(lar), serbest metin (ör. "Matematik, Geometri"). */
+    subjects: text("subjects"),
+    /** Deneyim özeti. */
+    experience: text("experience"),
+    /** CV / LinkedIn bağlantısı (isteğe bağlı). */
+    link: text("link"),
+    /** Neden bizimle çalışmak istiyor. */
+    message: text("message"),
+    status: text("status", {
+      enum: ["yeni", "inceleniyor", "gorusme", "kabul", "ret"],
+    })
+      .notNull()
+      .default("yeni"),
+    /** Son işlemi yapan yönetici. */
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id),
+    source: text("source"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("coach_applications_status_idx").on(t.status)],
+);
+
 export const blogPosts = sqliteTable("blog_posts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
@@ -781,6 +880,162 @@ export const coachProfiles = sqliteTable("coach_profiles", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+/* -------------------------------------------------------------------------- */
+/*  AI layer (transcript -> öneri -> onay; sohbet; denetim)                   */
+/*  Güvenlik: model YALNIZ öneri üretir; yazma mevcut Server Action'lardan     */
+/*  geçer. AI tablolarını silmek takip verisini bozmaz.                        */
+/* -------------------------------------------------------------------------- */
+
+export const transcripts = sqliteTable(
+  "transcripts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    enrollmentId: integer("enrollment_id")
+      .notNull()
+      .references(() => enrollments.id),
+    coachingSessionId: integer("coaching_session_id").references(
+      () => coachingSessions.id,
+    ),
+    /** audio = kayıt yüklendi (R2); paste = Meet/Zoom dökümü yapıştırıldı. */
+    source: text("source", { enum: ["audio", "paste"] }).notNull(),
+    /** R2 nesne anahtarı (source=audio); onay sonrası silinebilir. */
+    audioR2Key: text("audio_r2_key"),
+    rawText: text("raw_text"),
+    language: text("language").notNull().default("tr"),
+    wordCount: integer("word_count"),
+    /** AI üretimi Türkçe özet (grounding paketinde kullanılır). */
+    digest: text("digest"),
+    status: text("status", {
+      enum: ["uploaded", "transcribing", "transcribed", "extracted", "failed"],
+    })
+      .notNull()
+      .default("uploaded"),
+    /** KVKK: görüşme-bazlı kayıt onayı (reşit olmayan öğrenciler için veli onayı). */
+    consentState: text("consent_state", {
+      enum: ["pending", "granted", "denied"],
+    })
+      .notNull()
+      .default("pending"),
+    errorMessage: text("error_message"),
+    createdByUserId: text("created_by_user_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("transcripts_enrollment_idx").on(t.enrollmentId, t.createdAt),
+    index("transcripts_session_idx").on(t.coachingSessionId),
+    index("transcripts_status_idx").on(t.status),
+  ],
+);
+
+export const aiProposals = sqliteTable(
+  "ai_proposals",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    transcriptId: integer("transcript_id")
+      .notNull()
+      .references(() => transcripts.id),
+    enrollmentId: integer("enrollment_id")
+      .notNull()
+      .references(() => enrollments.id),
+    kind: text("kind", {
+      enum: [
+        "question_log_upsert",
+        "mock_exam_create",
+        "plan_task_create",
+        "topic_progress_update",
+        "session_note_update",
+      ],
+    }).notNull(),
+    /** Hedef Server Action'ın mevcut Zod girdisiyle BİREBİR aynı şekilli JSON. */
+    payloadJson: text("payload_json").notNull(),
+    /** Öneriyi haklı çıkaran birebir Türkçe transkript alıntısı (güven çıpası). */
+    sourceQuote: text("source_quote"),
+    confidence: real("confidence"),
+    status: text("status", {
+      enum: ["proposed", "approved", "rejected", "applied", "failed"],
+    })
+      .notNull()
+      .default("proposed"),
+    /** Uygulanan action'ın döndürdüğü JSON (id/adet) ya da hata. */
+    resultJson: text("result_json"),
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id),
+    appliedAt: integer("applied_at", { mode: "timestamp" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("ai_proposals_transcript_idx").on(t.transcriptId),
+    index("ai_proposals_enrollment_idx").on(t.enrollmentId),
+    index("ai_proposals_status_idx").on(t.status),
+  ],
+);
+
+export const chatThreads = sqliteTable(
+  "chat_threads",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** Nullable: koç ajanı sohbetleri öğrenci-üstü olabilir (tek enrollment yok). */
+    enrollmentId: integer("enrollment_id").references(() => enrollments.id),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => users.id),
+    audience: text("audience", { enum: ["student", "coach"] }).notNull(),
+    title: text("title"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("chat_threads_owner_idx").on(t.ownerUserId),
+    index("chat_threads_enrollment_idx").on(t.enrollmentId),
+  ],
+);
+
+export const chatMessages = sqliteTable(
+  "chat_messages",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    threadId: integer("thread_id")
+      .notNull()
+      .references(() => chatThreads.id),
+    role: text("role", {
+      enum: ["user", "assistant", "tool", "system"],
+    }).notNull(),
+    content: text("content").notNull(),
+    /** Ajan turlarındaki araç çağrıları (düz mesajlarda NULL). */
+    toolCallsJson: text("tool_calls_json"),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("chat_messages_thread_idx").on(t.threadId, t.createdAt)],
+);
+
+export const aiAuditLog = sqliteTable(
+  "ai_audit_log",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => users.id),
+    enrollmentId: integer("enrollment_id").references(() => enrollments.id),
+    threadId: integer("thread_id").references(() => chatThreads.id),
+    toolName: text("tool_name").notNull(),
+    argsJson: text("args_json"),
+    /** auto = okuma (otomatik); confirmed = yazma (koç onayladı); denied = reddedildi. */
+    decision: text("decision", {
+      enum: ["auto", "confirmed", "denied"],
+    }).notNull(),
+    resultStatus: text("result_status", { enum: ["ok", "error"] }),
+    error: text("error"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("ai_audit_log_actor_idx").on(t.actorUserId, t.createdAt),
+    index("ai_audit_log_enrollment_idx").on(t.enrollmentId),
+  ],
+);
 
 /* -------------------------------------------------------------------------- */
 /*  Relations (relational query API)                                          */
@@ -896,6 +1151,9 @@ export const enrollmentsRelations = relations(
     feePlans: many(feePlans),
     invoices: many(invoices),
     payments: many(payments),
+    transcripts: many(transcripts),
+    aiProposals: many(aiProposals),
+    chatThreads: many(chatThreads),
   }),
 );
 
@@ -1025,7 +1283,7 @@ export const topicResourceProgressRelations = relations(
 
 export const coachingSessionsRelations = relations(
   coachingSessions,
-  ({ one }) => ({
+  ({ one, many }) => ({
     enrollment: one(enrollments, {
       fields: [coachingSessions.enrollmentId],
       references: [enrollments.id],
@@ -1034,8 +1292,80 @@ export const coachingSessionsRelations = relations(
       fields: [coachingSessions.nextPlanId],
       references: [weeklyPlans.id],
     }),
+    transcripts: many(transcripts),
   }),
 );
+
+export const transcriptsRelations = relations(
+  transcripts,
+  ({ one, many }) => ({
+    enrollment: one(enrollments, {
+      fields: [transcripts.enrollmentId],
+      references: [enrollments.id],
+    }),
+    coachingSession: one(coachingSessions, {
+      fields: [transcripts.coachingSessionId],
+      references: [coachingSessions.id],
+    }),
+    createdBy: one(users, {
+      fields: [transcripts.createdByUserId],
+      references: [users.id],
+    }),
+    proposals: many(aiProposals),
+  }),
+);
+
+export const aiProposalsRelations = relations(aiProposals, ({ one }) => ({
+  transcript: one(transcripts, {
+    fields: [aiProposals.transcriptId],
+    references: [transcripts.id],
+  }),
+  enrollment: one(enrollments, {
+    fields: [aiProposals.enrollmentId],
+    references: [enrollments.id],
+  }),
+  reviewedBy: one(users, {
+    fields: [aiProposals.reviewedByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const chatThreadsRelations = relations(
+  chatThreads,
+  ({ one, many }) => ({
+    enrollment: one(enrollments, {
+      fields: [chatThreads.enrollmentId],
+      references: [enrollments.id],
+    }),
+    owner: one(users, {
+      fields: [chatThreads.ownerUserId],
+      references: [users.id],
+    }),
+    messages: many(chatMessages),
+  }),
+);
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  thread: one(chatThreads, {
+    fields: [chatMessages.threadId],
+    references: [chatThreads.id],
+  }),
+}));
+
+export const aiAuditLogRelations = relations(aiAuditLog, ({ one }) => ({
+  actor: one(users, {
+    fields: [aiAuditLog.actorUserId],
+    references: [users.id],
+  }),
+  enrollment: one(enrollments, {
+    fields: [aiAuditLog.enrollmentId],
+    references: [enrollments.id],
+  }),
+  thread: one(chatThreads, {
+    fields: [aiAuditLog.threadId],
+    references: [chatThreads.id],
+  }),
+}));
 
 export const contentItemsRelations = relations(
   contentItems,
@@ -1164,12 +1494,25 @@ export type NewMockExamResult = typeof mockExamResults.$inferInsert;
 export type MockTopicError = typeof mockTopicErrors.$inferSelect;
 export type TopicResourceProgress = typeof topicResourceProgress.$inferSelect;
 export type CoachingSession = typeof coachingSessions.$inferSelect;
+export type Transcript = typeof transcripts.$inferSelect;
+export type NewTranscript = typeof transcripts.$inferInsert;
+export type AiProposal = typeof aiProposals.$inferSelect;
+export type NewAiProposal = typeof aiProposals.$inferInsert;
+export type ChatThread = typeof chatThreads.$inferSelect;
+export type NewChatThread = typeof chatThreads.$inferInsert;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type NewChatMessage = typeof chatMessages.$inferInsert;
+export type AiAuditLog = typeof aiAuditLog.$inferSelect;
+export type NewAiAuditLog = typeof aiAuditLog.$inferInsert;
 export type ContentItem = typeof contentItems.$inferSelect;
 export type ContentView = typeof contentViews.$inferSelect;
 export type FeePlan = typeof feePlans.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
+export type CohortSettings = typeof cohortSettings.$inferSelect;
+export type WaitlistEntry = typeof waitlistEntries.$inferSelect;
+export type CoachApplication = typeof coachApplications.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type Package = typeof packages.$inferSelect;

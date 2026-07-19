@@ -17,12 +17,21 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-/** Koç ekle — ikinci koç hesabını oluşturur (koç/yönetici yetkisi gerekir). */
-export function CoachAddForm() {
+/**
+ * Koç ekle — ikinci koç hesabını oluşturur (koç/yönetici yetkisi gerekir).
+ * Koç başvurusundan "Koça çevir" ile gelindiğinde ad/e-posta ön-dolu olur.
+ */
+export function CoachAddForm({
+  initialName = "",
+  initialEmail = "",
+}: {
+  initialName?: string;
+  initialEmail?: string;
+} = {}) {
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<CreateCoachInput>({
     resolver: zodResolver(createCoachSchema),
-    defaultValues: { name: "", email: "", password: "" },
+    defaultValues: { name: initialName, email: initialEmail, password: "" },
   });
   const { errors } = form.formState;
 

@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckIcon, InfoIcon, SparklesIcon } from "lucide-react";
 
-import { getPublicFaqs, getPublicPackages } from "@/db/queries/cms";
+import { getCohort, getPublicFaqs, getPublicPackages } from "@/db/queries/cms";
+import { cohortView, enrollmentOpen } from "@/lib/cohort";
 import { formatKurus } from "@/lib/format";
+import { CohortBanner } from "@/components/marketing/cohort-banner";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
+import { ScarcityBadge } from "@/components/marketing/scarcity-badge";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,10 +24,19 @@ export const metadata: Metadata = {
 };
 
 export default async function FiyatlarPage() {
-  const [packages, faqs] = await Promise.all([
+  const [packages, faqs, cohort] = await Promise.all([
     getPublicPackages(),
     getPublicFaqs(),
+    getCohort(),
   ]);
+
+  const cohortVm = cohortView(cohort);
+  const enrollOpen = enrollmentOpen(cohort);
+  // Kayıtlar kapalıysa paket CTA'ları bekleme listesine döner.
+  const ctaHref = enrollOpen ? "/iletisim" : "/bekleme-listesi";
+  const ctaLabel = enrollOpen
+    ? "Ücretsiz ön görüşmeyle başla"
+    : "Bekleme listesine katıl";
 
   // Ödeme/başlama ile ilgili SSS'leri öne al.
   const paymentFaqs = faqs.filter(
@@ -45,14 +57,18 @@ export default async function FiyatlarPage() {
           Fiyatlandırma
         </span>
         <h1 className="font-heading text-headline max-w-2xl text-balance">
-          Sade paketler, <span className="text-primary">uzun taahhüt yok</span>
+          Sade paketler, <span className="text-primary">sınırlı kontenjan</span>
           <span className="text-gold">.</span>
         </h1>
         <p className="max-w-xl text-base text-pretty text-muted-foreground">
           Her paket ücretsiz ön görüşmeyle başlar; kayıt kararını görüşmeden
-          sonra verirsin. Ödeme havale/EFT veya nakit yapılır.
+          sonra verirsin. Kaliteyi korumak için her dönemde sınırlı sayıda
+          öğrenciyle çalışırız. Ödeme havale/EFT veya nakit yapılır.
         </p>
       </section>
+
+      {/* Dönem/kontenjan bandı */}
+      <CohortBanner cohort={cohort} />
 
       {/* Paket kartları */}
       <section className="grid gap-4 lg:grid-cols-3">
@@ -73,6 +89,15 @@ export default async function FiyatlarPage() {
               )}
               <div className="flex flex-col gap-1">
                 <h2 className="font-heading text-lg font-semibold">{pkg.name}</h2>
+                {highlighted &&
+                  cohortVm.visible &&
+                  !cohortVm.isFull &&
+                  cohortVm.remaining != null && (
+                    <ScarcityBadge
+                      remaining={cohortVm.remaining}
+                      className="w-fit"
+                    />
+                  )}
                 {pkg.compareAtKurus && pkg.compareAtKurus > pkg.priceKurus && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground tabular-nums line-through">
@@ -110,10 +135,10 @@ export default async function FiyatlarPage() {
                 size="lg"
                 variant={highlighted ? "default" : "outline"}
                 className="w-full"
-                render={<Link href="/iletisim" />}
+                render={<Link href={ctaHref} />}
               >
                 <SparklesIcon data-icon="inline-start" />
-                Ücretsiz ön görüşmeyle başla
+                {ctaLabel}
               </Button>
             </div>
           );
@@ -142,7 +167,7 @@ export default async function FiyatlarPage() {
 
       <CtaBand
         title="Hangi paket sana uygun, birlikte karar verelim."
-        description="Ön görüşmede hedefine ve temposuna göre en mantıklı paketi önertiriz — satış baskısı yok."
+        description="Ön görüşmede hedefine ve temposuna göre en mantıklı paketi öneririz — satış baskısı yok, kontenjan sınırlı."
       />
     </div>
   );

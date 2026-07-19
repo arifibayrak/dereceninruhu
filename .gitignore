@@ -40,6 +40,7 @@ yarn-error.log*
 .open-next/
 .wrangler/
 .dev.vars
+openrouter-key.txt
 worker-configuration.d.ts
 cloudflare-env.d.ts
 

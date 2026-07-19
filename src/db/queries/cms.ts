@@ -4,11 +4,16 @@ import { and, asc, count, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   blogPosts,
+  coachApplications,
   coachProfiles,
+  cohortSettings,
+  enrollments,
   faqs,
   leads,
   packages,
   testimonials,
+  waitlistEntries,
+  type CohortSettings,
 } from "@/db/schema";
 import {
   coachContent,
@@ -16,7 +21,11 @@ import {
   packageSeeds,
   testimonialSeeds,
 } from "@/db/seed/cms-content";
-import type { LeadStatus } from "@/lib/validation";
+import type {
+  CoachApplicationStatus,
+  LeadStatus,
+  WaitlistStatus,
+} from "@/lib/validation";
 
 /**
  * Pazarlama sitesi + koç CMS okumaları.
@@ -269,5 +278,121 @@ export async function countNewLeads(): Promise<number> {
     .select({ total: count() })
     .from(leads)
     .where(eq(leads.status, "yeni"));
+  return row?.total ?? 0;
+}
+
+/* ------------------------------ Dönem/kontenjan --------------------------- */
+
+/**
+ * Public dönem/kontenjan ayarını okur; satır yoksa güvenli varsayılan döner
+ * (site ilk kayıttan önce de render olur). Buradaki sayılar YÖNETİCİ KONTROLÜNDE
+ * gösterim değerleridir — gerçek kapasite/kayıt DEĞİL.
+ */
+export async function getCohort(): Promise<CohortSettings> {
+  const db = getDb();
+  const row = await db.query.cohortSettings.findFirst({
+    where: eq(cohortSettings.id, 1),
+  });
+  return (
+    row ?? {
+      id: 1,
+      donemLabel: "Güncel Dönem",
+      displayCapacity: null,
+      displayFilled: 0,
+      closesOn: null,
+      status: "acik",
+      waitlistOpen: true,
+      scarcityVisible: true,
+      updatedAt: new Date(0),
+    }
+  );
+}
+
+/**
+ * Gerçek aktif öğrenci sayısı — YALNIZ admin panelinde, yayımlanan gösterim
+ * değerinin yanında referans olarak kullanılır. Public sayfalara ASLA gitmez.
+ */
+export async function countActiveStudents(): Promise<number> {
+  const db = getDb();
+  const [row] = await db
+    .select({ total: count() })
+    .from(enrollments)
+    .where(eq(enrollments.status, "active"));
+  return row?.total ?? 0;
+}
+
+/* ------------------------------ Bekleme listesi --------------------------- */
+
+/** Bekleyenler en eskiden yeniye (= sıra düzeni); diğerleri de aynı sırayla. */
+export async function listWaitlist(status?: WaitlistStatus) {
+  const db = getDb();
+  return db.query.waitlistEntries.findMany({
+    where: status ? eq(waitlistEntries.status, status) : undefined,
+    orderBy: [asc(waitlistEntries.createdAt)],
+  });
+}
+
+export async function countWaitlistByStatus(): Promise<
+  Record<WaitlistStatus, number>
+> {
+  const db = getDb();
+  const rows = await db
+    .select({ status: waitlistEntries.status, total: count() })
+    .from(waitlistEntries)
+    .groupBy(waitlistEntries.status);
+  const out: Record<WaitlistStatus, number> = {
+    bekliyor: 0,
+    davet_edildi: 0,
+    kayit: 0,
+    ayrildi: 0,
+  };
+  for (const r of rows) out[r.status] = r.total;
+  return out;
+}
+
+export async function countNewWaitlist(): Promise<number> {
+  const db = getDb();
+  const [row] = await db
+    .select({ total: count() })
+    .from(waitlistEntries)
+    .where(eq(waitlistEntries.status, "bekliyor"));
+  return row?.total ?? 0;
+}
+
+/* ------------------------------ Koç başvuruları --------------------------- */
+
+export async function listCoachApplications(status?: CoachApplicationStatus) {
+  const db = getDb();
+  return db.query.coachApplications.findMany({
+    where: status ? eq(coachApplications.status, status) : undefined,
+    orderBy: [desc(coachApplications.createdAt)],
+  });
+}
+
+export async function countCoachApplicationsByStatus(): Promise<
+  Record<CoachApplicationStatus, number>
+> {
+  const db = getDb();
+  const rows = await db
+    .select({ status: coachApplications.status, total: count() })
+    .from(coachApplications)
+    .groupBy(coachApplications.status);
+  const out: Record<CoachApplicationStatus, number> = {
+    yeni: 0,
+    inceleniyor: 0,
+    gorusme: 0,
+    kabul: 0,
+    ret: 0,
+  };
+  for (const r of rows) out[r.status] = r.total;
+  return out;
+}
+
+export async function countNewApplications(): Promise<number> {
+  const db = getDb();
+  const [row] = await db
+    .select({ total: count() })
+    .from(coachApplications)
+    .where(eq(coachApplications.status, "yeni"));
   return row?.total ?? 0;
 }

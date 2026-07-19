@@ -151,12 +151,20 @@ export const publishPlanSchema = z.object({
   planId: z.coerce.number().int().positive(),
 });
 
+/** Görüşme dış sağlayıcıda (Meet/Zoom…) yapılır; link uygulamadan açılır. */
+export const meetingUrlSchema = z
+  .url("Geçerli bir toplantı linki girin.")
+  .max(500)
+  .optional()
+  .or(z.literal(""));
+
 /** Görüşme planlama (koç). */
 export const createSessionSchema = z.object({
   enrollmentId: z.coerce.number().int().positive(),
   scheduledAt: z.coerce.date(),
   studentVisibleNote: z.string().trim().max(500).optional().or(z.literal("")),
   summary: z.string().trim().max(2000).optional().or(z.literal("")),
+  meetingUrl: meetingUrlSchema,
 });
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 
@@ -168,6 +176,7 @@ export const updateSessionSchema = z.object({
   summary: z.string().trim().max(2000).optional(),
   studentVisibleNote: z.string().trim().max(500).optional(),
   nextPlanId: z.coerce.number().int().positive().nullish(),
+  meetingUrl: meetingUrlSchema,
 });
 export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;
 
@@ -205,6 +214,79 @@ export type LeadStatus = z.infer<typeof leadStatusSchema>;
 export const updateLeadStatusSchema = z.object({
   leadId: z.coerce.number().int().positive(),
   status: leadStatusSchema,
+});
+
+/* ---------------------------- Bekleme listesi ----------------------------- */
+
+/** Public /bekleme-listesi formu — auth yok; `website` bal küpü korur. */
+export const createWaitlistSchema = z.object({
+  name: z.string().trim().min(2, "Ad soyad gerekli.").max(120),
+  phone: phoneSchema,
+  exam: leadExamSchema,
+  message: z
+    .string()
+    .trim()
+    .max(1000, "Mesaj en fazla 1000 karakter olabilir.")
+    .optional()
+    .or(z.literal("")),
+  website: z.literal("").optional(),
+});
+export type CreateWaitlistInput = z.infer<typeof createWaitlistSchema>;
+
+export const waitlistStatusSchema = z.enum([
+  "bekliyor",
+  "davet_edildi",
+  "kayit",
+  "ayrildi",
+]);
+export type WaitlistStatus = z.infer<typeof waitlistStatusSchema>;
+
+export const updateWaitlistStatusSchema = z.object({
+  entryId: z.coerce.number().int().positive(),
+  status: waitlistStatusSchema,
+});
+
+/* ----------------------------- Koç başvurusu ------------------------------ */
+
+/** Public /koc-basvuru formu — auth yok; `website` bal küpü korur. */
+export const createCoachApplicationSchema = z.object({
+  name: z.string().trim().min(2, "Ad soyad gerekli.").max(120),
+  phone: phoneSchema,
+  email: z.email("Geçerli bir e-posta girin.").optional().or(z.literal("")),
+  subjects: z.string().trim().min(2, "Branşını yaz.").max(200),
+  experience: z
+    .string()
+    .trim()
+    .max(1500, "En fazla 1500 karakter olabilir.")
+    .optional()
+    .or(z.literal("")),
+  link: z.url("Geçerli bir bağlantı girin.").optional().or(z.literal("")),
+  message: z
+    .string()
+    .trim()
+    .max(2000, "En fazla 2000 karakter olabilir.")
+    .optional()
+    .or(z.literal("")),
+  website: z.literal("").optional(),
+});
+export type CreateCoachApplicationInput = z.infer<
+  typeof createCoachApplicationSchema
+>;
+
+export const coachApplicationStatusSchema = z.enum([
+  "yeni",
+  "inceleniyor",
+  "gorusme",
+  "kabul",
+  "ret",
+]);
+export type CoachApplicationStatus = z.infer<
+  typeof coachApplicationStatusSchema
+>;
+
+export const updateCoachApplicationStatusSchema = z.object({
+  applicationId: z.coerce.number().int().positive(),
+  status: coachApplicationStatusSchema,
 });
 
 /** Blog yazısı oluştur/güncelle (koç). */

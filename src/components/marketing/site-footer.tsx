@@ -25,6 +25,8 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
     title: "Başla",
     links: [
       { href: "/iletisim", label: "Ücretsiz Ön Görüşme" },
+      { href: "/bekleme-listesi", label: "Bekleme Listesi" },
+      { href: "/koc-basvuru", label: "Koç Başvurusu" },
       { href: "/giris", label: "Öğrenci / Koç Girişi" },
     ],
   },
