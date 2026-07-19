@@ -26,7 +26,8 @@ import { CohortBanner } from "@/components/marketing/cohort-banner";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { ExamCountdown } from "@/components/marketing/exam-countdown";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
-import { HeroVisual } from "@/components/marketing/hero-visual";
+import { HeroCarousel } from "@/components/marketing/hero-carousel";
+import { HeroReveal } from "@/components/marketing/hero-reveal";
 import { ProofStrip } from "@/components/marketing/proof-strip";
 import { ScarcityBadge } from "@/components/marketing/scarcity-badge";
 import { SectionHeading } from "@/components/brand/section-heading";
@@ -135,7 +136,7 @@ export default async function HomePage() {
           <div className="absolute top-8 right-[10%] size-40 rounded-full bg-gold/15 blur-2xl" />
         </div>
         <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-10">
-          <div className="flex flex-col items-start gap-6">
+          <HeroReveal className="flex flex-col items-start gap-6">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] text-primary uppercase">
               <span aria-hidden className="size-1.5 rounded-full bg-gold" />
               LGS · YKS · KPSS birebir koçluk
@@ -174,9 +175,9 @@ export default async function HomePage() {
               </span>
               5,0 · {coachStats.reviewCount} yorum · Gigbi&apos;de doğrulanabilir
             </span>
-          </div>
+          </HeroReveal>
           <div className="px-2 py-6 sm:px-6 lg:px-0">
-            <HeroVisual />
+            <HeroCarousel />
           </div>
         </div>
       </section>
