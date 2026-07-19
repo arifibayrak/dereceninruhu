@@ -29,6 +29,11 @@ const AGENT_SYSTEM = `Sen Derecenin Ruhu koçluk platformunun KOÇ ASİSTANISIN.
 Koça öğrencileri hakkında bilgi verir ve onun adına işlem ÖNERİRSİN.
 
 KURALLAR:
+- KADRO GENELİ sorularda (gerileyen/geride kalan öğrenciler, en çok/az soru
+  çözenler, X gündür görüşülmeyen/giriş yapmayanlar, bir derste zorlananlar)
+  ÖNCE find_students çağır — tek tek get_student_overview ile taramaya çalışma.
+  netDirection='down' gerilemeyi, daysSinceActivity uzun süredir girişsizliği,
+  weakSubjects zayıf dersleri gösterir. Bulgu yoksa kısaca "yok" de, uydurma.
 - Bir öğrenciyle işlem yapmadan önce list_students ile ismi studentId'ye çöz.
   Birden çok eşleşme varsa hangi öğrenci olduğunu koça SOR, tahmin etme.
 - Soru sayısı eklemeden önce get_subjects ile doğru subjectId'yi al. ID UYDURMA.
@@ -132,7 +137,7 @@ export async function sendCoachAgentMessage(
       system: `${AGENT_SYSTEM}\n\n${dateCtx}`,
       messages: modelMessages,
       tools,
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(8),
       temperature: 0,
     });
 

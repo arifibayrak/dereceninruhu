@@ -9,6 +9,7 @@ import {
 } from "@/db/queries/enrollment";
 import { getNetSeries, getWeekQuestionTotal } from "@/db/queries/tracking";
 import { getTopicDeficits } from "@/db/queries/analiz";
+import { getCohortScoreboard } from "@/db/queries/cohort";
 import { netTrend } from "@/lib/insights";
 
 /**
@@ -59,6 +60,17 @@ export function buildAgentTools(coachUserId: string) {
   const pending: PendingAgentWrite[] = [];
   const tools = {
     /* --------------------------- OKUMA (otomatik) --------------------------- */
+    find_students: tool({
+      description:
+        "TÜM aktif öğrencileri TEK çağrıda tara: net eğilimi (up/down/flat + delta), bu hafta çözülen soru, kaç gündür giriş yok (daysSinceActivity), en zayıf dersler. 'Gerileyen/geride kalan öğrenciler', 'en çok/az soru çözenler', 'X gündür görüşülmeyen/giriş yapmayanlar', 'matematikte zorlananlar' gibi KADRO GENELİ soruları BURADAN yanıtla — tek tek get_student_overview çağırma. netDirection='down' = neti gerileyen. weakSubjects belirli bir dersi (ör. Matematik) filtrelemek için.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const rows = await getCohortScoreboard();
+        await logAudit(coachUserId, "find_students", {});
+        return { count: rows.length, students: rows.slice(0, 100) };
+      },
+    }),
+
     list_students: tool({
       description:
         "Öğrencileri listele veya isme göre ara. Bir öğrenciyle işlem yapmadan önce studentId'yi buradan çöz.",
