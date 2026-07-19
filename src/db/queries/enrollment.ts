@@ -24,6 +24,10 @@ export type EnrollmentDetail = {
     field: string | null;
     school: string | null;
     dershane: string | null;
+    email: string | null;
+    telegram: string | null;
+    city: string | null;
+    birthYear: number | null;
     inviteCode: string | null;
     userId: string | null;
     status: "active" | "inactive" | "alumni";
@@ -70,6 +74,10 @@ export async function getEnrollmentDetailByStudentId(
       field: student.field,
       school: student.school,
       dershane: student.dershane,
+      email: student.email,
+      telegram: student.telegram,
+      city: student.city,
+      birthYear: student.birthYear,
       inviteCode: student.inviteCode,
       userId: student.userId,
       status: student.status,

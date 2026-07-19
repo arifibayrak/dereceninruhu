@@ -34,6 +34,10 @@ const FIELD_NAMES: (keyof UpdateStudentProfileInput)[] = [
   "field",
   "school",
   "dershane",
+  "email",
+  "telegram",
+  "city",
+  "birthYear",
 ];
 
 export type StudentProfileFormProps = {
@@ -64,6 +68,10 @@ export function StudentProfileForm({
       field: initial.field ?? "",
       school: initial.school ?? "",
       dershane: initial.dershane ?? "",
+      email: initial.email ?? "",
+      telegram: initial.telegram ?? "",
+      city: initial.city ?? "",
+      birthYear: initial.birthYear ?? "",
     },
   });
   const { errors } = form.formState;
@@ -136,6 +144,31 @@ export function StudentProfileForm({
           </Field>
         </div>
 
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field data-invalid={errors.email ? true : undefined}>
+            <FieldLabel htmlFor="prof-email">E-posta</FieldLabel>
+            <Input
+              id="prof-email"
+              type="email"
+              inputMode="email"
+              placeholder="ornek@eposta.com"
+              aria-invalid={errors.email ? true : undefined}
+              {...form.register("email")}
+            />
+            <FieldError errors={[errors.email]} />
+          </Field>
+          <Field data-invalid={errors.telegram ? true : undefined}>
+            <FieldLabel htmlFor="prof-telegram">Telegram</FieldLabel>
+            <Input
+              id="prof-telegram"
+              placeholder="@kullaniciadi"
+              aria-invalid={errors.telegram ? true : undefined}
+              {...form.register("telegram")}
+            />
+            <FieldError errors={[errors.telegram]} />
+          </Field>
+        </div>
+
         <Field data-invalid={errors.targetText ? true : undefined}>
           <FieldLabel htmlFor="prof-hedef">Hedef</FieldLabel>
           <Input
@@ -175,6 +208,27 @@ export function StudentProfileForm({
             <FieldLabel htmlFor="prof-dershane">Dershane</FieldLabel>
             <Input id="prof-dershane" {...form.register("dershane")} />
             <FieldError errors={[errors.dershane]} />
+          </Field>
+          <Field data-invalid={errors.city ? true : undefined}>
+            <FieldLabel htmlFor="prof-sehir">Şehir</FieldLabel>
+            <Input
+              id="prof-sehir"
+              placeholder="Örn. İstanbul"
+              {...form.register("city")}
+            />
+            <FieldError errors={[errors.city]} />
+          </Field>
+          <Field data-invalid={errors.birthYear ? true : undefined}>
+            <FieldLabel htmlFor="prof-dogum">Doğum yılı</FieldLabel>
+            <Input
+              id="prof-dogum"
+              type="number"
+              inputMode="numeric"
+              placeholder="Örn. 2008"
+              aria-invalid={errors.birthYear ? true : undefined}
+              {...form.register("birthYear")}
+            />
+            <FieldError errors={[errors.birthYear]} />
           </Field>
         </div>
 

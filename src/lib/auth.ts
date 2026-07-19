@@ -70,6 +70,10 @@ export function getAuth() {
           input: false,
         },
         phoneNumber: { type: "string", required: false, input: false },
+        // Koç iletişim/ödeme — sunucu tarafında set edilir (clients giremez).
+        telegram: { type: "string", required: false, input: false },
+        instagram: { type: "string", required: false, input: false },
+        iban: { type: "string", required: false, input: false },
       },
     },
   });

@@ -57,6 +57,10 @@ export default async function OgrenciProfilPage() {
               field: student.field ?? "",
               school: student.school ?? "",
               dershane: student.dershane ?? "",
+              email: student.email ?? "",
+              telegram: student.telegram ?? "",
+              city: student.city ?? "",
+              birthYear: student.birthYear ?? undefined,
             }}
           />
         </CardContent>

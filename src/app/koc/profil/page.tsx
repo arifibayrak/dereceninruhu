@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 
+import { getDb } from "@/db";
+import { users } from "@/db/schema";
 import { getMyCoachProfile } from "@/db/queries/cms";
 import { getCurrentUser, getViewer } from "@/lib/session";
+import { CoachContactForm } from "@/components/app/coach-contact-form";
 import {
   CoachProfileForm,
   type CoachProfileValues,
@@ -53,9 +57,19 @@ export default async function ProfilPage() {
   if (!viewer) redirect("/giris");
   if (viewer.role !== "coach" && viewer.role !== "admin") redirect("/ogrenci");
 
-  const [row, user] = await Promise.all([
+  const db = getDb();
+  const [row, user, contact] = await Promise.all([
     getMyCoachProfile(viewer.id),
     getCurrentUser(),
+    db.query.users.findFirst({
+      where: eq(users.id, viewer.id),
+      columns: {
+        phoneNumber: true,
+        telegram: true,
+        instagram: true,
+        iban: true,
+      },
+    }),
   ]);
 
   const profile: CoachProfileValues = row
@@ -102,6 +116,20 @@ export default async function ProfilPage() {
         description={`Fotoğrafın, tanıtımın, dereceler ve platform bağlantıların — /koclar sayfasındaki kendi ${roleLabel} sayfanı besler.`}
       />
       <CoachProfileForm profile={profile} />
+
+      <SectionHeading
+        eyebrow="İletişim"
+        title="İletişim & ödeme bilgilerim"
+        description="Telefon, Telegram, Instagram ve ödeme için IBAN — bunlar ekip içi kayıttır, herkese açık profilde görünmez."
+      />
+      <CoachContactForm
+        initial={{
+          phone: contact?.phoneNumber ?? "",
+          telegram: contact?.telegram ?? "",
+          instagram: contact?.instagram ?? "",
+          iban: contact?.iban ?? "",
+        }}
+      />
     </>
   );
 }

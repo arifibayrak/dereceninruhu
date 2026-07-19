@@ -12,6 +12,22 @@ export const phoneSchema = z
 export const examCodeSchema = z.enum(["KPSS", "YKS", "LGS"]);
 export const trackCodeSchema = z.enum(["SAY", "EA", "SOZ"]);
 
+/** Ortak opsiyonel profil alanları. */
+const optionalEmail = z
+  .email("Geçerli bir e-posta girin.")
+  .optional()
+  .or(z.literal(""));
+const optionalHandle = z.string().trim().max(60).optional().or(z.literal(""));
+const optionalBirthYear = z.preprocess(
+  (v) => (v === "" || v == null ? undefined : Number(v)),
+  z
+    .number()
+    .int()
+    .min(1950, "Geçerli bir doğum yılı girin.")
+    .max(2025, "Geçerli bir doğum yılı girin.")
+    .optional(),
+);
+
 export const createStudentSchema = z
   .object({
     fullName: z.string().trim().min(2, "Ad soyad gerekli."),
@@ -24,6 +40,10 @@ export const createStudentSchema = z
     school: z.string().trim().max(120).optional().or(z.literal("")),
     dershane: z.string().trim().max(120).optional().or(z.literal("")),
     parentPhone: phoneSchema.optional().or(z.literal("")),
+    email: optionalEmail,
+    telegram: optionalHandle,
+    city: optionalHandle,
+    birthYear: optionalBirthYear,
     startDate: z.coerce.date().optional(),
   })
   .refine((v) => v.examCode !== "YKS" || !!v.trackCode, {
@@ -45,6 +65,10 @@ export const updateStudentProfileSchema = z.object({
   field: z.string().trim().max(80).optional().or(z.literal("")),
   school: z.string().trim().max(120).optional().or(z.literal("")),
   dershane: z.string().trim().max(120).optional().or(z.literal("")),
+  email: optionalEmail,
+  telegram: optionalHandle,
+  city: optionalHandle,
+  birthYear: optionalBirthYear,
 });
 export type UpdateStudentProfileInput = z.infer<
   typeof updateStudentProfileSchema
@@ -58,13 +82,28 @@ export const setupAdminSchema = z.object({
 });
 export type SetupAdminInput = z.infer<typeof setupAdminSchema>;
 
+const optionalIban = z.string().trim().max(40).optional().or(z.literal(""));
+
 /** Koç ekle — ikinci koç hesabı (mevcut koç/yönetici ekler). */
 export const createCoachSchema = z.object({
   name: z.string().trim().min(2, "Ad soyad gerekli."),
   email: z.email("Geçerli bir e-posta girin."),
   password: z.string().min(6, "Şifre en az 6 karakter olmalı."),
+  phone: phoneSchema.optional().or(z.literal("")),
+  telegram: optionalHandle,
+  instagram: optionalHandle,
+  iban: optionalIban,
 });
 export type CreateCoachInput = z.infer<typeof createCoachSchema>;
+
+/** Koç kendi iletişim/ödeme bilgisini günceller (self-servis). */
+export const updateMyContactSchema = z.object({
+  phone: phoneSchema.optional().or(z.literal("")),
+  telegram: optionalHandle,
+  instagram: optionalHandle,
+  iban: optionalIban,
+});
+export type UpdateMyContactInput = z.infer<typeof updateMyContactSchema>;
 
 /** Öğrenci daveti kabul + PIN belirleme. */
 export const setPinSchema = z
