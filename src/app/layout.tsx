@@ -64,6 +64,14 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        {/* OpenNext esbuild, next-themes'in prepaint script'ine __name(...) enjekte
+            ediyor; tarayıcıda tanımsız olduğu için tema script'i patlıyordu (FOUC +
+            konsol hatası). Tema script'inden ÖNCE çalışan minik bir polyfill. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "window.__name||(window.__name=function(t){return t});",
+          }}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
