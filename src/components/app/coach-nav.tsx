@@ -15,6 +15,7 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  UploadIcon,
   UserRoundIcon,
   UsersIcon,
   WalletIcon,
@@ -100,6 +101,12 @@ const ENTRIES: NavEntry[] = [
     items: [
       { href: "/koc/profil", label: "Profil", icon: UserRoundIcon },
       { href: "/koc/ayarlar", label: "Ayarlar", icon: SettingsIcon },
+      {
+        href: "/koc/ice-aktar",
+        label: "İçe aktar",
+        icon: UploadIcon,
+        adminOnly: true,
+      },
       { href: "/koc/site", label: "Site", icon: MegaphoneIcon, adminOnly: true },
       {
         href: "/koc/yonetim",

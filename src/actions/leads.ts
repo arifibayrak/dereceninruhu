@@ -41,7 +41,7 @@ export async function createLead(
         exam: v.exam,
         message: v.message?.trim() ? v.message.trim() : null,
         status: "yeni",
-        source: "site-formu",
+        source: v.source?.trim() || "site-formu",
       })
       .returning({ id: leads.id });
 

@@ -83,6 +83,24 @@ export const loginSchema = z.object({
   pin: z.string().regex(/^\d{4,6}$/, "PIN 4-6 rakam olmalı."),
 });
 
+/** /katil telefon adımı — kayıt var mı bak; `website` bal küpü korur. */
+export const lookupActivationSchema = z.object({
+  phone: phoneSchema,
+  website: z.literal("").optional(),
+});
+
+/** /katil ilk giriş — telefonla eşleşen bekleyen öğrenci PIN belirler. */
+export const activateByPhoneSchema = z
+  .object({
+    phone: phoneSchema,
+    pin: z.string().regex(/^\d{4,6}$/, "PIN 4-6 rakam olmalı."),
+    pinConfirm: z.string(),
+  })
+  .refine((v) => v.pin === v.pinConfirm, {
+    message: "PIN'ler eşleşmiyor.",
+    path: ["pinConfirm"],
+  });
+
 /** Soru takibi — bir günün ders bazlı upsert'i. */
 export const questionLogUpsertSchema = z.object({
   enrollmentId: z.coerce.number().int().positive(),
@@ -203,6 +221,8 @@ export const createLeadSchema = z.object({
     .max(1000, "Mesaj en fazla 1000 karakter olabilir.")
     .optional()
     .or(z.literal("")),
+  /** Talebin geldiği yer (varsayılan "site-formu"; /katil "katil" gönderir). */
+  source: z.string().trim().max(40).optional(),
   /** Honeypot — gerçek kullanıcı asla doldurmaz. */
   website: z.literal("").optional(),
 });

@@ -53,7 +53,13 @@ export default async function GirisPage() {
           <LoginForm />
         </div>
         <p className="text-center text-xs text-muted-foreground">
-          Hesabın yok mu? Koçundan WhatsApp davet linki iste.
+          İlk kez mi geliyorsun?{" "}
+          <Link
+            href="/katil"
+            className="font-medium text-foreground hover:text-primary"
+          >
+            Telefonunla başla
+          </Link>
         </p>
       </div>
     </div>
