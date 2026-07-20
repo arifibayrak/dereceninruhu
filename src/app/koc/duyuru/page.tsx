@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { MegaphoneIcon } from "lucide-react";
 
 import { getRoster } from "@/db/queries/roster";
+import { listMessageTemplates } from "@/db/queries/message-templates";
 import { getViewer } from "@/lib/session";
 import {
   AnnouncementComposer,
@@ -15,7 +16,10 @@ export default async function KocDuyuruPage() {
   const viewer = await getViewer();
   if (!viewer) redirect("/giris");
 
-  const roster = await getRoster(viewer);
+  const [roster, templates] = await Promise.all([
+    getRoster(viewer),
+    listMessageTemplates(),
+  ]);
   const students: AnnouncementStudent[] = roster.map((r) => ({
     studentId: r.studentId,
     fullName: r.fullName,
@@ -47,7 +51,7 @@ export default async function KocDuyuruPage() {
           Aktif öğrenci yok.
         </div>
       ) : (
-        <AnnouncementComposer students={students} />
+        <AnnouncementComposer students={students} templates={templates} />
       )}
     </>
   );

@@ -402,6 +402,19 @@ export const upsertFaqSchema = z.object({
 });
 export type UpsertFaqInput = z.infer<typeof upsertFaqSchema>;
 
+/** Toplu mesaj şablonu (/koc/duyuru) — grup + başlık + gövde. */
+export const upsertMessageTemplateSchema = z.object({
+  id: z.coerce.number().int().positive().optional(),
+  category: z.string().trim().min(1, "Grup gerekli.").max(40),
+  label: z.string().trim().min(1, "Başlık gerekli.").max(60),
+  body: z.string().trim().min(3, "Mesaj gerekli.").max(1000),
+  sortOrder: z.coerce.number().int().min(0).max(9999),
+  isActive: z.boolean(),
+});
+export type UpsertMessageTemplateInput = z.infer<
+  typeof upsertMessageTemplateSchema
+>;
+
 /** Koç profili bağlantısı — diğer platform/hesap linki (Instagram, YouTube…). */
 export const profileLinkSchema = z.object({
   label: z.string().trim().min(1, "Etiket gerekli.").max(40),

@@ -967,6 +967,30 @@ export const faqs = sqliteTable("faqs", {
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
 });
 
+/**
+ * Toplu mesaj (duyuru) şablonları — /koc/duyuru composer'ını besler.
+ * Kadro geneli (global), koç/yönetici düzenler → marka sesi tutarlı kalır.
+ * Gövdedeki `{ad}` gönderim anında öğrenci adıyla değişir (client-side).
+ * `category` konu grubudur (Takip/Ödeme/Yeni öğrenci/Önemli ya da yeni bir grup);
+ * `is_active=false` şablonu composer listesinden gizler.
+ */
+export const messageTemplates = sqliteTable(
+  "message_templates",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    category: text("category").notNull().default("Genel"),
+    label: text("label").notNull(),
+    body: text("body").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    /** Oluşturan/son düzenleyen koç — opsiyonel iz. */
+    createdByUserId: text("created_by_user_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("message_templates_group_idx").on(t.category, t.sortOrder)],
+);
+
 export const coachProfiles = sqliteTable("coach_profiles", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id")
