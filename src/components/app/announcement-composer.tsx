@@ -25,23 +25,99 @@ export type AnnouncementStudent = {
   trackName: string | null;
 };
 
-/** Hazır duyuru şablonları — {ad} öğrenci adıyla değişir. */
-const TEMPLATES: { label: string; text: string }[] = [
+/**
+ * Hazır duyuru şablonları — {ad} öğrenci adıyla değişir.
+ * Konuya göre gruplanır; koç grubu seçip şablona tıklayınca mesaj kutusu dolar
+ * (göndermeden önce dilediği gibi düzenleyebilir). Toplu gönderimde tutar kişiye
+ * göre değiştiği için ödeme şablonları tutar içermez — nazik, genel bir hatırlatmadır.
+ */
+const TEMPLATE_GROUPS: {
+  group: string;
+  items: { label: string; text: string }[];
+}[] = [
   {
-    label: "Haftalık hatırlatma",
-    text: "Merhaba {ad}! Bu haftanın programını ve soru takibini uygulamaya işlemeyi unutma, birlikte takip edelim 💪",
+    group: "Takip",
+    items: [
+      {
+        label: "Haftalık hatırlatma",
+        text: "Merhaba {ad}! Bu haftanın programını ve soru takibini uygulamaya işlemeyi unutma, birlikte takip edelim 💪",
+      },
+      {
+        label: "Deneme duyurusu",
+        text: "Merhaba {ad}! Bu hafta sonu deneme var — hazırlıklı olalım, eksik konularını birlikte kapatalım 📊",
+      },
+      {
+        label: "Motivasyon",
+        text: "Merhaba {ad} 👋 Bu hafta güzel gidiyorsun, tempoyu koruyalım — hedefe emin adımlarla 🎯",
+      },
+      {
+        label: "Görüşme hatırlatma",
+        text: "Merhaba {ad}, yaklaşan koçluk görüşmemiz öncesi programını ve sorularını doldurmayı unutma 🙌",
+      },
+    ],
   },
   {
-    label: "Deneme duyurusu",
-    text: "Merhaba {ad}! Bu hafta sonu deneme var — hazırlıklı olalım, eksik konularını birlikte kapatalım 📊",
+    group: "Ödeme",
+    items: [
+      {
+        label: "Vade yaklaşıyor",
+        text: "Merhaba {ad} 👋 Bu dönem ödemenin vadesi yaklaşıyor. Uygun olduğunda halledebilirsek çok makbule geçer — takıldığın bir şey olursa buradan yazabilirsin 🙏",
+      },
+      {
+        label: "Vade geçti (nazik)",
+        text: "Merhaba {ad}, ödemenin vadesi geçmiş görünüyor. Bir aksilik olduysa haber ver, birlikte çözeriz — uygun olduğunda tamamlayabilir miyiz? 🙏",
+      },
+      {
+        label: "Ödeme teşekkür",
+        text: "Merhaba {ad}! Ödemen elimize ulaştı, çok teşekkür ederiz 🙏 Yolun açık olsun — her adımda yanındayız 💪",
+      },
+      {
+        label: "Yeni dönem ödemesi",
+        text: "Merhaba {ad} 👋 Yeni dönem başlıyor — kaydının kesintisiz sürmesi için ödeme detaylarını iletiyorum. Bir sorun olursa buradan ulaşabilirsin 🙌",
+      },
+    ],
   },
   {
-    label: "Motivasyon",
-    text: "Merhaba {ad} 👋 Bu hafta güzel gidiyorsun, tempoyu koruyalım — hedefe emin adımlarla 🎯",
+    group: "Yeni öğrenci",
+    items: [
+      {
+        label: "Hoş geldin",
+        text: "Merhaba {ad} 👋 Derecenin Ruhu ailesine hoş geldin! 🎉 Bu yolculukta yanındayız — ilk adım olarak uygulamaya giriş yapıp seni tanıyalım 💪",
+      },
+      {
+        label: "Kurulum / davet",
+        text: "Merhaba {ad}! Takip sistemimize davetlisin — telefonun ve belirleyeceğin PIN ile dereceninruhu.com/katil adresinden giriş yapıp başlayabilirsin 👇",
+      },
+      {
+        label: "İlk görüşme",
+        text: "Merhaba {ad} 👋 Tanışma görüşmemizi planlayalım — hedeflerini konuşup sana özel bir yol haritası çıkaralım. Bu hafta hangi gün/saat uygun olur? 😊",
+      },
+      {
+        label: "Başlangıç rehberi",
+        text: "Merhaba {ad}! İlk hafta için önerim: her gün çözdüğün soruları uygulamaya işle, bir deneme çöz ve eksik konularını not al. Gerisini birlikte hallederiz 🎯",
+      },
+    ],
   },
   {
-    label: "Görüşme hatırlatma",
-    text: "Merhaba {ad}, yaklaşan koçluk görüşmemiz öncesi programını ve sorularını doldurmayı unutma 🙌",
+    group: "Önemli",
+    items: [
+      {
+        label: "Program güncellemesi",
+        text: "Merhaba {ad} 👋 Bu haftanın programında bir güncelleme var — uygulamadan güncel haline göz atmayı unutma 🙌",
+      },
+      {
+        label: "Dönem duyurusu",
+        text: "Merhaba {ad}! Yeni dönemle ilgili önemli bir duyurumuz var — detayları aşağıda paylaşıyorum. Sorularını buradan iletebilirsin 📣",
+      },
+      {
+        label: "Tatil / ara",
+        text: "Merhaba {ad} 👋 Kısa bir ara dönemine giriyoruz. Tempoyu tümden bırakma; günde birkaç soruyla ısınmayı sürdür — döndüğümüzde kaldığımız yerden devam 💪",
+      },
+      {
+        label: "Önemli / acil",
+        text: "Merhaba {ad}, seninle önemli bir konuyu konuşmam gerekiyor. Uygun olduğunda bana buradan dönebilir misin? 🙏",
+      },
+    ],
   },
 ];
 
@@ -55,6 +131,7 @@ export function AnnouncementComposer({
   students: AnnouncementStudent[];
 }) {
   const [message, setMessage] = useState("Merhaba {ad} 👋 ");
+  const [tplGroup, setTplGroup] = useState(TEMPLATE_GROUPS[0].group);
   const [exam, setExam] = useState<string>("tumu");
   const [query, setQuery] = useState("");
   const [opened, setOpened] = useState<Set<number>>(new Set());
@@ -76,6 +153,8 @@ export function AnnouncementComposer({
   const withPhone = filtered.filter((s) => s.phone);
   const messagedCount = filtered.filter((s) => opened.has(s.studentId)).length;
   const previewName = filtered[0]?.fullName ?? "Ahmet Yılmaz";
+  const activeTemplates =
+    TEMPLATE_GROUPS.find((g) => g.group === tplGroup)?.items ?? [];
 
   const markOpened = (id: number) =>
     setOpened((prev) => new Set(prev).add(id));
@@ -109,18 +188,41 @@ export function AnnouncementComposer({
           placeholder="Merhaba {ad} 👋 …"
           className="resize-y"
         />
-        <div className="flex flex-wrap gap-1.5">
-          {TEMPLATES.map((t) => (
-            <Button
-              key={t.label}
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={() => setMessage(t.text)}
-            >
-              {t.label}
-            </Button>
-          ))}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-0.5 text-xs text-muted-foreground">
+              Hazır şablonlar
+            </span>
+            {TEMPLATE_GROUPS.map((g) => (
+              <button
+                key={g.group}
+                type="button"
+                onClick={() => setTplGroup(g.group)}
+                aria-pressed={tplGroup === g.group}
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+                  tplGroup === g.group
+                    ? "bg-foreground text-background"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70",
+                )}
+              >
+                {g.group}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {activeTemplates.map((t) => (
+              <Button
+                key={t.label}
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => setMessage(t.text)}
+              >
+                {t.label}
+              </Button>
+            ))}
+          </div>
         </div>
         {!messageEmpty && (
           <p className="rounded-lg bg-muted/60 p-2.5 text-xs text-muted-foreground">
