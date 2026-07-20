@@ -20,6 +20,7 @@ import {
   listWeeklyPlans,
 } from "@/db/queries/plans";
 import { listSessionsForEnrollment } from "@/db/queries/sessions";
+import { listMessageTemplates } from "@/db/queries/message-templates";
 import {
   getMockList,
   getNetSeries,
@@ -47,7 +48,6 @@ import {
   netTrend,
 } from "@/lib/insights";
 import { cn } from "@/lib/utils";
-import { buildWaLink, waTemplates } from "@/lib/whatsapp";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
 import { CoachAssignSelect } from "@/components/app/coach-assign-select";
 import { HideStudentButton } from "@/components/app/hide-student-actions";
@@ -58,6 +58,7 @@ import {
 } from "@/components/app/invite-actions";
 import { MockCreateDialog } from "@/components/app/mock-create-dialog";
 import { StudentProfileForm } from "@/components/app/student-profile-form";
+import { StudentWaButton } from "@/components/app/student-wa-button";
 import type { MockSection } from "@/components/app/mock-form";
 import {
   ProgramBuilder,
@@ -188,6 +189,7 @@ export default async function OgrenciKokpitPage({
     resources,
     sessions,
     studyWeek,
+    messageTemplates,
   ] = await Promise.all([
     getWeekGrid(enrollment.id, now),
     getMockList(enrollment.id),
@@ -200,6 +202,7 @@ export default async function OgrenciKokpitPage({
     getResourcesForEnrollment(enrollment.id),
     listSessionsForEnrollment(enrollment.id, now),
     getStudyWeekTotal(enrollment.id, now),
+    listMessageTemplates(),
   ]);
 
   const insights = buildStudentInsights(insightInput);
@@ -303,25 +306,12 @@ export default async function OgrenciKokpitPage({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {student.phone && (
-              <Button
-                variant="outline"
+              <StudentWaButton
+                phone={student.phone}
+                fullName={student.fullName}
+                templates={messageTemplates}
                 size="lg"
-                render={
-                  <a
-                    href={buildWaLink(
-                      student.phone,
-                      waTemplates.soruGiris({
-                        studentName: student.fullName.split(" ")[0],
-                      }),
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-              >
-                <MessageCircleIcon data-icon="inline-start" />
-                WhatsApp
-              </Button>
+              />
             )}
             {!student.userId && invitePath && (
               <>
