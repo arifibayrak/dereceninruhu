@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 
+import { getR2 } from "@/db";
 import {
   getEnrollmentDetailByStudentId,
   getSectionsForEnrollment,
@@ -17,6 +18,7 @@ import {
   type ProposalItem,
   type ReviewLabels,
 } from "@/components/app/transcript-review";
+import { LiveTranscribeLoader } from "@/components/app/live-transcribe-loader";
 
 export default async function TranskriptReviewPage({
   params,
@@ -37,6 +39,16 @@ export default async function TranskriptReviewPage({
   const transcript = await getTranscriptById(transcriptId);
   // Erişim: transkript bu öğrencinin enrollment'ına ait olmalı.
   if (!transcript || transcript.enrollmentId !== enrollmentId) notFound();
+
+  // Canlı mikrofon ses parçaları (varsa) — playback için R2'den listele.
+  let audioKeys: string[] = [];
+  if (transcript.audioR2Key) {
+    const listed = await getR2().list({ prefix: transcript.audioR2Key });
+    audioKeys = listed.objects
+      .map((o) => o.key)
+      .filter((k) => k.endsWith(".webm") || k.endsWith(".mp4"))
+      .sort();
+  }
 
   const [proposals, sections, topicGroups, resources] = await Promise.all([
     listProposalsForTranscript(transcriptId),
@@ -86,6 +98,23 @@ export default async function TranskriptReviewPage({
       <h1 className="text-xl font-semibold">
         {detail.student.fullName} · Transkript incelemesi
       </h1>
+      {audioKeys.length > 0 ? (
+        <section className="flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+          <h2 className="text-sm font-medium">Ses kaydı</h2>
+          {audioKeys.map((k) => (
+            <audio
+              key={k}
+              controls
+              preload="none"
+              className="w-full"
+              src={`/api/uploads/${k}`}
+            >
+              <track kind="captions" />
+            </audio>
+          ))}
+        </section>
+      ) : null}
+
       <TranscriptReview
         transcript={{
           id: transcript.id,
@@ -97,6 +126,17 @@ export default async function TranskriptReviewPage({
         proposals={proposalItems}
         labels={labels}
       />
+
+      <section className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+        <h2 className="mb-3 text-sm font-medium">Kayda devam et (mikrofon)</h2>
+        <LiveTranscribeLoader
+          enrollmentId={enrollmentId}
+          studentId={studentId}
+          coachingSessionId={transcript.coachingSessionId ?? undefined}
+          transcriptId={transcript.id}
+          initialText={transcript.rawText ?? undefined}
+        />
+      </section>
     </div>
   );
 }

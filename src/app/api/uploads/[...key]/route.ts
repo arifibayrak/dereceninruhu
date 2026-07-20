@@ -1,5 +1,8 @@
+import { eq } from "drizzle-orm";
+
 import { getDb, getR2 } from "@/db";
-import { requireUser } from "@/actions/_guard";
+import { transcripts } from "@/db/schema";
+import { requireCoach, requireUser } from "@/actions/_guard";
 import { assertEnrollmentAccess } from "@/actions/_access";
 
 // R2'den okunur → istek başına, önbelleğe alınmaz (obje içeriği CDN'de cachelenir).
@@ -10,11 +13,13 @@ function notFound() {
 }
 
 /**
- * R2 dosyalarını servis eder. İki önek:
+ * R2 dosyalarını servis eder. Önekler:
  *  - `profiles/…`     → herkese açık (koç profil görselleri), uzun cache.
  *  - `study-proofs/…` → ÖZEL çalışma kanıtları; yalnız kaydın sahibi öğrenci
  *    veya koç/yönetici görebilir (anahtar: study-proofs/{enrollmentId}/…).
- * Başka hiçbir önek (ör. `transcripts/…`) bu yoldan sızmaz.
+ *  - `transcripts/…`  → ÖZEL görüşme ses kayıtları; YALNIZ koç/yönetici ve
+ *    transkriptin enrollment'ına erişimi olan (anahtar: transcripts/{id}/…).
+ * Başka hiçbir önek bu yoldan sızmaz.
  */
 export async function GET(
   _req: Request,
@@ -26,7 +31,8 @@ export async function GET(
 
   const isProfile = objectKey.startsWith("profiles/");
   const isProof = objectKey.startsWith("study-proofs/");
-  if (!isProfile && !isProof) return notFound();
+  const isTranscript = objectKey.startsWith("transcripts/");
+  if (!isProfile && !isProof && !isTranscript) return notFound();
 
   if (isProof) {
     const enrollmentId = Number(key[1]);
@@ -34,6 +40,24 @@ export async function GET(
     try {
       const user = await requireUser();
       await assertEnrollmentAccess(getDb(), enrollmentId, user);
+    } catch {
+      return notFound();
+    }
+  }
+
+  if (isTranscript) {
+    const transcriptId = Number(key[1]);
+    if (!Number.isInteger(transcriptId) || transcriptId <= 0) return notFound();
+    try {
+      // Görüşme sesi hassastır → YALNIZ koç/yönetici (öğrenciye açık değil).
+      const user = await requireCoach();
+      const db = getDb();
+      const t = await db.query.transcripts.findFirst({
+        where: eq(transcripts.id, transcriptId),
+        columns: { enrollmentId: true },
+      });
+      if (!t) return notFound();
+      await assertEnrollmentAccess(db, t.enrollmentId, user);
     } catch {
       return notFound();
     }
@@ -49,7 +73,9 @@ export async function GET(
   );
   headers.set(
     "Cache-Control",
-    isProof ? "private, no-store" : "public, max-age=31536000, immutable",
+    isProof || isTranscript
+      ? "private, no-store"
+      : "public, max-age=31536000, immutable",
   );
   if (obj.httpEtag) headers.set("ETag", obj.httpEtag);
   return new Response(obj.body as ReadableStream, { headers });

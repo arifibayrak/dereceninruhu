@@ -104,6 +104,50 @@ export async function createLiveTranscript(
   });
 }
 
+/**
+ * Kaydedilmiş bir transkripti tekrar açıp mikrofonla SÜRDÜR: yeni metni mevcut
+ * `rawText`'e ekler. Durum 'transcribed'a çekilir ki koç çıkarımı yeniden
+ * çalıştırabilsin (birleşik metin üstünde). Ses parçaları ayrıca `/api/
+ * transcripts/[id]/audio` route'undan yüklenir.
+ */
+const appendSchema = z.object({
+  transcriptId: z.coerce.number().int().positive(),
+  addedText: z.string().trim().min(1, "Eklenecek metin boş.").max(200_000),
+});
+
+export async function appendLiveTranscript(
+  input: unknown,
+): Promise<ActionResult<{ transcriptId: number }>> {
+  return guarded(async () => {
+    const user = await requireCoach();
+    const parsed = appendSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
+    }
+    const { transcriptId, addedText } = parsed.data;
+    const db = getDb();
+    const t = await db.query.transcripts.findFirst({
+      where: eq(transcripts.id, transcriptId),
+    });
+    if (!t) return actionError("Transkript bulunamadı.");
+    await assertEnrollmentAccess(db, t.enrollmentId, user);
+
+    const combined = [t.rawText?.trim(), addedText.trim()]
+      .filter(Boolean)
+      .join("\n");
+    await db
+      .update(transcripts)
+      .set({
+        rawText: combined,
+        wordCount: combined.split(/\s+/).filter(Boolean).length,
+        status: "transcribed", // birleşik metin üstünde yeniden çıkarıma hazır
+        updatedAt: new Date(),
+      })
+      .where(eq(transcripts.id, transcriptId));
+    return { ok: true, data: { transcriptId } };
+  });
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Ses yolu: kayıt yükle -> R2 + Whisper (parça parça) -> transkript          */
 /*  Parçalama istemcide yapılır (16 kHz mono WAV); burada her parça R2'ye       */

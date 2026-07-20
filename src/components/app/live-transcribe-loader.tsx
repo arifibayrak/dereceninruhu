@@ -23,6 +23,10 @@ type Props = {
   enrollmentId: number;
   studentId: number;
   coachingSessionId?: number | null;
+  /** Verilirse: bu kaydedilmiş transkripte EKLE (yeni satır oluşturma). */
+  transcriptId?: number;
+  /** `transcriptId` ile birlikte: mevcut metin (salt-okunur önizleme). */
+  initialText?: string;
 };
 
 export function LiveTranscribeLoader(props: Props) {

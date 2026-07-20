@@ -9,24 +9,29 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useRouter } from "next/navigation";
-import { MicIcon, SquareIcon, SaveIcon } from "lucide-react";
+import { MicIcon, SquareIcon, SaveIcon, PlayIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { createLiveTranscript } from "@/actions/transcripts";
+import {
+  appendLiveTranscript,
+  createLiveTranscript,
+} from "@/actions/transcripts";
 import { Button } from "@/components/ui/button";
 
 /**
  * Canlı (cihaz-içi) mikrofon transkripti — eklentisiz web sürümü.
  *
- * Ses TARAYICIDA (WebGPU + transformers.js whisper-small) yazıya çevrilir;
- * hiçbir yere kaydedilmez/yüklenmez. Yalnız üretilen METİN, "Kaydet" ile
- * `createLiveTranscript` (çerez oturumu) üzerinden uygulamaya işlenir ve mevcut
- * AI-öneri hattını besler. transformers.js YALNIZ tarayıcıda dinamik import
- * edilir → Cloudflare Worker paketine girmez.
+ * Ses TARAYICIDA (WebGPU + transformers.js whisper-small) yazıya çevrilir.
+ * VARSAYILAN olarak ses kaydedilmez; yalnız üretilen METİN "Kaydet" ile
+ * `createLiveTranscript` (çerez oturumu) üzerinden işlenir ve AI-öneri hattını
+ * besler. Koç KVKK onay kutusunu işaretlerse ses de `MediaRecorder` ile
+ * (webm/opus, ~24 kbps) kaydedilip R2'ye yüklenir. transformers.js YALNIZ
+ * tarayıcıda dinamik import edilir → Cloudflare Worker paketine girmez.
  *
- * Kaynak = YALNIZ MİKROFON (sekme sesi web sayfasından yakalanamaz). Telefon/
- * WhatsApp (hoparlör), yüz yüze ya da bilgisayardan konuşma fark etmeksizin
- * mikrofonun duyduğu her şey çevrilir.
+ * DURDUR sonrası iki seçenek: "Devam et" (aynı transkripte ekleyerek kaydı
+ * sürdürür — metin/ses birikir) ve "Yeniden başlat" (sıfırdan). `transcriptId`
+ * verilirse (kaydedilmiş bir transkripti tekrar açıp sürdürme) metin mevcut
+ * kayda EKLENİR; verilmezse yeni transkript oluşturulur.
  */
 
 const MODEL_ID = "onnx-community/whisper-small";
@@ -35,6 +40,7 @@ const COMMIT_SECONDS = 24;
 const CARRYOVER_SECONDS = 2;
 const TICK_MS = 4000;
 const SILENCE_RMS = 0.008; // altındaki bloklar modele verilmez (halüsinasyon önlenir)
+const AUDIO_BITS_PER_SECOND = 24000; // konuşma için opus'ta bol (~11 MB/saat)
 
 type Transcriber = (
   audio: Float32Array,
@@ -47,6 +53,10 @@ type Props = {
   enrollmentId: number;
   studentId: number;
   coachingSessionId?: number | null;
+  /** Verilirse: bu kaydedilmiş transkripte EKLE (yeni satır oluşturma). */
+  transcriptId?: number;
+  /** `transcriptId` ile birlikte: mevcut metin (salt-okunur "şu ana kadar"). */
+  initialText?: string;
 };
 
 function rms(samples: Float32Array): number {
@@ -54,6 +64,16 @@ function rms(samples: Float32Array): number {
   let sum = 0;
   for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
   return Math.sqrt(sum / samples.length);
+}
+
+/** Kaydedilebilir en iyi ses türünü seç (yoksa null → ses kaydı devre dışı). */
+function pickAudioMime(): string | null {
+  if (typeof MediaRecorder === "undefined") return null;
+  const prefs = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+  for (const m of prefs) {
+    if (MediaRecorder.isTypeSupported(m)) return m;
+  }
+  return null;
 }
 
 // WebGPU/AudioContext desteği — SSR-güvenli okuma (hidrasyon uyuşmazlığı yok).
@@ -66,8 +86,11 @@ export function LiveTranscribe({
   enrollmentId,
   studentId,
   coachingSessionId,
+  transcriptId,
+  initialText,
 }: Props) {
   const router = useRouter();
+  const isAppend = transcriptId != null;
 
   const supported = useSyncExternalStore(
     noopSubscribe,
@@ -76,10 +99,13 @@ export function LiveTranscribe({
   );
   const [status, setStatus] = useState<Status>("idle");
   const [modelStatus, setModelStatus] = useState("");
+  // finals/partial YALNIZ bu oturumda YENİ eklenen konuşmayı tutar; `initialText`
+  // (varsa) ayrı bir salt-okunur önizleme olarak gösterilir.
   const [finals, setFinals] = useState<string[]>([]);
   const [partial, setPartial] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [keepAudio, setKeepAudio] = useState(false);
 
   // Motor durumu (render tetiklemez).
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -91,6 +117,13 @@ export function LiveTranscribe({
   const bufferedRef = useRef(0);
   const runningRef = useRef(false);
   const busyRef = useRef(false);
+
+  // Ses kaydı (yalnız KVKK onayı işaretliyse). Her başlat→durdur bir "parça"dır;
+  // parçalar kaydederken sırayla R2'ye yüklenir.
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recorderChunksRef = useRef<Blob[]>([]);
+  const audioSegmentsRef = useRef<Blob[]>([]);
+  const mimeRef = useRef<string>("audio/webm");
 
   const transcriptRef = useRef<HTMLDivElement>(null);
 
@@ -108,13 +141,24 @@ export function LiveTranscribe({
     if (el) el.scrollTop = el.scrollHeight;
   }, [finals, partial]);
 
-  // Yalnız ref'lere dokunan yıkım — bileşen sökülürken güvenli.
+  // Yalnız ref'lere dokunan yıkım — bileşen sökülürken güvenli. NOT: kaydedilmiş
+  // ses parçaları (`audioSegmentsRef`) burada TEMİZLENMEZ (durdur→kaydet arası
+  // gerekir); yalnız sıfırdan başlatınca temizlenir.
   const teardown = useCallback(() => {
     runningRef.current = false;
     if (tickRef.current) {
       clearInterval(tickRef.current);
       tickRef.current = null;
     }
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      try {
+        recorderRef.current.stop();
+      } catch {
+        // yut
+      }
+    }
+    recorderRef.current = null;
+    recorderChunksRef.current = [];
     processorRef.current?.disconnect();
     processorRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -206,10 +250,9 @@ export function LiveTranscribe({
     }
   };
 
-  const start = async (): Promise<void> => {
+  /** Mikrofon + motor + (onaylıysa) ses kaydını başlat. finals/partial'a DOKUNMAZ. */
+  const beginCapture = async (): Promise<void> => {
     setNotice(null);
-    setFinals([]);
-    setPartial("");
     setStatus("starting");
 
     // Mikrofon izni — web sayfasında tarayıcı istemi normal görünür.
@@ -217,7 +260,7 @@ export function LiveTranscribe({
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setStatus("idle");
+      setStatus(finals.length || partial ? "stopped" : "idle");
       setNotice(
         "Mikrofon izni gerekli. Tarayıcı sorunca 'İzin ver'e bas; reddettiysen adres çubuğundaki kilit/kamera simgesinden mikrofonu aç ve tekrar dene.",
       );
@@ -249,17 +292,73 @@ export function LiveTranscribe({
         bufferedRef.current += ev.inputBuffer.length;
       };
 
+      // Ses kaydı: yalnız KVKK onayı işaretliyse ve tarayıcı destekliyorsa.
+      if (keepAudio) {
+        const mime = pickAudioMime();
+        if (mime) {
+          mimeRef.current = mime;
+          recorderChunksRef.current = [];
+          const rec = new MediaRecorder(stream, {
+            mimeType: mime,
+            audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+          });
+          rec.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) recorderChunksRef.current.push(e.data);
+          };
+          recorderRef.current = rec;
+          rec.start(1000); // 1 sn'lik parçalar → uzun kayıtta veri kaybı riski az
+        } else {
+          setNotice(
+            "Bu tarayıcı ses kaydını (MediaRecorder) desteklemiyor; yalnız metin kaydedilecek.",
+          );
+        }
+      }
+
       runningRef.current = true;
       tickRef.current = setInterval(() => void tick(), TICK_MS);
       setStatus("recording");
     } catch (e) {
       teardown();
-      setStatus("idle");
-      setNotice(
-        e instanceof Error ? e.message : "Transkript başlatılamadı.",
-      );
+      setStatus(finals.length || partial ? "stopped" : "idle");
+      setNotice(e instanceof Error ? e.message : "Transkript başlatılamadı.");
     }
   };
+
+  /** Sıfırdan: bu oturumun metnini ve ses parçalarını temizleyip başlat. */
+  const start = async (): Promise<void> => {
+    setFinals([]);
+    setPartial("");
+    audioSegmentsRef.current = [];
+    await beginCapture();
+  };
+
+  /** Devam et: birikmiş metni/ses parçalarını KORUYARAK kaydı sürdür. */
+  const resume = async (): Promise<void> => {
+    await beginCapture();
+  };
+
+  /** MediaRecorder'ı durdur ve son parçayı `audioSegmentsRef`'e ekle. */
+  const finalizeRecorder = (): Promise<void> =>
+    new Promise((resolve) => {
+      const rec = recorderRef.current;
+      if (!rec || rec.state === "inactive") return resolve();
+      rec.onstop = () => {
+        const chunks = recorderChunksRef.current;
+        if (chunks.length) {
+          audioSegmentsRef.current.push(
+            new Blob(chunks, { type: mimeRef.current || "audio/webm" }),
+          );
+        }
+        recorderChunksRef.current = [];
+        recorderRef.current = null;
+        resolve();
+      };
+      try {
+        rec.stop();
+      } catch {
+        resolve();
+      }
+    });
 
   const stop = async (): Promise<void> => {
     runningRef.current = false;
@@ -280,8 +379,25 @@ export function LiveTranscribe({
     } catch {
       // yut
     }
+    // Ses parçasını, mikrofon kapanmadan ÖNCE finalize et.
+    await finalizeRecorder();
     teardown();
     setStatus("stopped");
+  };
+
+  /** Her ses parçasını sırayla yükle (metin zaten kaydedildikten sonra). */
+  const uploadAudioSegments = async (tid: number): Promise<void> => {
+    const segments = audioSegmentsRef.current;
+    for (let i = 0; i < segments.length; i++) {
+      const fd = new FormData();
+      fd.append("index", String(i));
+      fd.append("file", segments[i], `live-${i}.webm`);
+      const res = await fetch(`/api/transcripts/${tid}/audio`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) throw new Error("Ses parçası yüklenemedi.");
+    }
   };
 
   const save = (): void => {
@@ -291,18 +407,47 @@ export function LiveTranscribe({
     }
     setSaving(true);
     void (async () => {
-      const res = await createLiveTranscript({
-        enrollmentId,
-        coachingSessionId: coachingSessionId ?? undefined,
-        rawText: fullText,
-      });
-      setSaving(false);
-      if (res.ok) {
-        router.push(
-          `/koc/ogrenciler/${studentId}/transkript/${res.data.transcriptId}`,
-        );
-      } else {
-        toast.error(res.error);
+      try {
+        let tid = transcriptId ?? null;
+        if (tid != null) {
+          const res = await appendLiveTranscript({
+            transcriptId: tid,
+            addedText: fullText,
+          });
+          if (!res.ok) throw new Error(res.error);
+        } else {
+          const res = await createLiveTranscript({
+            enrollmentId,
+            coachingSessionId: coachingSessionId ?? undefined,
+            rawText: fullText,
+          });
+          if (!res.ok) throw new Error(res.error);
+          tid = res.data.transcriptId;
+        }
+
+        if (keepAudio && audioSegmentsRef.current.length > 0 && tid != null) {
+          try {
+            await uploadAudioSegments(tid);
+          } catch {
+            toast.warning("Metin kaydedildi ama ses yüklenemedi.");
+          }
+        }
+
+        if (isAppend) {
+          // Kaydedilmiş transkripte eklendi: sayfada kal, tazele, oturumu sıfırla.
+          toast.success("Transkripte eklendi.");
+          setFinals([]);
+          setPartial("");
+          audioSegmentsRef.current = [];
+          setStatus("idle");
+          router.refresh();
+        } else {
+          router.push(`/koc/ogrenciler/${studentId}/transkript/${tid}`);
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Kaydedilemedi.");
+      } finally {
+        setSaving(false);
       }
     })();
   };
@@ -318,16 +463,42 @@ export function LiveTranscribe({
   }
 
   const isRecording = status === "recording" || status === "starting";
+  const hasText = finals.length > 0 || partial.length > 0;
 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
         Mikrofonunu dinler, konuşmayı <strong>cihazında</strong> (WebGPU) canlı
-        yazıya çevirir. Ses kaydedilmez; yalnız metin kaydedilir. İlk kullanımda
-        model bir kez (~250&nbsp;MB) indirilir, sonra çevrimdışı çalışır.
+        yazıya çevirir. İlk kullanımda model bir kez (~250&nbsp;MB) indirilir,
+        sonra çevrimdışı çalışır.
       </p>
 
-      <div className="flex items-center gap-2">
+      {isAppend && initialText ? (
+        <div className="rounded-lg border border-dashed border-foreground/15 bg-muted/50 p-3 text-sm">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">
+            Şu ana kadar
+          </p>
+          <p className="line-clamp-4 break-words whitespace-pre-wrap text-foreground/80">
+            {initialText}
+          </p>
+        </div>
+      ) : null}
+
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={keepAudio}
+          disabled={isRecording}
+          onChange={(e) => setKeepAudio(e.target.checked)}
+        />
+        <span className="text-muted-foreground">
+          Ses kaydını da sakla — öğrenci/veli onayı alındı (KVKK). İşaretlenmezse
+          yalnız metin kaydedilir, ses cihazdan çıkmaz.
+        </span>
+      </label>
+
+      <div className="flex flex-wrap items-center gap-2">
         {status === "recording" ? (
           <Button variant="destructive" onClick={() => void stop()}>
             <SquareIcon className="size-4 fill-current" />
@@ -338,16 +509,27 @@ export function LiveTranscribe({
             <MicIcon className="size-4" />
             Başlatılıyor…
           </Button>
+        ) : status === "stopped" ? (
+          <>
+            <Button onClick={() => void resume()}>
+              <PlayIcon className="size-4" />
+              Devam et
+            </Button>
+            <Button variant="outline" onClick={() => void start()}>
+              <MicIcon className="size-4" />
+              Yeniden başlat
+            </Button>
+          </>
         ) : (
           <Button onClick={() => void start()}>
             <MicIcon className="size-4" />
-            {status === "stopped" ? "Yeniden başlat" : "Başlat"}
+            {isAppend ? "Eklemeye başla" : "Başlat"}
           </Button>
         )}
         {status === "recording" ? (
           <span className="flex items-center gap-1.5 text-xs font-medium text-destructive">
             <span className="size-2 animate-pulse rounded-full bg-destructive" />
-            Dinleniyor
+            {keepAudio ? "Dinleniyor · ses kaydediliyor" : "Dinleniyor"}
           </span>
         ) : null}
       </div>
@@ -362,11 +544,13 @@ export function LiveTranscribe({
         ref={transcriptRef}
         className="max-h-72 min-h-28 overflow-y-auto rounded-lg bg-muted p-3 text-sm leading-relaxed break-words whitespace-pre-wrap"
       >
-        {finals.length === 0 && !partial ? (
+        {!hasText ? (
           <span className="text-muted-foreground">
             {isRecording
               ? "Dinleniyor… konuşuldukça metin burada akacak."
-              : "Başlat'a basınca canlı transkript burada görünür."}
+              : isAppend
+                ? "Eklemeye başla'ya basınca yeni konuşma burada akacak."
+                : "Başlat'a basınca canlı transkript burada görünür."}
           </span>
         ) : (
           <>
@@ -382,7 +566,11 @@ export function LiveTranscribe({
         <div>
           <Button onClick={save} disabled={saving}>
             <SaveIcon className="size-4" />
-            {saving ? "Kaydediliyor…" : "Kaydet ve incele"}
+            {saving
+              ? "Kaydediliyor…"
+              : isAppend
+                ? "Kaydet (transkripte ekle)"
+                : "Kaydet ve incele"}
           </Button>
         </div>
       ) : null}
