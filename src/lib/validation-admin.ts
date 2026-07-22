@@ -70,3 +70,44 @@ export const updateCohortSettingsSchema = z.object({
 export type UpdateCohortSettingsInput = z.infer<
   typeof updateCohortSettingsSchema
 >;
+
+/* --------------------- Site iletişim / sosyal ayarları -------------------- */
+
+/** Boş string'i null'a çeviren opsiyonel https URL alanı. */
+const optionalUrl = z
+  .string()
+  .trim()
+  .max(300)
+  .optional()
+  .transform((v) => (v ? v : null))
+  .refine((v) => v === null || /^https?:\/\//.test(v), {
+    message: "Bağlantı http:// veya https:// ile başlamalı.",
+  });
+
+/**
+ * Yönetici site iletişim/sosyal ayarını günceller. Telefon serbest biçimde
+ * girilir (0538…, +90 538…, boşluklu); action `normalizePhone` ile 10 haneye
+ * indirger. Boş telefon → WhatsApp butonu hiç render edilmez.
+ */
+export const updateSiteSettingsSchema = z.object({
+  whatsappPhone: z
+    .string()
+    .trim()
+    .max(30)
+    .optional()
+    .transform((v) => (v ? v : null))
+    .refine((v) => v === null || v.replace(/\D/g, "").length >= 10, {
+      message: "Telefon en az 10 hane olmalı (ör. 0538 436 05 11).",
+    }),
+  whatsappMessage: z
+    .string()
+    .trim()
+    .min(5, "Hazır mesaj en az 5 karakter olmalı.")
+    .max(300, "Hazır mesaj en fazla 300 karakter olabilir."),
+  whatsappVisible: z.coerce.boolean(),
+  instagramUrl: optionalUrl,
+  tiktokUrl: optionalUrl,
+  youtubeUrl: optionalUrl,
+  publicStatsVisible: z.coerce.boolean(),
+});
+export type UpdateSiteSettingsInput = z.infer<typeof updateSiteSettingsSchema>;

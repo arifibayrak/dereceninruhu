@@ -259,7 +259,19 @@ export const students = sqliteTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index("students_user_id_idx").on(t.userId)],
+  (t) => [
+    index("students_user_id_idx").on(t.userId),
+    /*
+     * Telefon = giriş kimliği (giriş e-postası ondan türetilir), bu yüzden
+     * görünür kayıtlar arasında TEKİL olmak zorunda. Aynı numarada ikinci kayıt
+     * açılınca öğrencinin verisi ikiye bölünüyor, giriş hesabı yalnız birine
+     * bağlanıyor ve PIN diğerine sıfırlandığı için öğrenci giremiyordu.
+     * Gizlenen (soft-delete) kayıtlar hariç — numara yeniden kullanılabilsin.
+     */
+    uniqueIndex("students_phone_uq")
+      .on(t.phone)
+      .where(sql`"phone" IS NOT NULL AND "deleted_at" IS NULL`),
+  ],
 );
 
 export const enrollments = sqliteTable(
@@ -402,8 +414,22 @@ export const questionLogs = sqliteTable(
     subjectId: integer("subject_id")
       .notNull()
       .references(() => subjects.id),
-    /** Soru sayısı çözülen — totals are SUM … GROUP BY, never stored. */
+    /**
+     * Soru sayısı çözülen — totals are SUM … GROUP BY, never stored.
+     * TEK DOĞRULUK KAYNAĞI: her toplam/hacim sorgusu bunu okur. D/Y/B
+     * girildiğinde sunucuda `doğru + yanlış + boş` olarak yeniden türetilir.
+     */
     questionCount: integer("question_count").notNull().default(0),
+    /**
+     * Opsiyonel doğru / yanlış / boş kırılımı. Öğrenci sadece toplamı da
+     * girebilir → üçü birden NULL kalır (kısmi giriş kabul edilmez: ya üçü de
+     * dolu ya da üçü de boş). Net, `computeNet` ile okuma anında hesaplanır;
+     * mock sonuçlarının aksine burada snapshot SAKLANMAZ — bu bir çalışma
+     * kaydıdır, sınav sonucu değil.
+     */
+    correctCount: integer("correct_count"),
+    wrongCount: integer("wrong_count"),
+    blankCount: integer("blank_count"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -856,6 +882,45 @@ export const cohortSettings = sqliteTable("cohort_settings", {
 });
 
 /**
+ * Site geneli iletişim / sosyal ayarları — TEK satır (id=1), `cohortSettings`
+ * ile aynı singleton deseni. Pazarlama sitesindeki WhatsApp butonunu ve sosyal
+ * ikonları besler; numara değişince deploy gerekmesin diye DB'de tutulur.
+ *
+ * Sosyal URL alanları boş bırakılabilir — o zaman `@/lib/seo` içindeki
+ * `SOCIAL_LINKS` sabitine düşülür (fallback), böylece satır hiç yazılmamışken
+ * de site eksiksiz görünür.
+ */
+export const siteSettings = sqliteTable("site_settings", {
+  /** Singleton — daima id=1. */
+  id: integer("id").primaryKey(),
+  /** İşletme WhatsApp numarası — 10 haneli TR formatında saklanır (normalizePhone). */
+  whatsappPhone: text("whatsapp_phone"),
+  /** Butona tıklayınca WhatsApp'ta hazır gelen mesaj. */
+  whatsappMessage: text("whatsapp_message")
+    .notNull()
+    .default(
+      "Merhaba, YKS koçluk süreci hakkında bilgi almak istiyorum.",
+    ),
+  /** Yüzen WhatsApp butonu sitede görünsün mü (ana şalter). */
+  whatsappVisible: integer("whatsapp_visible", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  /** Sosyal profiller — boş → SOCIAL_LINKS sabiti kullanılır. */
+  instagramUrl: text("instagram_url"),
+  tiktokUrl: text("tiktok_url"),
+  youtubeUrl: text("youtube_url"),
+  /**
+   * Public "şeffaf istatistik" sayaçları görünsün mü (Faz 4).
+   * UYARI: yayımlanan metrikler yalnız soru/deneme/net toplamlarıdır; gerçek
+   * aktif öğrenci sayısı ASLA public sayfaya çıkmaz (bkz. AGENTS.md).
+   */
+  publicStatsVisible: integer("public_stats_visible", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  updatedAt: updatedAt(),
+});
+
+/**
  * Bekleme listesi — dönem dolduğunda talebi yakalar; sıra pozisyonu okuma
  * anında hesaplanır (bekleyenler createdAt'e göre sıralanır). `leads` ile aynı
  * kalıp: public form → honeypot + Zod → koç/yönetici havuzdan yönetir.
@@ -938,10 +1003,72 @@ export const testimonials = sqliteTable("testimonials", {
   result: text("result"),
   quote: text("quote").notNull(),
   photoUrl: text("photo_url"),
+  /**
+   * ÖSYM/MEB sonuç belgesi görseli (R2 → `/api/uploads/profiles/…`).
+   * Derece vitrinindeki kanıt; öğrencinin YAZILI izni olmadan yayınlanmaz
+   * (bkz. `consentAt`).
+   */
+  proofImageUrl: text("proof_image_url"),
+  /** Öğrenci yorum/tavsiye videosu (YouTube vb.) — opsiyonel. */
+  videoUrl: text("video_url"),
+  /**
+   * "Derece yapan öğrencilerimiz" vitrinine çıkar. Yalnız `isActive` VE
+   * `consentAt` dolu olan satırlar public'e gider.
+   */
+  isFeatured: integer("is_featured", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  /**
+   * Öğrencinin sonucunun/belgesinin yayınlanmasına izin verdiği an.
+   * NULL = izin alınmadı → vitrinde ASLA gösterilmez. Kişisel veri (sınav
+   * sonucu + belge görseli) yayınlandığı için bu alan opsiyonel bir bayrak
+   * değil, yayın ön koşuludur.
+   */
+  consentAt: integer("consent_at", { mode: "timestamp" }),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: createdAt(),
 });
+
+/**
+ * Ücretsiz kaynak merkezi (/kaynaklar) — küratörlü DIŞ bağlantı dizini.
+ *
+ * İçerik barındırmayız: OGM Materyal, MEBİ, ÖSYM çıkmış sorular, YÖK Atlas gibi
+ * resmî kaynaklara link veririz. Telif riski yok, bakım maliyeti düşük, SEO
+ * değeri yüksek. `content_items` ile karıştırma: o ÖĞRENCIYE ATANAN özel
+ * içeriktir (enrollment bazlı), bu ise herkese açık pazarlama dizinidir.
+ */
+export const resourceLinks = sqliteTable(
+  "resource_links",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    category: text("category", {
+      enum: [
+        "cikmis-sorular",
+        "ogm-mebi",
+        "ders-notlari",
+        "tercih-atlas",
+        "arac",
+      ],
+    }).notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    /** Dış bağlantı (http/https) — kendi sayfalarımız için de kullanılabilir. */
+    url: text("url").notNull(),
+    /** LGS / YKS / KPSS — null = tüm sınavlar. */
+    examCode: text("exam_code"),
+    /** Kaynağın sahibi kurum: ÖSYM, MEB, OGM Materyal… */
+    provider: text("provider"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isFeatured: integer("is_featured", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("resource_links_category_idx").on(t.category, t.sortOrder)],
+);
 
 export const packages = sqliteTable("packages", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -1718,10 +1845,12 @@ export type Invoice = typeof invoices.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
 export type CohortSettings = typeof cohortSettings.$inferSelect;
+export type SiteSettings = typeof siteSettings.$inferSelect;
 export type WaitlistEntry = typeof waitlistEntries.$inferSelect;
 export type CoachApplication = typeof coachApplications.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
+export type ResourceLink = typeof resourceLinks.$inferSelect;
 export type Package = typeof packages.$inferSelect;
 export type Faq = typeof faqs.$inferSelect;
 export type CoachProfile = typeof coachProfiles.$inferSelect;

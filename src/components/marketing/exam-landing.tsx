@@ -1,10 +1,20 @@
 import Link from "next/link";
-import { CheckIcon, SparklesIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  CheckIcon,
+  CompassIcon,
+  MessageCircleIcon,
+  ShieldIcon,
+  SparklesIcon,
+} from "lucide-react";
 
 import { getCohort, getPublicFaqs, getPublicPackages } from "@/db/queries/cms";
 import { cohortView, enrollmentOpen } from "@/lib/cohort";
 import { formatKurus } from "@/lib/format";
-import type { ExamLandingConfig } from "@/lib/exam-landing-content";
+import type {
+  ExamLandingConfig,
+  SupportPillar,
+} from "@/lib/exam-landing-content";
 import { breadcrumbSchema, courseSchema, faqPageSchema } from "@/lib/schema";
 import { CohortBanner } from "@/components/marketing/cohort-banner";
 import { CtaBand } from "@/components/marketing/cta-band";
@@ -16,6 +26,17 @@ import { SectionHeading } from "@/components/brand/section-heading";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+
+/** Destek sütunu ikonları — anahtarlar `SupportPillar["key"]` ile eşleşir. */
+const PILLAR_ICONS: Record<
+  SupportPillar["key"],
+  typeof BookOpenIcon
+> = {
+  akademik: BookOpenIcon,
+  plan: CompassIcon,
+  gorusme: MessageCircleIcon,
+  dayaniklilik: ShieldIcon,
+};
 
 /**
  * Sınava özel açılış sayfası (YKS / LGS / KPSS koçluğu) — tek gövde, üç sayfa.
@@ -88,20 +109,51 @@ export async function ExamLanding({ config }: { config: ExamLandingConfig }) {
       <CohortBanner cohort={cohort} />
 
       {/* Neden / kapsam */}
-      <section className="grid gap-8 rounded-3xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8 lg:grid-cols-[1fr_1.2fr]">
+      <section className="flex flex-col gap-8">
         <SectionHeading
           eyebrow="Kapsam"
           title={config.introTitle}
           description={config.introBody}
+          align="center"
+          className="items-center"
         />
-        <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-          {config.benefits.map((item) => (
-            <li key={item} className="flex items-start gap-2 text-sm">
-              <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
-              <span className="text-pretty">{item}</span>
-            </li>
-          ))}
-        </ul>
+
+        {/*
+          Dört destek sütunu. Derinlik somutluktan gelir, sıfattan değil
+          (bkz. exam-landing-content.ts başlığı) — her madde koçluk sürecinde
+          gerçekten olan bir şeyi anlatır.
+        */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {config.pillars.map((pillar) => {
+            const Icon = PILLAR_ICONS[pillar.key];
+            return (
+              <div
+                key={pillar.key}
+                className="flex flex-col gap-3 rounded-2xl bg-card p-5 ring-1 ring-foreground/10"
+              >
+                <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+                  <Icon className="size-5 text-primary" />
+                </span>
+                <div className="flex flex-col gap-1">
+                  <h3 className="font-heading text-base font-semibold">
+                    {pillar.title}
+                  </h3>
+                  <p className="text-sm text-pretty text-muted-foreground">
+                    {pillar.description}
+                  </p>
+                </div>
+                <ul className="mt-1 flex flex-col gap-2">
+                  {pillar.items.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm">
+                      <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-success" />
+                      <span className="text-pretty">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       {/* Paket teaser */}

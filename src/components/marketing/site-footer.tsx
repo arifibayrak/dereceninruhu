@@ -3,6 +3,10 @@ import { ExternalLinkIcon, MapPinIcon, StarIcon } from "lucide-react";
 
 import { coachStats } from "@/db/seed/cms-content";
 import { Logo } from "@/components/brand/logo";
+import {
+  SocialIconRow,
+  type SocialUrls,
+} from "@/components/brand/social-icons";
 
 const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
   {
@@ -24,8 +28,11 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
     ],
   },
   {
-    title: "İçerik",
+    title: "Ücretsiz",
     links: [
+      { href: "/kaynaklar", label: "Kaynaklar" },
+      { href: "/araclar/net-hesaplama", label: "Net Hesaplama" },
+      { href: "/sayac", label: "Sınav Sayacı" },
       { href: "/blog", label: "Blog" },
       { href: "/basarilar", label: "Başarı Hikayeleri" },
       { href: "/sss", label: "Sıkça Sorulan Sorular" },
@@ -43,7 +50,7 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
 ];
 
 /** Pazarlama sitesi alt bilgisi. */
-export function SiteFooter() {
+export function SiteFooter({ social }: { social: SocialUrls }) {
   return (
     <footer className="border-t bg-card/50">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-10 sm:px-6 md:py-12">
@@ -71,6 +78,12 @@ export function SiteFooter() {
               <MapPinIcon className="size-3.5" />
               Kartal, İstanbul — görüşmeler online
             </span>
+            <div className="flex flex-col gap-1 pt-1">
+              <span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                Bizi takip et
+              </span>
+              <SocialIconRow urls={social} className="-ml-2.5" />
+            </div>
           </div>
 
           {COLUMNS.map((col) => (

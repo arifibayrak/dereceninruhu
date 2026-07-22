@@ -10,6 +10,7 @@ import {
   subjects,
 } from "@/db/schema";
 import { computeNet, rollUpChildren, type SubjectCounts } from "@/lib/net";
+import { normalizeQuestionEntry } from "@/lib/question-log";
 import { startOfTrtDay } from "@/lib/dates";
 import { createMockSchema, questionLogUpsertSchema } from "@/lib/validation";
 import {
@@ -37,12 +38,21 @@ export async function upsertQuestionLogs(
     await assertEnrollmentAccess(db, enrollmentId, user);
 
     const day = startOfTrtDay(logDate);
-    const rows = entries.map((e) => ({
-      enrollmentId,
-      logDate: day,
-      subjectId: e.subjectId,
-      questionCount: e.questionCount,
-    }));
+    // Toplam D/Y/B'den TÜRETİLİR; kırılım yoksa NULL yazılır (kısmi satır yok).
+    const rows: {
+      enrollmentId: number;
+      logDate: Date;
+      subjectId: number;
+      questionCount: number;
+      correctCount: number | null;
+      wrongCount: number | null;
+      blankCount: number | null;
+    }[] = [];
+    for (const e of entries) {
+      const normalized = normalizeQuestionEntry(e);
+      if (!normalized) return actionError("Geçersiz soru girişi.");
+      rows.push({ enrollmentId, logDate: day, subjectId: e.subjectId, ...normalized });
+    }
 
     await db
       .insert(questionLogs)
@@ -55,6 +65,10 @@ export async function upsertQuestionLogs(
         ],
         set: {
           questionCount: sql`excluded.question_count`,
+          // Kırılım temizlendiğinde NULL'a dönebilmeli — bu yüzden hepsi set.
+          correctCount: sql`excluded.correct_count`,
+          wrongCount: sql`excluded.wrong_count`,
+          blankCount: sql`excluded.blank_count`,
           updatedAt: new Date(),
         },
       });

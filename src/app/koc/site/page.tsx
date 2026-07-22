@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import {
   countActiveStudents,
   getCohort,
+  getSiteSettings,
   listAllFaqs,
   listAllPackages,
+  listAllResourceLinks,
   listAllTestimonials,
 } from "@/db/queries/cms";
 import { getViewer } from "@/lib/session";
@@ -14,8 +16,13 @@ import {
   type CohortSettingsValues,
 } from "@/components/app/cohort-settings-form";
 import {
+  SiteSettingsForm,
+  type SiteSettingsValues,
+} from "@/components/app/site-settings-form";
+import {
   FaqManager,
   PackageManager,
+  ResourceLinkManager,
   TestimonialManager,
 } from "@/components/app/content-managers";
 import { SectionHeading } from "@/components/brand/section-heading";
@@ -42,14 +49,23 @@ export default async function IcerikPage() {
   const viewer = await getViewer();
   if (viewer?.role !== "admin") redirect("/koc");
 
-  const [testimonialRows, packageRows, faqRows, cohort, realActive] =
-    await Promise.all([
-      listAllTestimonials(),
-      listAllPackages(),
-      listAllFaqs(),
-      getCohort(),
-      countActiveStudents(),
-    ]);
+  const [
+    testimonialRows,
+    packageRows,
+    faqRows,
+    cohort,
+    realActive,
+    site,
+    resourceRows,
+  ] = await Promise.all([
+    listAllTestimonials(),
+    listAllPackages(),
+    listAllFaqs(),
+    getCohort(),
+    countActiveStudents(),
+    getSiteSettings(),
+    listAllResourceLinks(),
+  ]);
 
   const cohortValues: CohortSettingsValues = {
     donemLabel: cohort.donemLabel,
@@ -59,6 +75,16 @@ export default async function IcerikPage() {
     status: cohort.status,
     waitlistOpen: cohort.waitlistOpen,
     scarcityVisible: cohort.scarcityVisible,
+  };
+
+  const siteValues: SiteSettingsValues = {
+    whatsappPhone: site.whatsappPhone,
+    whatsappMessage: site.whatsappMessage,
+    whatsappVisible: site.whatsappVisible,
+    instagramUrl: site.instagramUrl,
+    tiktokUrl: site.tiktokUrl,
+    youtubeUrl: site.youtubeUrl,
+    publicStatsVisible: site.publicStatsVisible,
   };
 
   return (
@@ -72,11 +98,15 @@ export default async function IcerikPage() {
       <Tabs defaultValue="yorumlar" className="gap-6">
         <TabsList className="w-full max-w-full justify-start overflow-x-auto sm:w-fit">
           <TabsTrigger value="donem">Dönem</TabsTrigger>
+          <TabsTrigger value="iletisim">İletişim &amp; Sosyal</TabsTrigger>
           <TabsTrigger value="yorumlar">
             Yorumlar ({testimonialRows.length})
           </TabsTrigger>
           <TabsTrigger value="paketler">
             Paketler ({packageRows.length})
+          </TabsTrigger>
+          <TabsTrigger value="kaynaklar">
+            Kaynaklar ({resourceRows.length})
           </TabsTrigger>
           <TabsTrigger value="sss">SSS ({faqRows.length})</TabsTrigger>
         </TabsList>
@@ -88,6 +118,10 @@ export default async function IcerikPage() {
           />
         </TabsContent>
 
+        <TabsContent value="iletisim">
+          <SiteSettingsForm initial={siteValues} />
+        </TabsContent>
+
         <TabsContent value="yorumlar">
           <TestimonialManager
             rows={testimonialRows.map((r) => ({
@@ -96,6 +130,11 @@ export default async function IcerikPage() {
               exam: r.exam,
               result: r.result,
               quote: r.quote,
+              proofImageUrl: r.proofImageUrl,
+              videoUrl: r.videoUrl,
+              isFeatured: r.isFeatured,
+              // İzin zaman damgası UI'a bayrak olarak geçer; tarih gösterilmez.
+              hasConsent: r.consentAt !== null,
               sortOrder: r.sortOrder,
               isActive: r.isActive,
             }))}
@@ -111,6 +150,23 @@ export default async function IcerikPage() {
               period: r.period,
               features: parseJsonArray(r.features),
               sortOrder: r.sortOrder,
+              isActive: r.isActive,
+            }))}
+          />
+        </TabsContent>
+
+        <TabsContent value="kaynaklar">
+          <ResourceLinkManager
+            rows={resourceRows.map((r) => ({
+              id: r.id,
+              category: r.category,
+              title: r.title,
+              description: r.description,
+              url: r.url,
+              examCode: r.examCode,
+              provider: r.provider,
+              sortOrder: r.sortOrder,
+              isFeatured: r.isFeatured,
               isActive: r.isActive,
             }))}
           />

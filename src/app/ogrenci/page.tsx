@@ -26,6 +26,7 @@ import {
 } from "@/components/app/plan-checklist";
 import {
   TodayQuickAdd,
+  type QuickAddCell,
   type QuickAddSubject,
 } from "@/components/app/today-quick-add";
 import { StatTile } from "@/components/brand/stat-tile";
@@ -86,12 +87,14 @@ export default async function OgrenciBugunPage() {
       name: sub.name,
       parentSubjectId: sub.parentSubjectId,
       sectionName: s.name,
+      // Net önizlemesi için bölüm böleni (LGS 3, YKS/KPSS 4).
+      wrongPenaltyDivisor: s.wrongPenaltyDivisor,
     })),
   );
-  const todayInitial: Record<number, number> = {};
-  for (const [key, count] of Object.entries(grid)) {
+  const todayInitial: Record<number, QuickAddCell> = {};
+  for (const [key, cell] of Object.entries(grid)) {
     const [dayKey, subjectId] = key.split(":");
-    if (dayKey === todayKey) todayInitial[Number(subjectId)] = count;
+    if (dayKey === todayKey) todayInitial[Number(subjectId)] = cell;
   }
 
   return (

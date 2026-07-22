@@ -20,6 +20,7 @@ import {
   trWeekday,
   weekDays,
 } from "@/lib/dates";
+import { CoachNote } from "@/components/app/coach-note";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import {
   ProgramChecklist,
@@ -148,18 +149,16 @@ export default async function OgrenciProgramPage({
               </p>
             </div>
           )}
-          {plan.coachNote && (
-            <div className="flex flex-col gap-1 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10">
-              <span className="text-xs font-semibold text-muted-foreground">
-                Koçunun notu
-              </span>
-              <p className="text-sm whitespace-pre-line">{plan.coachNote}</p>
-            </div>
-          )}
+          {/*
+            Görevler önce, koç notu sonra: öğrenci sayfayı açınca "ne
+            yapacağım"ı görsün. Not serbest metin olduğu için ikincil bağlam —
+            eskiden en üstteydi ve checklist'i ekranın dışına itiyordu.
+          */}
           <ProgramChecklist
             days={days}
             todayDay={isCurrentWeek ? trWeekday(now) : null}
           />
+          {plan.coachNote && <CoachNote note={plan.coachNote} />}
         </>
       )}
     </>

@@ -24,6 +24,8 @@ const STATIC_ROUTES: { path: string; changeFrequency: Freq; priority: number }[]
     { path: "/hakkinda", changeFrequency: "monthly", priority: 0.8 },
     { path: "/nasil-calisir", changeFrequency: "monthly", priority: 0.8 },
     { path: "/iletisim", changeFrequency: "yearly", priority: 0.7 },
+    { path: "/kaynaklar", changeFrequency: "weekly", priority: 0.7 },
+    { path: "/araclar/net-hesaplama", changeFrequency: "monthly", priority: 0.7 },
     { path: "/sss", changeFrequency: "monthly", priority: 0.6 },
     { path: "/basarilar", changeFrequency: "weekly", priority: 0.6 },
     { path: "/blog", changeFrequency: "weekly", priority: 0.6 },

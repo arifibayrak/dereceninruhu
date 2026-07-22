@@ -53,6 +53,8 @@ export default async function SoruTakibiPage({
   const gridSections: GridSection[] = sections.map((s) => ({
     id: s.id,
     name: s.name,
+    // Net önizlemesi için bölüm böleni (LGS 3, YKS/KPSS 4).
+    wrongPenaltyDivisor: s.wrongPenaltyDivisor,
     subjects: s.loggable.map((sub) => ({
       id: sub.id,
       name: sub.name,
@@ -68,8 +70,8 @@ export default async function SoruTakibiPage({
       <div className="flex flex-col gap-1.5">
         <h1 className="font-heading text-title">Soru takibi</h1>
         <p className="text-sm text-muted-foreground">
-          Günlük çözdüğün soruları ders ders işle — koçun da aynı tabloyu
-          görüyor.
+          Günlük çözdüğün soruları ders ders işle — doğru/yanlış/boş girersen
+          netin de hesaplanır. Koçun da aynı tabloyu görüyor.
         </p>
       </div>
 

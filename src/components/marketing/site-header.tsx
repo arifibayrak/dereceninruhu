@@ -6,6 +6,10 @@ import { usePathname } from "next/navigation";
 import { MenuIcon, SparklesIcon } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
+import {
+  SocialIconRow,
+  type SocialUrls,
+} from "@/components/brand/social-icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,14 +25,14 @@ const NAV = [
   { href: "/nasil-calisir", label: "Nasıl Çalışır" },
   { href: "/koclar", label: "Koçlar" },
   { href: "/fiyatlar", label: "Fiyatlar" },
-  { href: "/sayac", label: "Sayaç" },
+  { href: "/kaynaklar", label: "Kaynaklar" },
   { href: "/blog", label: "Blog" },
   { href: "/basarilar", label: "Başarılar" },
   { href: "/sss", label: "SSS" },
 ] as const;
 
 /** Pazarlama sitesi üst çubuğu — yapışkan, mobilde çekmece menü. */
-export function SiteHeader() {
+export function SiteHeader({ social }: { social: SocialUrls }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -61,6 +65,15 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5">
+          {/*
+            Sosyal ikonlar: md'de gezinme gizli olduğu için yer var; lg'de
+            7 maddelik gezinme + 3 buton çubuğu doldurduğundan gizlenir,
+            xl'de yeniden görünür. Mobilde çekmecenin altında (aşağıda).
+          */}
+          <SocialIconRow
+            urls={social}
+            className="hidden md:flex lg:hidden xl:flex"
+          />
           <ThemeToggle className="hidden sm:inline-flex" />
           <Button
             variant="ghost"
@@ -145,11 +158,12 @@ export function SiteHeader() {
                   Ücretsiz Ön Görüşme
                 </Button>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    Netlerini artır, hedefine ulaş.
-                  </span>
+                  <SocialIconRow urls={social} className="-ml-2" />
                   <ThemeToggle />
                 </div>
+                <span className="text-xs text-muted-foreground">
+                  Netlerini artır, hedefine ulaş.
+                </span>
               </div>
             </SheetContent>
           </Sheet>

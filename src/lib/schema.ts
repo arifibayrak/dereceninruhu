@@ -14,7 +14,13 @@ import type {
   PublicTestimonial,
 } from "@/db/queries/cms";
 import { coachContent, coachStats } from "@/db/seed/cms-content";
-import { SITE_NAME, SITE_URL, absoluteUrl, sameAsLinks } from "@/lib/seo";
+import {
+  SITE_NAME,
+  SITE_URL,
+  absoluteUrl,
+  sameAsLinks,
+  sameAsWith,
+} from "@/lib/seo";
 
 export const ORG_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
@@ -50,8 +56,17 @@ function orgAddress() {
   };
 }
 
-/** EducationalOrganization — site geneli marka varlığı (kök/ana sayfa). */
-export function organizationSchema() {
+/**
+ * EducationalOrganization — site geneli marka varlığı (kök/ana sayfa).
+ *
+ * `social` verilirse (yöneticinin `/koc/site`'ta girdiği URL'ler) `sameAs`
+ * bunlarla zenginleşir; verilmezse `SOCIAL_LINKS` sabiti kullanılır.
+ */
+export function organizationSchema(social?: {
+  instagram?: string;
+  tiktok?: string;
+  youtube?: string;
+}) {
   return {
     "@context": "https://schema.org",
     "@type": "EducationalOrganization",
@@ -68,7 +83,12 @@ export function organizationSchema() {
     areaServed: { "@type": "Country", name: "Türkiye" },
     address: orgAddress(),
     knowsAbout: EXAM_KNOWS,
-    sameAs: sameAsLinks(),
+    // Override sabitin YERİNE geçer — aynı platformun iki adresi yayınlanmaz.
+    sameAs: sameAsWith({
+      instagram: social?.instagram,
+      tiktok: social?.tiktok,
+      youtube: social?.youtube,
+    }),
     founder: { "@id": PERSON_ID },
   };
 }

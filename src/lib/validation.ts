@@ -140,16 +140,58 @@ export const activateByPhoneSchema = z
     path: ["pinConfirm"],
   });
 
-/** Soru takibi — bir günün ders bazlı upsert'i. */
+/**
+ * Soru takibi — bir günün ders bazlı upsert'i.
+ *
+ * `questionCount` opsiyoneldir: D/Y/B verilmişse toplam sunucuda ondan
+ * TÜRETİLİR (bkz. `normalizeQuestionEntry`). Kırılım ya üçü birden dolu ya da
+ * üçü birden boş olmalı — kısmi giriş burada reddedilir ki DB'ye
+ * "toplam ≠ D+Y+B" olan satır düşmesin.
+ */
+const questionBreakdownField = z.coerce
+  .number()
+  .int()
+  .min(0)
+  .max(2000)
+  .nullish();
+
 export const questionLogUpsertSchema = z.object({
   enrollmentId: z.coerce.number().int().positive(),
   logDate: z.coerce.date(),
   entries: z
     .array(
-      z.object({
-        subjectId: z.coerce.number().int().positive(),
-        questionCount: z.coerce.number().int().min(0).max(2000),
-      }),
+      z
+        .object({
+          subjectId: z.coerce.number().int().positive(),
+          questionCount: z.coerce.number().int().min(0).max(2000).optional(),
+          correctCount: questionBreakdownField,
+          wrongCount: questionBreakdownField,
+          blankCount: questionBreakdownField,
+        })
+        .superRefine((v, ctx) => {
+          const filled = [v.correctCount, v.wrongCount, v.blankCount].filter(
+            (n) => typeof n === "number",
+          ).length;
+          if (filled !== 0 && filled !== 3) {
+            ctx.addIssue({
+              code: "custom",
+              message: "Doğru, yanlış ve boş birlikte girilmeli.",
+              path: ["correctCount"],
+            });
+            return;
+          }
+          if (filled === 3) {
+            const total =
+              (v.correctCount ?? 0) + (v.wrongCount ?? 0) + (v.blankCount ?? 0);
+            if (total > 2000) {
+              ctx.addIssue({
+                code: "custom",
+                message: "Toplam en fazla 2000 soru olabilir.",
+                path: ["correctCount"],
+              });
+            }
+          }
+        }),
     )
     .min(1),
 });
@@ -366,16 +408,73 @@ export const upsertBlogPostSchema = z.object({
 export type UpsertBlogPostInput = z.infer<typeof upsertBlogPostSchema>;
 
 /** Yorum (testimonial) — sitede ad + soyadın ilk harfi yazılır. */
-export const upsertTestimonialSchema = z.object({
+export const upsertTestimonialSchema = z
+  .object({
+    id: z.coerce.number().int().positive().optional(),
+    studentName: z.string().trim().min(2, "İsim gerekli.").max(80),
+    exam: examCodeSchema,
+    result: z.string().trim().max(120).optional().or(z.literal("")),
+    quote: z.string().trim().min(2, "Yorum metni gerekli.").max(600),
+    /** R2 anahtarı (uploadProfileImage döndürür); UI doldurur, kullanıcı değil. */
+    proofImageUrl: z.string().trim().max(300).optional().or(z.literal("")),
+    videoUrl: z.string().trim().max(300).optional().or(z.literal("")),
+    isFeatured: z.boolean().default(false),
+    /** Öğrencinin yayın izni verildi mi — action bunu zaman damgasına çevirir. */
+    hasConsent: z.boolean().default(false),
+    sortOrder: z.coerce.number().int().min(0).max(999),
+    isActive: z.boolean(),
+  })
+  .superRefine((v, ctx) => {
+    // Vitrin kartı sıralama olmadan anlamsız.
+    if (v.isFeatured && !(v.result ?? "").trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Vitrine çıkarmak için derece/sonuç yazmalısın.",
+        path: ["result"],
+      });
+    }
+    // GİZLİLİK KAPISI: izin yoksa vitrine çıkamaz (sorgu da ayrıca filtreler).
+    if (v.isFeatured && !v.hasConsent) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Öğrencinin yayın izni işaretlenmeden vitrine çıkarılamaz.",
+        path: ["hasConsent"],
+      });
+    }
+  });
+export type UpsertTestimonialInput = z.infer<typeof upsertTestimonialSchema>;
+
+/** Ücretsiz kaynak dizini satırı (/kaynaklar). */
+export const resourceCategorySchema = z.enum([
+  "cikmis-sorular",
+  "ogm-mebi",
+  "ders-notlari",
+  "tercih-atlas",
+  "arac",
+]);
+
+export const upsertResourceLinkSchema = z.object({
   id: z.coerce.number().int().positive().optional(),
-  studentName: z.string().trim().min(2, "İsim gerekli.").max(80),
-  exam: examCodeSchema,
-  result: z.string().trim().max(120).optional().or(z.literal("")),
-  quote: z.string().trim().min(2, "Yorum metni gerekli.").max(600),
+  category: resourceCategorySchema,
+  title: z.string().trim().min(2, "Başlık gerekli.").max(120),
+  description: z.string().trim().max(400).optional().or(z.literal("")),
+  /** Dış bağlantı (http/https) ya da kendi sayfamız ("/araclar/…"). */
+  url: z
+    .string()
+    .trim()
+    .min(1, "Bağlantı gerekli.")
+    .max(400)
+    .refine((v) => /^https?:\/\//.test(v) || v.startsWith("/"), {
+      message: "Bağlantı http(s):// ile ya da / ile başlamalı.",
+    }),
+  examCode: z.enum(["YKS", "LGS", "KPSS"]).nullish(),
+  provider: z.string().trim().max(60).optional().or(z.literal("")),
   sortOrder: z.coerce.number().int().min(0).max(999),
+  isFeatured: z.boolean().default(false),
   isActive: z.boolean(),
 });
-export type UpsertTestimonialInput = z.infer<typeof upsertTestimonialSchema>;
+export type UpsertResourceLinkInput = z.infer<typeof upsertResourceLinkSchema>;
 
 /** Paket — fiyat integer kuruş olarak gelir (client ₺ → kuruş çevirir). */
 export const upsertPackageSchema = z.object({

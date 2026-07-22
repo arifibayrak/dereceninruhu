@@ -1,14 +1,17 @@
 import Link from "next/link";
 import {
+  ArrowRightIcon,
   CalendarDaysIcon,
   CheckIcon,
   ClipboardListIcon,
   LineChartIcon,
   MessageCircleIcon,
   NotebookPenIcon,
+  RotateCwIcon,
   UsersIcon,
 } from "lucide-react";
 
+import { COACHING_INCLUDES } from "@/lib/coaching-includes";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -26,6 +29,12 @@ export const metadata = buildMetadata({
   path: "/nasil-calisir",
 });
 
+/**
+ * Süreç adımları. Her adımın `output`'u var: o adım bittiğinde elinde TAM
+ * OLARAK ne olduğu. Geri bildirim (Görsel 13) rakiplerin daha detaylı
+ * anlattığını söylüyordu — derinliği somut çıktı vererek veriyoruz, sıfatla
+ * değil (bkz. AGENTS.md, sakin ve kanıtlı ton).
+ */
 const TIMELINE = [
   {
     icon: MessageCircleIcon,
@@ -34,6 +43,8 @@ const TIMELINE = [
     body:
       "20-30 dakikalık tanışma: hedefin, güncel netlerin, günlük düzenin. " +
       "Sana nasıl bir yol haritası çizeceğimizi somut olarak anlatırız — ödeme yükümlülüğü yoktur.",
+    output:
+      "Hedefine karşılık gelen net aralığı ve ilk ayda neye odaklanacağın.",
   },
   {
     icon: ClipboardListIcon,
@@ -42,14 +53,18 @@ const TIMELINE = [
     body:
       "Mevcut deneme sonuçların ve kaynakların incelenir; eksik konu haritan çıkarılır. " +
       "İlk haftalık programın gün gün, çıktı odaklı (soru sayısı, konu, deneme) hazırlanır.",
+    output:
+      "Konu konu eksik haritan, kaynak listen ve ilk haftanın gün gün görev listesi.",
   },
   {
     icon: NotebookPenIcon,
     label: "Her gün",
     title: "Soru ve çalışma takibi",
     body:
-      "Çözdüğün soruları ve denemelerini uygulamaya girersin (1 dakikanı alır). " +
-      "Koçun tabloyu canlı görür; aksama olursa hafta bitmeden müdahale eder.",
+      "Çözdüğün soruları uygulamaya girersin — istersen sadece toplam, istersen doğru/yanlış/boş ayrımıyla. " +
+      "Kırılımı girdiğinde netin ve ders bazlı doğruluk yüzden otomatik hesaplanır. Koçun aynı tabloyu canlı görür.",
+    output:
+      "Hangi hafta hangi dersten kaç soru çözdüğünü gösteren tablo ve ders bazlı doğruluk yüzden.",
   },
   {
     icon: CalendarDaysIcon,
@@ -58,6 +73,8 @@ const TIMELINE = [
     body:
       "Haftanın verisi önümüzde: neler çalıştın, denemede ne oldu, nerede tıkandın? " +
       "Program bir sonraki haftaya göre birlikte revize edilir. Görüşmeler online yapılır.",
+    output:
+      "Güncellenmiş haftalık program ve görüşmede konuşulanların yazılı özeti.",
   },
   {
     icon: LineChartIcon,
@@ -66,6 +83,8 @@ const TIMELINE = [
     body:
       "Doğru/yanlış/boş dağılımı ve net gelişimi grafiğe işlenir; yanlışlar konu konu haritalanır. " +
       "Analizden çıkan eksikler doğrudan programına girer — döngü böyle kapanır.",
+    output:
+      "Net gelişim grafiğinde yeni bir nokta ve o denemeden çıkan eksik konuların programına eklenmiş hâli.",
   },
   {
     icon: UsersIcon,
@@ -74,18 +93,18 @@ const TIMELINE = [
     body:
       "LGS ve YKS öğrencilerinde veli, süreci somut verilerle (net grafiği, çalışma takibi) düzenli olarak öğrenir. " +
       "Kimse karanlıkta kalmaz.",
+    output:
+      "Velinin elindeki tahmin değil, çocuğunun gerçek soru ve net verisi.",
   },
 ] as const;
 
-const INCLUDED = [
-  "Haftalık birebir koçluk görüşmesi",
-  "Gün gün, çıktı odaklı haftalık program",
-  "Soru sayısı ve deneme takibi (uygulama)",
-  "Konu bazlı eksik haritası",
-  "Deneme analizi ve net gelişim grafiği",
-  "WhatsApp'tan koçuna doğrudan erişim",
-  "Veli bilgilendirmesi (LGS/YKS)",
-  "Kaynak ve yayın önerileri",
+/** Hero'daki döngünün görselleştirilmiş hâli. */
+const CYCLE = [
+  "Planla",
+  "Çalış ve kaydet",
+  "Deneme çöz",
+  "Analiz et",
+  "Programı güncelle",
 ] as const;
 
 export default function NasilCalisirPage() {
@@ -111,10 +130,33 @@ export default function NasilCalisirPage() {
           <span className="text-gold">.</span>
         </h1>
         <p className="max-w-2xl text-base text-pretty text-muted-foreground md:text-lg">
-          Derecenin Ruhu&apos;nda her hafta aynı döngü işler: planla → çalış ve
-          kaydet → deneme çöz → analiz et → programı güncelle. Net artışı bu
+          Derecenin Ruhu&apos;nda her hafta aynı döngü işler. Net artışı bu
           döngünün doğal sonucudur.
         </p>
+
+        {/* Haftalık döngü — metinde geçen adımların görünür hâli. */}
+        <ol className="flex w-full flex-wrap items-center gap-x-2 gap-y-2 pt-1">
+          {CYCLE.map((step, i) => (
+            <li key={step} className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full bg-card px-3.5 py-1.5 text-sm font-medium ring-1 ring-foreground/10">
+                <span className="font-heading text-xs text-primary tabular-nums">
+                  {i + 1}
+                </span>
+                {step}
+              </span>
+              {i < CYCLE.length - 1 && (
+                <ArrowRightIcon
+                  className="size-4 shrink-0 text-muted-foreground/50"
+                  aria-hidden
+                />
+              )}
+            </li>
+          ))}
+          <li aria-hidden className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <RotateCwIcon className="size-3.5" />
+            baştan
+          </li>
+        </ol>
       </section>
 
       {/* Zaman çizgisi */}
@@ -139,26 +181,46 @@ export default function NasilCalisirPage() {
               <p className="max-w-2xl text-sm leading-relaxed text-pretty text-muted-foreground">
                 {step.body}
               </p>
+              {/* Somut çıktı — "bu adım bitince elimde ne olacak?" */}
+              <p className="max-w-2xl rounded-lg bg-success/8 px-3 py-2 text-sm text-pretty text-foreground/85">
+                <span className="font-medium">Çıktı: </span>
+                {step.output}
+              </p>
             </li>
           ))}
         </ol>
       </section>
 
-      {/* Neler dahil */}
-      <section className="grid gap-8 rounded-3xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8 lg:grid-cols-[1fr_1.2fr]">
+      {/*
+        Kapsam listesi /fiyatlar ile AYNI kaynaktan (`COACHING_INCLUDES`) gelir
+        — iki sayfanın birbirinden kayması en kolay tutarsızlık kaynağıydı.
+      */}
+      <section className="flex flex-col gap-8">
         <SectionHeading
           eyebrow="Kapsam"
           title="Koçluğa neler dahil?"
           description="Paket ne olursa olsun sürecin omurgası aynıdır."
         />
-        <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-          {INCLUDED.map((item) => (
-            <li key={item} className="flex items-start gap-2 text-sm">
-              <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
-              {item}
-            </li>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {COACHING_INCLUDES.map((group) => (
+            <div
+              key={group.title}
+              className="flex flex-col gap-3 rounded-2xl bg-card p-5 ring-1 ring-foreground/10"
+            >
+              <h3 className="font-heading text-sm font-semibold tracking-wide uppercase">
+                {group.title}
+              </h3>
+              <ul className="flex flex-col gap-2">
+                {group.items.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm">
+                    <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-success" />
+                    <span className="text-pretty">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       </section>
 
       <section className="flex flex-col items-center gap-4 text-center">

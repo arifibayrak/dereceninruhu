@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `students_phone_uq` ON `students` (`phone`) WHERE "phone" IS NOT NULL AND "deleted_at" IS NULL;

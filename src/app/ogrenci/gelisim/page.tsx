@@ -7,6 +7,7 @@ import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import {
   getNetSeries,
   getStudentInsightInput,
+  getSubjectBreakdown,
   getTotalQuestions,
   getWeeklyVolume,
 } from "@/db/queries/tracking";
@@ -14,7 +15,9 @@ import { getCurrentUser, type Role } from "@/lib/session";
 import { formatWeekLabel } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
 import { buildStudentInsights, netTrend } from "@/lib/insights";
+import { accuracyPct } from "@/lib/question-log";
 import { InsightList } from "@/components/app/insight-list";
+import { SubjectBreakdownTable } from "@/components/app/subject-breakdown-table";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { NetProgressChart } from "@/components/charts/net-progress-chart";
 import { WeeklyVolumeChart } from "@/components/charts/weekly-volume-chart";
@@ -47,14 +50,26 @@ export default async function GelisimPage() {
   const enrollmentId = detail.enrollment.id;
 
   const now = new Date();
-  const [netSeries, volume, insightInput, totalQuestions] = await Promise.all([
-    getNetSeries(enrollmentId),
-    getWeeklyVolume(enrollmentId, 8, now),
-    getStudentInsightInput(enrollmentId, now),
-    getTotalQuestions(enrollmentId),
-  ]);
+  const [netSeries, volume, insightInput, totalQuestions, breakdown] =
+    await Promise.all([
+      getNetSeries(enrollmentId),
+      getWeeklyVolume(enrollmentId, 8, now),
+      getStudentInsightInput(enrollmentId, now),
+      getTotalQuestions(enrollmentId),
+      getSubjectBreakdown(enrollmentId, 8, now),
+    ]);
   const insights = buildStudentInsights(insightInput);
   const trend = netTrend(insightInput.netSeries);
+
+  // Tüm derslerin (kırılım girilmiş satırlarının) toplam doğruluğu.
+  const totals = breakdown.rows.reduce(
+    (acc, r) => ({
+      correct: acc.correct + (r.total.correct ?? 0),
+      wrong: acc.wrong + (r.total.wrong ?? 0),
+    }),
+    { correct: 0, wrong: 0 },
+  );
+  const overallAccuracy = accuracyPct(totals.correct, totals.wrong);
 
   return (
     <>
@@ -87,6 +102,13 @@ export default async function GelisimPage() {
           value={formatInt(totalQuestions)}
           hint="soru · tüm zamanlar"
         />
+        {overallAccuracy !== null && (
+          <StatTile
+            label="Doğruluk"
+            value={`%${overallAccuracy}`}
+            hint="doğru ÷ (doğru+yanlış)"
+          />
+        )}
       </div>
 
       <Link
@@ -138,6 +160,18 @@ export default async function GelisimPage() {
               total: v.total,
             }))}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Ders ders soru ve doğruluk</CardTitle>
+          <CardDescription>
+            Son 8 hafta · hangi haftada hangi dersten kaç soru
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SubjectBreakdownTable data={breakdown} />
         </CardContent>
       </Card>
 

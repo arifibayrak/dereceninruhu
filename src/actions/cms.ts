@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, ne } from "drizzle-orm";
+import { and, count, eq, ne, sql } from "drizzle-orm";
 
 import { getDb, getR2 } from "@/db";
 import {
@@ -9,13 +9,17 @@ import {
   coachProfiles,
   faqs,
   packages,
+  resourceLinks,
   testimonials,
 } from "@/db/schema";
+import { faqSeeds } from "@/db/seed/cms-content";
+import { resourceLinkSeeds } from "@/db/seed/resource-links";
 import {
   saveMyProfileSchema,
   upsertBlogPostSchema,
   upsertFaqSchema,
   upsertPackageSchema,
+  upsertResourceLinkSchema,
   upsertTestimonialSchema,
 } from "@/lib/validation";
 import { slugifyTr } from "@/lib/slug";
@@ -60,11 +64,30 @@ export async function upsertTestimonial(
     }
     const v = parsed.data;
     const db = getDb();
+
+    // İzin bir zaman damgası olarak saklanır. Mevcut satırda zaten izin varsa
+    // damga korunur (yeniden kaydetmek izin tarihini kaydırmasın); izin geri
+    // alınırsa NULL'a döner ve satır vitrinden düşer.
+    let consentAt: Date | null = null;
+    if (v.hasConsent) {
+      const existing = v.id
+        ? await db.query.testimonials.findFirst({
+            where: eq(testimonials.id, v.id),
+            columns: { consentAt: true },
+          })
+        : null;
+      consentAt = existing?.consentAt ?? new Date();
+    }
+
     const values = {
       studentName: v.studentName.trim(),
       exam: v.exam,
       result: clean(v.result),
       quote: v.quote.trim(),
+      proofImageUrl: clean(v.proofImageUrl),
+      videoUrl: clean(v.videoUrl),
+      isFeatured: v.isFeatured,
+      consentAt,
       sortOrder: v.sortOrder,
       isActive: v.isActive,
     };
@@ -231,6 +254,138 @@ export async function uploadProfileImage(
     const bytes = new Uint8Array(await file.arrayBuffer());
     await getR2().put(key, bytes, { httpMetadata: { contentType: file.type } });
     return { ok: true, data: { url: `/api/uploads/${key}` } };
+  });
+}
+
+/**
+ * Kodda tanımlı ama D1'de OLMAYAN SSS maddelerini ekler.
+ *
+ * Neden gerekli: `getPublicFaqs()` D1'de satır varsa tohuma hiç düşmez, bu
+ * yüzden koda yeni bir SSS eklemek canlıya YANSIMAZ. Bu aksiyon soruyu
+ * metnine göre karşılaştırır; var olanlara dokunmaz (yöneticinin düzenlediği
+ * cevabı ezmemek için), yalnız eksikleri ekler.
+ */
+export async function seedMissingFaqs(): Promise<
+  ActionResult<{ inserted: number }>
+> {
+  return guarded(async () => {
+    await requireAdmin();
+    const db = getDb();
+    const existing = await db.select({ question: faqs.question }).from(faqs);
+    const have = new Set(existing.map((r) => r.question.trim()));
+    const missing = faqSeeds.filter((s) => !have.has(s.question.trim()));
+    if (missing.length === 0) {
+      return actionError("Eksik SSS yok — hepsi zaten ekli.");
+    }
+    const [maxRow] = await db
+      .select({ max: sql<number | null>`max(${faqs.sortOrder})` })
+      .from(faqs);
+    const base = Number(maxRow?.max ?? -1) + 1;
+    await db.insert(faqs).values(
+      missing.map((s, i) => ({
+        question: s.question,
+        answer: s.answer,
+        sortOrder: base + i,
+        isActive: true,
+      })),
+    );
+    revalidateMarketing();
+    return { ok: true, data: { inserted: missing.length } };
+  });
+}
+
+/* --------------------------- Ücretsiz kaynaklar --------------------------- */
+
+export async function upsertResourceLink(
+  input: unknown,
+): Promise<ActionResult<{ id: number }>> {
+  return guarded(async () => {
+    await requireAdmin();
+    const parsed = upsertResourceLinkSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError(
+        "Lütfen formu kontrol edin.",
+        fieldErrorsOf(parsed.error.issues),
+      );
+    }
+    const v = parsed.data;
+    const db = getDb();
+    const values = {
+      category: v.category,
+      title: v.title.trim(),
+      description: clean(v.description),
+      url: v.url.trim(),
+      examCode: v.examCode ?? null,
+      provider: clean(v.provider),
+      sortOrder: v.sortOrder,
+      isFeatured: v.isFeatured,
+      isActive: v.isActive,
+      updatedAt: new Date(),
+    };
+    if (v.id) {
+      await db
+        .update(resourceLinks)
+        .set(values)
+        .where(eq(resourceLinks.id, v.id));
+      revalidateMarketing();
+      return { ok: true, data: { id: v.id } };
+    }
+    const [row] = await db
+      .insert(resourceLinks)
+      .values(values)
+      .returning({ id: resourceLinks.id });
+    revalidateMarketing();
+    return { ok: true, data: { id: row.id } };
+  });
+}
+
+export async function deleteResourceLink(
+  input: unknown,
+): Promise<ActionResult<void>> {
+  return guarded(async () => {
+    await requireAdmin();
+    const id = idParam(input);
+    if (!id) return actionError("Geçersiz kayıt.");
+    const db = getDb();
+    await db.delete(resourceLinks).where(eq(resourceLinks.id, id));
+    revalidateMarketing();
+    return { ok: true, data: undefined };
+  });
+}
+
+/**
+ * Tohum listesini D1'e yazar — tablo BOŞKEN tek tıkla başlangıç dizinini kurar.
+ * Var olan satırlara dokunmaz (yöneticinin düzenlemelerini ezmemek için).
+ */
+export async function seedResourceLinks(): Promise<
+  ActionResult<{ inserted: number }>
+> {
+  return guarded(async () => {
+    await requireAdmin();
+    const db = getDb();
+    const [existing] = await db
+      .select({ n: count() })
+      .from(resourceLinks);
+    if ((existing?.n ?? 0) > 0) {
+      return actionError(
+        "Kaynak listesi boş değil — tohum yalnız boş listeye yüklenir.",
+      );
+    }
+    await db.insert(resourceLinks).values(
+      resourceLinkSeeds.map((s) => ({
+        category: s.category,
+        title: s.title,
+        description: s.description,
+        url: s.url,
+        examCode: s.examCode,
+        provider: s.provider,
+        sortOrder: s.sortOrder,
+        isFeatured: s.isFeatured,
+        isActive: true,
+      })),
+    );
+    revalidateMarketing();
+    return { ok: true, data: { inserted: resourceLinkSeeds.length } };
   });
 }
 
@@ -423,7 +578,15 @@ export async function deleteBlogPost(input: unknown): Promise<ActionResult<void>
 /* --------------------------------- Yardımcı ------------------------------- */
 
 function revalidateMarketing() {
-  for (const p of ["/", "/koclar", "/fiyatlar", "/basarilar", "/sss", "/koc/site"]) {
+  for (const p of [
+    "/",
+    "/koclar",
+    "/fiyatlar",
+    "/basarilar",
+    "/sss",
+    "/kaynaklar",
+    "/koc/site",
+  ]) {
     revalidatePath(p);
   }
 }

@@ -35,9 +35,29 @@ export const SOCIAL_LINKS = {
 
 /** Boş olmayan sosyal/kanıt bağlantılarını `sameAs` dizisi olarak döndürür. */
 export function sameAsLinks(extra: string[] = []): string[] {
-  return [...Object.values(SOCIAL_LINKS), ...extra]
-    .map((s) => s.trim())
-    .filter(Boolean);
+  return [
+    ...new Set(
+      [...Object.values(SOCIAL_LINKS), ...extra]
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+/**
+ * `sameAsLinks`'in override'lı hâli: yönetici `/koc/site`'ta bir profil URL'i
+ * girdiyse sabittekinin YERİNE geçer (yan yana değil). Aynı platformun iki
+ * farklı adresini `sameAs`'te yayınlamak arama motorlarının marka varlığını
+ * çözmesini bozar — bu yüzden birleştirme değil, değiştirme.
+ */
+export function sameAsWith(
+  overrides: Partial<Record<keyof typeof SOCIAL_LINKS, string | null>>,
+): string[] {
+  const merged: Record<string, string> = { ...SOCIAL_LINKS };
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value && value.trim()) merged[key] = value.trim();
+  }
+  return [...new Set(Object.values(merged).map((s) => s.trim()).filter(Boolean))];
 }
 
 /** Göreli bir yolu mutlak (canonical/OG için) URL'ye çevirir. */

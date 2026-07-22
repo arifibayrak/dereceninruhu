@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { CheckIcon, InfoIcon, SparklesIcon } from "lucide-react";
+import { CheckIcon, InfoIcon, MinusIcon, SparklesIcon } from "lucide-react";
 
 import { getCohort, getPublicFaqs, getPublicPackages } from "@/db/queries/cms";
 import { cohortView, enrollmentOpen } from "@/lib/cohort";
+import { COACHING_EXCLUDES, COACHING_INCLUDES } from "@/lib/coaching-includes";
 import { formatKurus } from "@/lib/format";
 import { CohortBanner } from "@/components/marketing/cohort-banner";
 import { CtaBand } from "@/components/marketing/cta-band";
@@ -168,6 +169,57 @@ export default async function FiyatlarPage() {
           indirimleri için görüşmede sorabilirsin.
         </p>
       </div>
+
+      {/*
+        "Pakete tam olarak ne dahil?" envanteri. Geri bildirim (Görsel 13)
+        rakiplerin daha detaylı anlattığını söylüyordu; cevabımız abartı değil,
+        kalem kalem kapsam + neyin DAHİL OLMADIĞI.
+      */}
+      <section className="flex flex-col gap-8">
+        <SectionHeading
+          eyebrow="Kapsam"
+          title="Her pakette olanlar"
+          description="Paketler süre ve görüşme sıklığıyla ayrışır; aşağıdakiler hepsinde vardır."
+          align="center"
+          className="items-center"
+        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {COACHING_INCLUDES.map((group) => (
+            <div
+              key={group.title}
+              className="flex flex-col gap-3 rounded-2xl bg-card p-5 ring-1 ring-foreground/10"
+            >
+              <h3 className="font-heading text-sm font-semibold tracking-wide uppercase">
+                {group.title}
+              </h3>
+              <ul className="flex flex-col gap-2">
+                {group.items.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm">
+                    <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-success" />
+                    <span className="text-pretty">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Beklenti yönetimi — ne olmadığını söylemek güveni artırır. */}
+        <div className="mx-auto flex max-w-2xl flex-col gap-2 rounded-2xl bg-muted/50 p-5">
+          <span className="text-sm font-semibold">Dahil olmayanlar</span>
+          <ul className="flex flex-col gap-1.5">
+            {COACHING_EXCLUDES.map((item) => (
+              <li
+                key={item}
+                className="flex items-start gap-2 text-sm text-muted-foreground"
+              >
+                <MinusIcon className="mt-0.5 size-3.5 shrink-0" />
+                <span className="text-pretty">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       {/* İlgili SSS */}
       {paymentFaqs.length > 0 && (

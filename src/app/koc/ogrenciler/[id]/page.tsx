@@ -26,6 +26,7 @@ import {
   getNetSeries,
   getStudentInsightInput,
   getTotalQuestions,
+  getSubjectBreakdown,
   getWeekGrid,
   getWeekQuestionTotal,
 } from "@/db/queries/tracking";
@@ -58,6 +59,7 @@ import {
 } from "@/components/app/invite-actions";
 import { MockCreateDialog } from "@/components/app/mock-create-dialog";
 import { StudentProfileForm } from "@/components/app/student-profile-form";
+import { SubjectBreakdownTable } from "@/components/app/subject-breakdown-table";
 import { StudentWaButton } from "@/components/app/student-wa-button";
 import type { MockSection } from "@/components/app/mock-form";
 import {
@@ -190,6 +192,7 @@ export default async function OgrenciKokpitPage({
     sessions,
     studyWeek,
     messageTemplates,
+    breakdown,
   ] = await Promise.all([
     getWeekGrid(enrollment.id, now),
     getMockList(enrollment.id),
@@ -203,6 +206,7 @@ export default async function OgrenciKokpitPage({
     listSessionsForEnrollment(enrollment.id, now),
     getStudyWeekTotal(enrollment.id, now),
     listMessageTemplates(),
+    getSubjectBreakdown(enrollment.id, 8, now),
   ]);
 
   const insights = buildStudentInsights(insightInput);
@@ -212,6 +216,8 @@ export default async function OgrenciKokpitPage({
   const gridSections: GridSection[] = sections.map((s) => ({
     id: s.id,
     name: s.name,
+    // Net önizlemesi için bölüm böleni (LGS 3, YKS/KPSS 4).
+    wrongPenaltyDivisor: s.wrongPenaltyDivisor,
     subjects: s.loggable.map((sub) => ({
       id: sub.id,
       name: sub.name,
@@ -427,6 +433,16 @@ export default async function OgrenciKokpitPage({
             sections={gridSections}
             initial={grid}
           />
+
+          <div className="flex flex-col gap-2 pt-4">
+            <h2 className="font-heading text-base font-semibold">
+              Ders ders soru ve doğruluk
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Son 8 hafta — öğrencinin Gelişim sayfasında gördüğü tablonun aynısı.
+            </p>
+            <SubjectBreakdownTable data={breakdown} />
+          </div>
         </TabsContent>
 
         {/* ---------------------------- Denemeler --------------------------- */}

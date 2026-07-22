@@ -6,9 +6,22 @@ import { SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { upsertQuestionLogs } from "@/actions/tracking";
-import { DAY_NAMES_TR_SHORT } from "@/lib/dates";
-import { formatInt } from "@/lib/format";
+import { DAY_NAMES_TR, DAY_NAMES_TR_SHORT } from "@/lib/dates";
+import { formatInt, formatNet } from "@/lib/format";
+import {
+  accuracyPct,
+  breakdownState,
+  entryNet,
+  MAX_QUESTIONS_PER_CELL,
+} from "@/lib/question-log";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 export type GridSubject = {
@@ -21,6 +34,16 @@ export type GridSection = {
   id: number;
   name: string;
   subjects: GridSubject[];
+  /** Net böleni — LGS 3, YKS/KPSS 4 (exam_sections.wrong_penalty_divisor). */
+  wrongPenaltyDivisor: number;
+};
+
+/** Bir hücrenin sunucudan gelen hâli. */
+export type GridCell = {
+  total: number;
+  correct: number | null;
+  wrong: number | null;
+  blank: number | null;
 };
 
 type Props = {
@@ -30,15 +53,58 @@ type Props = {
   /** Bugünün trDayKey'i — bu haftadaysa sütun vurgulanır. */
   todayKey?: string | null;
   sections: GridSection[];
-  /** `${dayKey}:${subjectId}` → soru sayısı. */
-  initial: Record<string, number>;
+  /** `${dayKey}:${subjectId}` → hücre. */
+  initial: Record<string, GridCell>;
 };
+
+/** Düzenleme sırasındaki hücre — hepsi string (boş = girilmemiş). */
+type Draft = { total: string; correct: string; wrong: string; blank: string };
 
 const keyOf = (dayKey: string, subjectId: number) => `${dayKey}:${subjectId}`;
 
+const EMPTY_DRAFT: Draft = { total: "", correct: "", wrong: "", blank: "" };
+
+const numOrNull = (raw: string): number | null => {
+  if (raw.trim() === "") return null;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+function draftOf(cell: GridCell | undefined): Draft {
+  if (!cell) return EMPTY_DRAFT;
+  return {
+    total: String(cell.total),
+    correct: cell.correct != null ? String(cell.correct) : "",
+    wrong: cell.wrong != null ? String(cell.wrong) : "",
+    blank: cell.blank != null ? String(cell.blank) : "",
+  };
+}
+
+/** Bir taslağın efektif toplamı — D/Y/B doluysa ondan türetilir. */
+function draftTotal(d: Draft): number {
+  const c = numOrNull(d.correct);
+  const w = numOrNull(d.wrong);
+  const b = numOrNull(d.blank);
+  if (c !== null && w !== null && b !== null) return c + w + b;
+  return numOrNull(d.total) ?? 0;
+}
+
+function sameDraft(a: Draft, b: Draft): boolean {
+  return (
+    draftTotal(a) === draftTotal(b) &&
+    a.correct === b.correct &&
+    a.wrong === b.wrong &&
+    a.blank === b.blank
+  );
+}
+
 /**
- * Haftalık soru takibi ızgarası — günler × dersler, hücre bazlı upsert.
+ * Haftalık soru takibi ızgarası — günler × dersler, gün bazlı upsert.
  * Hem öğrenci hem koç aynı bileşeni kullanır (yetki aksiyon katmanında).
+ *
+ * Hücreye dokunmak doğru/yanlış/boş panelini açar; kırılım girilirse toplam
+ * otomatik hesaplanır ve net önizlenir. Kırılım opsiyoneldir — sadece toplam
+ * yazmak da geçerlidir (bkz. `@/lib/question-log`).
  */
 export function WeekGridForm({
   enrollmentId,
@@ -49,40 +115,53 @@ export function WeekGridForm({
 }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [values, setValues] = useState<Record<string, string>>(() => {
-    const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(initial)) out[k] = String(v);
+  const [drafts, setDrafts] = useState<Record<string, Draft>>(() => {
+    const out: Record<string, Draft> = {};
+    for (const [k, cell] of Object.entries(initial)) out[k] = draftOf(cell);
     return out;
   });
+  /** Açık panelin hedefi. */
+  const [editing, setEditing] = useState<{
+    dayKey: string;
+    subject: GridSubject;
+    divisor: number;
+  } | null>(null);
 
   const allSubjects = useMemo(
     () => sections.flatMap((s) => s.subjects),
     [sections],
   );
+  const divisorOf = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const s of sections) {
+      for (const sub of s.subjects) map.set(sub.id, s.wrongPenaltyDivisor);
+    }
+    return map;
+  }, [sections]);
 
-  const numAt = (dayKey: string, subjectId: number) => {
-    const k = keyOf(dayKey, subjectId);
-    const raw = values[k];
-    if (raw === undefined) return initial[k] ?? 0;
-    const n = parseInt(raw, 10);
-    return Number.isFinite(n) ? n : 0;
-  };
+  const at = (dayKey: string, subjectId: number): Draft =>
+    drafts[keyOf(dayKey, subjectId)] ?? draftOf(initial[keyOf(dayKey, subjectId)]);
+
+  const totalAt = (dayKey: string, subjectId: number) =>
+    draftTotal(at(dayKey, subjectId));
 
   const dirtyDays = useMemo(() => {
     const days: string[] = [];
     for (const dayKey of dayKeys) {
-      const dirty = allSubjects.some(
-        (s) => numAt(dayKey, s.id) !== (initial[keyOf(dayKey, s.id)] ?? 0),
-      );
+      const dirty = allSubjects.some((s) => {
+        const k = keyOf(dayKey, s.id);
+        return !sameDraft(
+          drafts[k] ?? draftOf(initial[k]),
+          draftOf(initial[k]),
+        );
+      });
       if (dirty) days.push(dayKey);
     }
     return days;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, dayKeys, allSubjects, initial]);
+  }, [drafts, dayKeys, allSubjects, initial]);
 
-  const setCell = (dayKey: string, subjectId: number, raw: string) => {
-    const clean = raw.replace(/\D/g, "").slice(0, 4);
-    setValues((prev) => ({ ...prev, [keyOf(dayKey, subjectId)]: clean }));
+  const setDraft = (dayKey: string, subjectId: number, next: Draft) => {
+    setDrafts((prev) => ({ ...prev, [keyOf(dayKey, subjectId)]: next }));
   };
 
   const save = async () => {
@@ -91,12 +170,26 @@ export function WeekGridForm({
     let failed = 0;
     for (const dayKey of dirtyDays) {
       const entries = allSubjects
-        .filter(
-          (s) =>
-            numAt(dayKey, s.id) > 0 ||
-            keyOf(dayKey, s.id) in initial,
-        )
-        .map((s) => ({ subjectId: s.id, questionCount: numAt(dayKey, s.id) }));
+        .filter((s) => {
+          const k = keyOf(dayKey, s.id);
+          // Değeri olan ya da daha önce kaydedilmiş (silinebilir) hücreler.
+          return totalAt(dayKey, s.id) > 0 || k in initial;
+        })
+        .map((s) => {
+          const d = at(dayKey, s.id);
+          const hasBreakdown = breakdownState({
+            correctCount: numOrNull(d.correct),
+            wrongCount: numOrNull(d.wrong),
+            blankCount: numOrNull(d.blank),
+          }) === "full";
+          return {
+            subjectId: s.id,
+            questionCount: draftTotal(d),
+            correctCount: hasBreakdown ? numOrNull(d.correct) : null,
+            wrongCount: hasBreakdown ? numOrNull(d.wrong) : null,
+            blankCount: hasBreakdown ? numOrNull(d.blank) : null,
+          };
+        });
       if (entries.length === 0) continue;
       const res = await upsertQuestionLogs({
         enrollmentId,
@@ -115,15 +208,20 @@ export function WeekGridForm({
   };
 
   const dayTotal = (dayKey: string) =>
-    allSubjects.reduce((acc, s) => acc + numAt(dayKey, s.id), 0);
+    allSubjects.reduce((acc, s) => acc + totalAt(dayKey, s.id), 0);
   const subjectTotal = (subjectId: number) =>
-    dayKeys.reduce((acc, d) => acc + numAt(d, subjectId), 0);
+    dayKeys.reduce((acc, d) => acc + totalAt(d, subjectId), 0);
   const weekTotal = dayKeys.reduce((acc, d) => acc + dayTotal(d), 0);
 
   const showSectionHeaders = sections.length > 1;
 
   return (
     <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground">
+        Hücreye dokun → doğru / yanlış / boş gir. İstersen sadece toplamı da
+        yazabilirsin.
+      </p>
+
       <div className="overflow-x-auto rounded-xl bg-card ring-1 ring-foreground/10">
         <table className="w-full min-w-[560px] border-collapse text-sm">
           <thead>
@@ -158,9 +256,15 @@ export function WeekGridForm({
                 showHeader={showSectionHeaders}
                 dayKeys={dayKeys}
                 todayKey={todayKey}
-                values={values}
-                initial={initial}
-                setCell={setCell}
+                at={at}
+                onOpen={(dayKey, subject) =>
+                  setEditing({
+                    dayKey,
+                    subject,
+                    divisor:
+                      divisorOf.get(subject.id) ?? section.wrongPenaltyDivisor,
+                  })
+                }
                 subjectTotal={subjectTotal}
               />
             ))}
@@ -188,6 +292,7 @@ export function WeekGridForm({
           </tfoot>
         </table>
       </div>
+
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-muted-foreground">
           {dirtyDays.length > 0
@@ -203,6 +308,20 @@ export function WeekGridForm({
           {saving ? "Kaydediliyor…" : "Kaydet"}
         </Button>
       </div>
+
+      {editing && (
+        <CellSheet
+          dayKey={editing.dayKey}
+          dayIndex={dayKeys.indexOf(editing.dayKey)}
+          subject={editing.subject}
+          divisor={editing.divisor}
+          draft={at(editing.dayKey, editing.subject.id)}
+          onChange={(next) =>
+            setDraft(editing.dayKey, editing.subject.id, next)
+          }
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }
@@ -212,18 +331,16 @@ function SectionRows({
   showHeader,
   dayKeys,
   todayKey,
-  values,
-  initial,
-  setCell,
+  at,
+  onOpen,
   subjectTotal,
 }: {
   section: GridSection;
   showHeader: boolean;
   dayKeys: string[];
   todayKey?: string | null;
-  values: Record<string, string>;
-  initial: Record<string, number>;
-  setCell: (dayKey: string, subjectId: number, raw: string) => void;
+  at: (dayKey: string, subjectId: number) => Draft;
+  onOpen: (dayKey: string, subject: GridSubject) => void;
   subjectTotal: (subjectId: number) => number;
 }) {
   return (
@@ -251,9 +368,10 @@ function SectionRows({
               {subject.name}
             </td>
             {dayKeys.map((dayKey) => {
-              const k = `${dayKey}:${subject.id}`;
-              const raw =
-                values[k] ?? (initial[k] !== undefined ? String(initial[k]) : "");
+              const d = at(dayKey, subject.id);
+              const total = draftTotal(d);
+              const hasBreakdown =
+                d.correct !== "" && d.wrong !== "" && d.blank !== "";
               return (
                 <td
                   key={dayKey}
@@ -262,16 +380,27 @@ function SectionRows({
                     dayKey === todayKey && "bg-primary/5",
                   )}
                 >
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    aria-label={`${subject.name} — ${dayKey}`}
-                    value={raw}
-                    placeholder="·"
-                    onChange={(e) => setCell(dayKey, subject.id, e.target.value)}
-                    className="h-9 w-12 rounded-md border border-transparent bg-transparent text-center text-sm tabular-nums transition-colors outline-none placeholder:text-muted-foreground/40 hover:border-input focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => onOpen(dayKey, subject)}
+                    aria-label={`${subject.name} — ${dayKey} · ${
+                      total > 0 ? `${total} soru` : "giriş yok"
+                    }`}
+                    className="relative inline-flex h-9 w-12 items-center justify-center rounded-md border border-transparent text-sm tabular-nums transition-colors hover:border-input focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                  >
+                    {total > 0 ? (
+                      total
+                    ) : (
+                      <span className="text-muted-foreground/40">·</span>
+                    )}
+                    {/* Kırılım girilmiş hücreyi ayırt eden sessiz işaret. */}
+                    {hasBreakdown && (
+                      <span
+                        aria-hidden
+                        className="absolute bottom-1 h-0.5 w-4 rounded-full bg-primary/60"
+                      />
+                    )}
+                  </button>
                 </td>
               );
             })}
@@ -284,5 +413,155 @@ function SectionRows({
         );
       })}
     </>
+  );
+}
+
+/** Tek hücrenin düzenleme paneli — toplam + opsiyonel D/Y/B + net önizleme. */
+function CellSheet({
+  dayKey,
+  dayIndex,
+  subject,
+  divisor,
+  draft,
+  onChange,
+  onClose,
+}: {
+  dayKey: string;
+  dayIndex: number;
+  subject: GridSubject;
+  divisor: number;
+  draft: Draft;
+  onChange: (next: Draft) => void;
+  onClose: () => void;
+}) {
+  const clean = (raw: string) => raw.replace(/\D/g, "").slice(0, 4);
+  const c = numOrNull(draft.correct);
+  const w = numOrNull(draft.wrong);
+  const b = numOrNull(draft.blank);
+  const state = breakdownState({
+    correctCount: c,
+    wrongCount: w,
+    blankCount: b,
+  });
+  const total = draftTotal(draft);
+  const net =
+    state === "full" ? entryNet({ correctCount: c, wrongCount: w }, divisor) : null;
+  const acc = state === "full" ? accuracyPct(c ?? 0, w ?? 0) : null;
+  const overLimit = total > MAX_QUESTIONS_PER_CELL;
+
+  const dayLabel = DAY_NAMES_TR[dayIndex] ?? dayKey;
+  const dayNum = parseInt(dayKey.slice(8), 10);
+
+  return (
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>
+            {subject.name} · {dayLabel} {dayNum}
+          </SheetTitle>
+        </SheetHeader>
+
+        <div className="flex flex-col gap-4 px-4">
+          <div className="grid grid-cols-3 gap-2">
+            {(
+              [
+                ["correct", "Doğru", "text-success"],
+                ["wrong", "Yanlış", "text-destructive"],
+                ["blank", "Boş", "text-muted-foreground"],
+              ] as const
+            ).map(([field, label, tone]) => (
+              <label key={field} className="flex flex-col gap-1.5">
+                <span className={cn("text-xs font-medium", tone)}>{label}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoFocus={field === "correct"}
+                  value={draft[field]}
+                  placeholder="—"
+                  onChange={(e) =>
+                    onChange({ ...draft, [field]: clean(e.target.value) })
+                  }
+                  className="h-12 w-full rounded-lg border border-input bg-transparent text-center text-lg font-medium tabular-nums outline-none placeholder:text-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                />
+              </label>
+            ))}
+          </div>
+
+          {state === "full" ? (
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-xl bg-muted/50 px-4 py-3">
+              <span className="text-sm text-muted-foreground">
+                Toplam{" "}
+                <strong className="text-base text-foreground tabular-nums">
+                  {formatInt(total)}
+                </strong>
+              </span>
+              {net !== null && (
+                <span className="text-sm text-muted-foreground">
+                  Net{" "}
+                  <strong className="text-base text-primary tabular-nums">
+                    {formatNet(net)}
+                  </strong>
+                </span>
+              )}
+              {acc !== null && (
+                <span className="text-sm text-muted-foreground">
+                  Doğruluk{" "}
+                  <strong className="text-base text-foreground tabular-nums">
+                    %{acc}
+                  </strong>
+                </span>
+              )}
+            </div>
+          ) : (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                {state === "partial"
+                  ? "Üçünü de doldur ya da üçünü de boş bırak"
+                  : "Ya da sadece toplam soru sayısı"}
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={draft.total}
+                placeholder="0"
+                disabled={state === "partial"}
+                onChange={(e) =>
+                  onChange({ ...draft, total: clean(e.target.value) })
+                }
+                className="h-12 w-full rounded-lg border border-input bg-transparent px-4 text-lg font-medium tabular-nums outline-none placeholder:text-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50"
+              />
+            </label>
+          )}
+
+          {overLimit && (
+            <p className="text-sm text-destructive">
+              Toplam en fazla {formatInt(MAX_QUESTIONS_PER_CELL)} olabilir.
+            </p>
+          )}
+        </div>
+
+        <SheetFooter className="flex-row gap-2">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              onChange({ ...EMPTY_DRAFT });
+              onClose();
+            }}
+          >
+            Temizle
+          </Button>
+          <Button
+            className="flex-1"
+            disabled={state === "partial" || overLimit}
+            onClick={onClose}
+          >
+            Tamam
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

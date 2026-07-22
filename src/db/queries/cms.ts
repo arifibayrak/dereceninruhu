@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -8,12 +8,21 @@ import {
   coachProfiles,
   cohortSettings,
   enrollments,
+  examSections,
+  examTemplates,
   faqs,
   leads,
+  mockExamResults,
+  mockExams,
   packages,
+  questionLogs,
+  resourceLinks,
+  siteSettings,
+  subjects,
   testimonials,
   waitlistEntries,
   type CohortSettings,
+  type SiteSettings,
 } from "@/db/schema";
 import {
   coachContent,
@@ -22,6 +31,10 @@ import {
   packageSeeds,
   testimonialSeeds,
 } from "@/db/seed/cms-content";
+import {
+  resourceLinkSeeds,
+  type ResourceCategory,
+} from "@/db/seed/resource-links";
 import type {
   CoachApplicationStatus,
   LeadStatus,
@@ -148,6 +161,246 @@ export async function getPublicTestimonials(): Promise<PublicTestimonial[]> {
       quote: t.quote,
       date: t.date,
     }));
+}
+
+/** Derece vitrini kartı — /basarilar üstündeki "Derece yapan öğrencilerimiz". */
+export type PublicAchievement = {
+  displayName: string;
+  exam: string;
+  /** "Türkiye 876." gibi — vitrine girmenin ön koşulu. */
+  result: string;
+  quote: string;
+  proofImageUrl: string | null;
+  videoUrl: string | null;
+  photoUrl: string | null;
+};
+
+/**
+ * Derece vitrini satırları.
+ *
+ * GİZLİLİK: yalnız `isFeatured` + `isActive` + `consentAt` DOLU olan satırlar
+ * döner. Sonuç belgesi ve sıralama kişisel veridir; izin kaydı olmayan hiçbir
+ * satır public'e çıkmaz. `result` boşsa kart anlamsız olduğu için o da elenir.
+ * Fallback YOK — tohum veride izin kaydı bulunmaz.
+ */
+export async function getFeaturedAchievements(): Promise<PublicAchievement[]> {
+  const db = getDb();
+  const rows = await db.query.testimonials.findMany({
+    where: and(
+      eq(testimonials.isFeatured, true),
+      eq(testimonials.isActive, true),
+      isNotNull(testimonials.consentAt),
+    ),
+    orderBy: [asc(testimonials.sortOrder), desc(testimonials.createdAt)],
+  });
+  return rows
+    .filter((r) => (r.result ?? "").trim().length > 0)
+    .map((r) => ({
+      displayName: r.studentName,
+      exam: r.exam ?? "YKS",
+      result: (r.result ?? "").trim(),
+      quote: r.quote,
+      proofImageUrl: r.proofImageUrl,
+      videoUrl: r.videoUrl,
+      photoUrl: r.photoUrl,
+    }));
+}
+
+/** Public şeffaflık sayaçları (bkz. `getPublicImpactStats`). */
+export type PublicImpactStats = {
+  /** Kadro genelinde girilen toplam soru. */
+  totalQuestions: number;
+  /** Girilen toplam deneme (tam + branş). */
+  totalMocks: number;
+  /**
+   * Tam denemesi ≥2 olan öğrencilerin ilk→son net farkının MEDYANI.
+   * Ortalama değil: tek bir uç öğrenci rakamı şişirmesin.
+   */
+  medianNetGain: number | null;
+};
+
+/**
+ * Ahmet Hakan'ın istediği "şeffaf istatistik" — public /basarilar sayfası.
+ *
+ * ⚠️ AGENTS.md: gerçek aktif öğrenci sayısı ve kontenjan ASLA public'e çıkmaz.
+ * Bu yüzden burada yalnız TOPLAM soru/deneme ve net artışının MEDYANI döner;
+ * öğrenci sayısı ne döndürülür ne de ondan türetilebilecek bir metrik (ör.
+ * "öğrenci başına ortalama soru") yayınlanır.
+ */
+export async function getPublicImpactStats(): Promise<PublicImpactStats> {
+  const db = getDb();
+
+  const [questionRow] = await db
+    .select({
+      total: sql<number>`coalesce(sum(${questionLogs.questionCount}), 0)`,
+    })
+    .from(questionLogs);
+
+  const [mockRow] = await db.select({ total: count() }).from(mockExams);
+
+  // Öğrenci bazında ilk ve son TAM deneme neti → fark → medyan.
+  const netRows = await db
+    .select({
+      enrollmentId: mockExams.enrollmentId,
+      takenOn: mockExams.takenOn,
+      net: sql<number>`coalesce(sum(${mockExamResults.net}), 0)`,
+    })
+    .from(mockExams)
+    .leftJoin(mockExamResults, eq(mockExamResults.mockExamId, mockExams.id))
+    .where(eq(mockExams.scope, "full"))
+    .groupBy(mockExams.id)
+    .orderBy(asc(mockExams.takenOn), asc(mockExams.id));
+
+  const byEnrollment = new Map<number, { first: number; last: number; n: number }>();
+  for (const r of netRows) {
+    const net = Number(r.net);
+    const acc = byEnrollment.get(r.enrollmentId);
+    if (!acc) byEnrollment.set(r.enrollmentId, { first: net, last: net, n: 1 });
+    else {
+      acc.last = net; // sorgu tarihe göre artan sıralı
+      acc.n += 1;
+    }
+  }
+  const gains = [...byEnrollment.values()]
+    .filter((v) => v.n >= 2)
+    .map((v) => v.last - v.first)
+    .sort((a, b) => a - b);
+
+  const medianNetGain =
+    gains.length === 0
+      ? null
+      : gains.length % 2 === 1
+        ? gains[(gains.length - 1) / 2]
+        : (gains[gains.length / 2 - 1] + gains[gains.length / 2]) / 2;
+
+  return {
+    totalQuestions: Number(questionRow?.total ?? 0),
+    totalMocks: mockRow?.total ?? 0,
+    medianNetGain:
+      medianNetGain === null ? null : Math.round(medianNetGain * 100) / 100,
+  };
+}
+
+/** /kaynaklar kartı — DB satırı ya da tohum, aynı görünüm tipi. */
+export type PublicResourceLink = {
+  category: ResourceCategory;
+  title: string;
+  description: string | null;
+  url: string;
+  examCode: string | null;
+  provider: string | null;
+  isFeatured: boolean;
+};
+
+/**
+ * Ücretsiz kaynak dizini. D1 boşsa `resource-links` tohumlarına düşer
+ * (cms-content ile aynı fallback deseni) — seed çalıştırılmadan da dolu görünür.
+ */
+export async function getPublicResourceLinks(): Promise<PublicResourceLink[]> {
+  const db = getDb();
+  const rows = await db.query.resourceLinks.findMany({
+    where: eq(resourceLinks.isActive, true),
+    orderBy: [asc(resourceLinks.sortOrder), asc(resourceLinks.id)],
+  });
+  if (rows.length > 0) {
+    return rows.map((r) => ({
+      category: r.category,
+      title: r.title,
+      description: r.description,
+      url: r.url,
+      examCode: r.examCode,
+      provider: r.provider,
+      isFeatured: r.isFeatured,
+    }));
+  }
+  return resourceLinkSeeds.map((s) => ({
+    category: s.category,
+    title: s.title,
+    description: s.description,
+    url: s.url,
+    examCode: s.examCode,
+    provider: s.provider,
+    isFeatured: s.isFeatured,
+  }));
+}
+
+/** Net hesaplama aracının beslendiği sınav yapısı (public, auth gerekmez). */
+export type CalculatorSubject = {
+  id: number;
+  code: string;
+  name: string;
+  questionCount: number | null;
+};
+export type CalculatorSection = {
+  id: number;
+  code: string;
+  name: string;
+  /** LGS 3, YKS/KPSS 4 — net = doğru − yanlış / bu sayı. */
+  wrongPenaltyDivisor: number;
+  subjects: CalculatorSubject[];
+};
+export type CalculatorExam = {
+  code: string;
+  name: string;
+  sections: CalculatorSection[];
+};
+
+/**
+ * Net hesaplayıcı için sınav yapısı — ŞABLONDAN okunur, katsayı elle
+ * kodlanmaz. Böylece müfredat/bölen değişince araç kendiliğinden güncellenir
+ * ve uygulamanın kendi net hesabıyla (`computeNet`) daima tutarlı kalır.
+ *
+ * Yalnız PUANLANAN dersler döner (alt dersler — GEO/MANTIK — üst derse dahil
+ * olduğu için ayrı satır olarak gösterilmez, yoksa çift sayılırdı).
+ */
+export async function getCalculatorExams(): Promise<CalculatorExam[]> {
+  const db = getDb();
+  const templates = await db.query.examTemplates.findMany({
+    where: eq(examTemplates.isActive, true),
+    orderBy: [asc(examTemplates.id)],
+    with: {
+      sections: {
+        orderBy: [asc(examSections.sortOrder)],
+        with: {
+          subjects: {
+            where: eq(subjects.isScored, true),
+            orderBy: [asc(subjects.sortOrder)],
+          },
+        },
+      },
+    },
+  });
+
+  return templates
+    .map((t) => ({
+      code: t.code,
+      name: t.name,
+      sections: t.sections
+        .map((s) => ({
+          id: s.id,
+          code: s.code,
+          name: s.name,
+          wrongPenaltyDivisor: s.wrongPenaltyDivisor,
+          subjects: s.subjects
+            .filter((sub) => sub.isActive)
+            .map((sub) => ({
+              id: sub.id,
+              code: sub.code,
+              name: sub.name,
+              questionCount: sub.officialQuestionCount,
+            })),
+        }))
+        .filter((s) => s.subjects.length > 0),
+    }))
+    .filter((t) => t.sections.length > 0);
+}
+
+/** Yönetici listesi — ham satırlar, fallback YOK. */
+export async function listAllResourceLinks() {
+  const db = getDb();
+  return db.query.resourceLinks.findMany({
+    orderBy: [asc(resourceLinks.category), asc(resourceLinks.sortOrder)],
+  });
 }
 
 export async function getPublicPackages(): Promise<PublicPackage[]> {
@@ -405,6 +658,33 @@ export async function getCohort(): Promise<CohortSettings> {
     }
   );
 }
+
+/* -------------------------- Site iletişim / sosyal ------------------------ */
+
+/**
+ * Site geneli iletişim/sosyal ayarı; satır yoksa güvenli varsayılan döner.
+ * `cache()` ile aynı istekte tekrar tekrar okunmaz (layout + footer + FAB).
+ */
+export const getSiteSettings = cache(async (): Promise<SiteSettings> => {
+  const db = getDb();
+  const row = await db.query.siteSettings.findFirst({
+    where: eq(siteSettings.id, 1),
+  });
+  return (
+    row ?? {
+      id: 1,
+      whatsappPhone: null,
+      whatsappMessage:
+        "Merhaba, YKS koçluk süreci hakkında bilgi almak istiyorum.",
+      whatsappVisible: true,
+      instagramUrl: null,
+      tiktokUrl: null,
+      youtubeUrl: null,
+      publicStatsVisible: false,
+      updatedAt: new Date(0),
+    }
+  );
+});
 
 /**
  * Gerçek aktif öğrenci sayısı — YALNIZ admin panelinde, yayımlanan gösterim

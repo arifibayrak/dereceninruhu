@@ -48,17 +48,38 @@ function useTaskToggle() {
   return { doneOf, toggle };
 }
 
+/**
+ * Görevleri ders adına göre bitişik bloklara ayırır — aynı dersin görevleri
+ * arka arkaya gelir ve ders adı bir kez yazılır. Gün içindeki sıra korunur:
+ * bir ders ilk göründüğü yerde konumlanır (yeniden sıralama yok).
+ */
+type TaskGroup = { subjectName: string | null; tasks: ChecklistTask[] };
+
+function groupBySubject(tasks: ChecklistTask[]): TaskGroup[] {
+  const groups: TaskGroup[] = [];
+  for (const task of tasks) {
+    const name = task.subjectName ?? null;
+    const existing = groups.find((g) => g.subjectName === name);
+    if (existing) existing.tasks.push(task);
+    else groups.push({ subjectName: name, tasks: [task] });
+  }
+  return groups;
+}
+
 function TaskRow({
   task,
   done,
   onToggle,
+  /** Ders adı blok başlığında yazıldıysa satırda tekrarlanmaz. */
+  hideSubject = false,
 }: {
   task: ChecklistTask;
   done: boolean;
   onToggle: () => void;
+  hideSubject?: boolean;
 }) {
   const meta = [
-    task.subjectName,
+    hideSubject ? null : task.subjectName,
     task.targetQuestions != null ? `${task.targetQuestions} soru` : null,
     task.resourceName,
   ]
@@ -111,6 +132,12 @@ export function ProgramChecklist({
   const done = all.filter(doneOf).length;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
 
+  // Bugün en üstte: öğrenci sayfayı açınca ilk "bugün ne var"ı görsün.
+  const today = days.find((d) => d.day === todayDay);
+  const orderedDays = today
+    ? [today, ...days.filter((d) => d.day !== todayDay)]
+    : days;
+
   return (
     <div className="flex flex-col gap-5">
       {/* Tamamlanma */}
@@ -142,47 +169,91 @@ export function ProgramChecklist({
         )}
       </div>
 
-      {/* Günler */}
-      {days.map((d) => {
-        const dayDone = d.tasks.filter(doneOf).length;
-        const isToday = todayDay === d.day;
-        return (
-          <section key={d.day} className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2
-                className={cn(
-                  "font-heading text-sm font-semibold",
-                  isToday && "text-primary",
-                )}
-              >
-                {d.name}
-                {isToday && " · Bugün"}
-              </h2>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {d.dateLabel}
-                {d.tasks.length > 0 && ` · ${dayDone}/${d.tasks.length}`}
-              </span>
-            </div>
-            {d.tasks.length === 0 ? (
-              <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-                Bugün için görev yok — dinlenmek de programın parçası. 😌
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {d.tasks.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    done={doneOf(t)}
-                    onToggle={() => toggle(t)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        );
-      })}
+      {/* Günler — bugün varsa en üste alınır, listede tekrarlanmaz. */}
+      {orderedDays.map((d) => (
+        <DaySection
+          key={d.day}
+          day={d}
+          isToday={todayDay === d.day}
+          doneOf={doneOf}
+          toggle={toggle}
+        />
+      ))}
     </div>
+  );
+}
+
+/** Bir günün bölümü — yapışkan başlık + ders bazlı gruplanmış görevler. */
+function DaySection({
+  day,
+  isToday,
+  doneOf,
+  toggle,
+}: {
+  day: ChecklistDay;
+  isToday: boolean;
+  doneOf: (t: ChecklistTask) => boolean;
+  toggle: (t: ChecklistTask) => void;
+}) {
+  const dayDone = day.tasks.filter(doneOf).length;
+  const groups = groupBySubject(day.tasks);
+  // Tek ders varsa blok başlığı gereksiz — ders adı satır metasında kalır.
+  const showSubjectHeaders =
+    groups.length > 1 && groups.some((g) => g.subjectName);
+
+  return (
+    <section className="flex flex-col gap-2">
+      <div
+        className={cn(
+          // Yapışkan: uzun günlerde hangi güne baktığın kaybolmasın.
+          "sticky top-0 z-10 -mx-1 flex items-baseline justify-between gap-2 bg-background/95 px-1 py-1.5 backdrop-blur",
+          isToday && "rounded-lg bg-primary/10 backdrop-blur-none",
+        )}
+      >
+        <h2
+          className={cn(
+            "font-heading text-sm font-semibold",
+            isToday && "text-primary",
+          )}
+        >
+          {day.name}
+          {isToday && " · Bugün"}
+        </h2>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {day.dateLabel}
+          {day.tasks.length > 0 && ` · ${dayDone}/${day.tasks.length}`}
+        </span>
+      </div>
+
+      {day.tasks.length === 0 ? (
+        <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
+          {isToday
+            ? "Bugün için görev yok — dinlenmek de programın parçası. 😌"
+            : "Bu gün için görev yok."}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {groups.map((group, gi) => (
+            <div key={gi} className="flex flex-col gap-2">
+              {showSubjectHeaders && group.subjectName && (
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  {group.subjectName}
+                </span>
+              )}
+              {group.tasks.map((t) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  done={doneOf(t)}
+                  onToggle={() => toggle(t)}
+                  hideSubject={showSubjectHeaders && group.subjectName !== null}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

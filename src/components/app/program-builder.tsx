@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
   CircleIcon,
+  ListChecksIcon,
   PencilIcon,
   PlusIcon,
   SaveIcon,
@@ -22,6 +23,12 @@ import {
   updatePlanTask,
   upsertWeeklyPlan,
 } from "@/actions/plans";
+import {
+  LONG_NOTE_CHARS,
+  noteTaskCandidates,
+  parseCoachNote,
+  type NoteTaskCandidate,
+} from "@/lib/plan-note";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,8 +113,14 @@ export function ProgramBuilder({
   const [savingMeta, setSavingMeta] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [taskDialog, setTaskDialog] = useState<TaskDialogState>(null);
+  const [convertOpen, setConvertOpen] = useState(false);
   const [openDays, setOpenDays] = useState<Record<number, boolean>>({});
   const [togglePending, startToggle] = useTransition();
+
+  const noteCandidates = useMemo(
+    () => noteTaskCandidates(parseCoachNote(coachNote)),
+    [coachNote],
+  );
 
   const total = tasks.length;
   const done = tasks.filter((t) => t.isDone).length;
@@ -249,6 +262,30 @@ export function ProgramBuilder({
             />
           </Field>
         </div>
+
+        {/*
+          Uzun not = öğrenci ekranında metin duvarı. Notu gün gün göreve
+          çevirmeyi öner — öğrenci "ne çalışacağım"ı işaretlenebilir maddeler
+          hâlinde görsün (bkz. geri bildirim, Görsel 7).
+        */}
+        {noteCandidates.length > 1 &&
+          coachNote.length > LONG_NOTE_CHARS && (
+            <div className="flex flex-col items-start gap-2 rounded-xl bg-info/10 p-3.5 text-sm text-pretty text-muted-foreground sm:flex-row sm:items-center">
+              <ListChecksIcon className="size-4 shrink-0 text-info" />
+              <span className="min-w-0 flex-1">
+                Bu not uzun — öğrenciler gün gün işaretlenebilir görev
+                listesini çok daha rahat okuyor.
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setConvertOpen(true)}
+              >
+                Notu görevlere dönüştür
+              </Button>
+            </div>
+          )}
 
         {status === "draft" && total > 0 && (
           <p className="text-xs text-muted-foreground">
@@ -432,6 +469,165 @@ export function ProgramBuilder({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Koç notunu gün gün göreve dönüştürme */}
+      <Dialog
+        open={convertOpen}
+        onOpenChange={(open) => {
+          if (!open) setConvertOpen(false);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Notu görevlere dönüştür</DialogTitle>
+            <DialogDescription>
+              Her madde bir görev olur. Günleri kontrol et, istemediklerinin
+              işaretini kaldır. Not silinmez — olduğu gibi kalır.
+            </DialogDescription>
+          </DialogHeader>
+          {convertOpen && (
+            <NoteConverter
+              enrollmentId={enrollmentId}
+              weekKey={weekKey}
+              candidates={noteCandidates}
+              days={days}
+              onDone={() => setConvertOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Koç notu → görev dönüştürücü                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Notun maddelerini toplu göreve çevirir. Görevler `addPlanTask` ile TEK TEK
+ * ve SIRAYLA eklenir — `slot` sıralaması mevcut en yüksek slot'tan türetildiği
+ * için paralel çağrılar aynı slot'u alabilir (bkz. actions/plans.ts).
+ */
+function NoteConverter({
+  enrollmentId,
+  weekKey,
+  candidates,
+  days,
+  onDone,
+}: {
+  enrollmentId: number;
+  weekKey: string;
+  candidates: NoteTaskCandidate[];
+  days: BuilderDay[];
+  onDone: () => void;
+}) {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [rows, setRows] = useState(() =>
+    candidates.map((c) => ({ ...c, selected: true })),
+  );
+
+  const dayItems = days.map((d) => ({ value: d.day, label: d.name }));
+  const selectedCount = rows.filter((r) => r.selected).length;
+
+  const update = (key: string, patch: Partial<(typeof rows)[number]>) =>
+    setRows((prev) =>
+      prev.map((r) => (r.key === key ? { ...r, ...patch } : r)),
+    );
+
+  const convert = async () => {
+    const picked = rows.filter((r) => r.selected);
+    if (picked.length === 0) return;
+    setSaving(true);
+    let failed = 0;
+    for (const row of picked) {
+      const res = await addPlanTask({
+        enrollmentId,
+        weekStart: weekKey,
+        day: row.day,
+        subjectId: null,
+        resourceId: null,
+        description: row.description,
+        targetQuestions: null,
+      });
+      if (!res.ok) failed++;
+    }
+    setSaving(false);
+    if (failed > 0) {
+      toast.error(
+        `${picked.length - failed} görev eklendi, ${failed} tanesi eklenemedi.`,
+      );
+    } else {
+      toast.success(`${picked.length} görev eklendi`, {
+        description: "Ders ve hedef soru bilgisini görevlerden düzenleyebilirsin.",
+      });
+    }
+    onDone();
+    router.refresh();
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
+        {rows.map((row) => (
+          <div
+            key={row.key}
+            className={cn(
+              "flex items-start gap-2 rounded-lg bg-muted/50 p-2.5",
+              !row.selected && "opacity-50",
+            )}
+          >
+            <input
+              type="checkbox"
+              aria-label={`${row.description} görevini ekle`}
+              className="mt-2 size-4 shrink-0 accent-primary"
+              checked={row.selected}
+              onChange={(e) => update(row.key, { selected: e.target.checked })}
+            />
+            <input
+              type="text"
+              aria-label="Görev açıklaması"
+              value={row.description}
+              maxLength={300}
+              onChange={(e) => update(row.key, { description: e.target.value })}
+              className="h-9 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-sm outline-none hover:border-input focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+            />
+            <Select
+              items={dayItems}
+              value={row.day}
+              onValueChange={(v) => {
+                if (typeof v === "number") update(row.key, { day: v });
+              }}
+            >
+              <SelectTrigger
+                aria-label="Gün"
+                className="h-9 w-28 shrink-0"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {dayItems.map((d) => (
+                  <SelectItem key={d.value} value={d.value}>
+                    {d.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {selectedCount}/{rows.length} madde seçili
+        </span>
+        <Button onClick={convert} disabled={saving || selectedCount === 0}>
+          {saving
+            ? "Ekleniyor…"
+            : `${selectedCount} görev olarak ekle`}
+        </Button>
+      </div>
     </div>
   );
 }

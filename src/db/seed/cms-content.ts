@@ -245,6 +245,41 @@ export const faqSeeds: { question: string; answer: string }[] = [
       "En iyi zaman şimdi: koçluğun asıl gücü süreklilikte. Sınava az bir süre kalmış olsa bile " +
       "deneme analizi ve son dönem stratejisiyle ciddi net artışı mümkündür.",
   },
+  {
+    question: "Soru takibinde doğru, yanlış ve boş sayılarını da girebiliyor muyum?",
+    answer:
+      "Evet. Uygulamadaki soru takibi tablosunda bir hücreye dokunduğunda doğru / yanlış / boş " +
+      "alanları açılır; girdiğinde toplam ve net otomatik hesaplanır, ders bazında doğruluk yüzden çıkar. " +
+      "Acelen varsa sadece toplam soru sayısı yazman da yeterli — kırılım zorunlu değildir.",
+  },
+  {
+    question: "Hangi dersten kaç soru çözdüğümü görebiliyor muyum?",
+    answer:
+      "Evet. Gelişim sayfasındaki \"Ders ders soru ve doğruluk\" tablosu, son sekiz haftanın her biri için " +
+      "hangi dersten kaç soru çözdüğünü, toplam doğru/yanlış sayını ve doğruluk yüzdeni gösterir. " +
+      "Koçun da tam olarak aynı tabloyu görür.",
+  },
+  {
+    question: "Koçuma nasıl ulaşıyorum?",
+    answer:
+      "Haftalık birebir görüşmelerin dışında WhatsApp'tan doğrudan koçuna yazabilirsin — " +
+      "çözemediğin bir soru, programda aksama ya da moral gerektiren bir gün için. " +
+      "Sitedeki WhatsApp butonundan da bize her zaman ulaşabilirsin.",
+  },
+  {
+    question: "Öğrenciniz olmasam da ücretsiz kaynaklarınızdan yararlanabilir miyim?",
+    answer:
+      "Evet. Kaynaklar sayfamızda ÖSYM çıkmış soruları, OGM Materyal ve MEBİ'nin ücretsiz denemeleri, " +
+      "ders notları ve YÖK Atlas gibi resmî kaynaklara doğrudan bağlantı bulacaksın. " +
+      "Ayrıca net hesaplama aracımızı da ücretsiz kullanabilirsin — kayıt gerekmiyor.",
+  },
+  {
+    question: "Sınav sonucu garantisi veriyor musunuz?",
+    answer:
+      "Hayır, kimse veremez. Verdiğimiz şey süreç garantisidir: her hafta programın hazır olur, " +
+      "her denemen analiz edilir ve ilerlemen ölçülebilir şekilde kayıt altına alınır. " +
+      "Sonucu belirleyen, bu düzenin ne kadar sürdürüldüğüdür.",
+  },
 ];
 
 /* -------------------------------- Paketler -------------------------------- */
