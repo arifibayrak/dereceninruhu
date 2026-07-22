@@ -5,8 +5,10 @@ import { PlusIcon, UsersIcon } from "lucide-react";
 
 import { listCoaches } from "@/db/queries/admin";
 import { getHiddenStudents, getRoster } from "@/db/queries/roster";
+import { getDuplicateGroups } from "@/db/queries/students";
 import { formatInt } from "@/lib/format";
 import { getViewer } from "@/lib/session";
+import { DuplicateStudents } from "@/components/app/duplicate-students";
 import { RestoreStudentButton } from "@/components/app/hide-student-actions";
 import { RosterTable } from "@/components/app/roster-table";
 import { Button } from "@/components/ui/button";
@@ -39,10 +41,11 @@ export default async function OgrencilerPage({
   if (!viewer) redirect("/giris");
   const isAdmin = viewer.role === "admin";
 
-  const [roster, coaches, hidden] = await Promise.all([
+  const [roster, coaches, hidden, duplicates] = await Promise.all([
     getRoster(viewer),
     isAdmin ? listCoaches() : Promise.resolve([]),
     isAdmin ? getHiddenStudents() : Promise.resolve([]),
+    isAdmin ? getDuplicateGroups() : Promise.resolve([]),
   ]);
 
   const activeFilter = FILTERS.find((f) => f === sinav) ?? null;
@@ -173,6 +176,10 @@ export default async function OgrencilerPage({
           coaches={coaches.map((c) => ({ id: c.id, name: c.name }))}
           isAdmin={isAdmin}
         />
+      )}
+
+      {isAdmin && duplicates.length > 0 && (
+        <DuplicateStudents groups={duplicates} />
       )}
 
       {isAdmin && hidden.length > 0 && (

@@ -11,6 +11,7 @@ import {
   WaInviteButton,
 } from "@/components/app/invite-actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogClose,
@@ -36,6 +37,7 @@ export function PinResetButton({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pin, setPin] = useState("");
   const [result, setResult] = useState<PinResetResult | null>(null);
   const firstName = fullName.split(" ")[0];
 
@@ -44,13 +46,18 @@ export function PinResetButton({
     if (!next) {
       // Kapanışta sonucu temizle (PIN ekranda kalmasın).
       setResult(null);
+      setPin("");
       setLoading(false);
     }
   };
 
   const doReset = async () => {
+    if (pin && !/^\d{4,6}$/.test(pin)) {
+      toast.error("PIN 4-6 rakam olmalı.");
+      return;
+    }
     setLoading(true);
-    const res = await resetStudentPin({ studentId });
+    const res = await resetStudentPin({ studentId, pin });
     setLoading(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -148,10 +155,35 @@ export function PinResetButton({
               <DialogTitle>PIN&apos;i sıfırla</DialogTitle>
               <DialogDescription>
                 {inviteAccepted
-                  ? `${firstName} için yeni bir PIN üretilecek ve mevcut PIN geçersiz olacak.`
+                  ? `${firstName} için PIN yenilenecek ve mevcut PIN geçersiz olacak. Girişi kayıttaki telefon numarasına da yeniden eşitlenir.`
                   : `${firstName} henüz hesabını açmamış — yeni bir davet linki üretilecek.`}
               </DialogDescription>
             </DialogHeader>
+            {inviteAccepted && (
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor={`pin-${studentId}`}
+                  className="text-sm font-medium"
+                >
+                  PIN belirle{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (boş bırakırsan rastgele üretilir)
+                  </span>
+                </label>
+                <Input
+                  id={`pin-${studentId}`}
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoComplete="off"
+                  placeholder="Örn. 1234"
+                  value={pin}
+                  onChange={(e) =>
+                    setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  className="h-11 font-mono tracking-[0.3em]"
+                />
+              </div>
+            )}
             <DialogFooter>
               <DialogClose render={<Button variant="outline" size="sm" />}>
                 Vazgeç

@@ -11,6 +11,8 @@ import {
   students,
   tracks,
 } from "@/db/schema";
+import { findStudentsByPhone } from "@/db/queries/students";
+import { syncLoginPhone } from "@/lib/auth-identity";
 import { normalizePhone } from "@/lib/phone";
 import {
   createStudentSchema,
@@ -30,6 +32,21 @@ const clean = (v?: string) => {
   const t = (v ?? "").trim();
   return t === "" ? null : t;
 };
+
+/**
+ * Telefon = giriş kimliği (bkz. `@/lib/auth-identity`). Aynı numarada ikinci bir
+ * kayıt açılırsa öğrencinin verisi ikiye bölünür ve PIN yanlış kayda sıfırlandığı
+ * için giriş yapamaz. Her yazma yolunda numarayı tekil tutuyoruz.
+ */
+async function phoneTakenError(phone: string, excludeStudentId?: number) {
+  const clashes = await findStudentsByPhone(phone, excludeStudentId);
+  if (clashes.length === 0) return null;
+  const other = clashes[0];
+  return actionError(
+    `Bu telefon numarası zaten kayıtlı: ${other.fullName}. Aynı numarayla ikinci kayıt açılamaz — mevcut kaydı düzenleyin ya da Öğrenciler sayfasındaki “Yinelenen kayıtlar” bölümünden birleştirin.`,
+    { phone: `Bu numara ${other.fullName} kaydında kullanılıyor.` },
+  );
+}
 
 function newInviteCode(): string {
   return crypto.randomUUID().replaceAll("-", "");
@@ -59,6 +76,12 @@ export async function createStudent(
     const v = parsed.data;
     const db = getDb();
 
+    const phone = v.phone ? normalizePhone(v.phone) : null;
+    if (phone) {
+      const taken = await phoneTakenError(phone);
+      if (taken) return taken;
+    }
+
     const template = await db.query.examTemplates.findFirst({
       where: eq(examTemplates.code, v.examCode),
     });
@@ -82,7 +105,7 @@ export async function createStudent(
       .insert(students)
       .values({
         fullName: v.fullName.trim(),
-        phone: v.phone ? normalizePhone(v.phone) : null,
+        phone,
         parentPhone: v.parentPhone ? normalizePhone(v.parentPhone) : null,
         grade: clean(v.grade),
         field: clean(v.field),
@@ -139,11 +162,31 @@ export async function updateStudent(
     const v = parsed.data;
     const db = getDb();
 
+    const existing = await db.query.students.findFirst({
+      where: eq(students.id, studentId),
+      columns: { id: true, userId: true, phone: true },
+    });
+    if (!existing) return actionError("Öğrenci bulunamadı.");
+
+    const phone = v.phone ? normalizePhone(v.phone) : null;
+    if (phone) {
+      const taken = await phoneTakenError(phone, studentId);
+      if (taken) return taken;
+    }
+
+    // Numara değiştiyse giriş kimliğini de taşı — yoksa öğrenci yeni numarasıyla
+    // giremez (eski telefon-türevi e-posta auth'ta kalırdı).
+    if (existing.userId && phone && phone !== existing.phone) {
+      const synced = await syncLoginPhone(db, existing.userId, phone);
+      if (!synced.ok) return actionError(synced.error, { phone: synced.error });
+      // Eski numarayla açık kalan oturumları düşürme; PIN aynı kalıyor.
+    }
+
     await db
       .update(students)
       .set({
         fullName: v.fullName.trim(),
-        phone: v.phone ? normalizePhone(v.phone) : null,
+        phone,
         parentPhone: v.parentPhone ? normalizePhone(v.parentPhone) : null,
         grade: clean(v.grade),
         field: clean(v.field),
@@ -173,8 +216,9 @@ export async function updateStudent(
 
 /**
  * Öğrenci kendi profilini günceller (self-servis).
- * Giriş telefonu (users.phoneNumber, PIN girişi) bilinçli olarak KAPSAM DIŞI —
- * yalnız `students` + aktif `enrollments.targetText` güncellenir.
+ * Telefon = giriş kimliği: numarasını değiştirirse giriş satırı da (aynı işlemde)
+ * yeni numaraya taşınır — PIN değişmez, bir sonraki girişte yeni numara kullanılır.
+ * Başka bir öğrencinin numarası girilemez.
  */
 export async function updateMyProfile(
   input: unknown,
@@ -201,11 +245,21 @@ export async function updateMyProfile(
 
     const v = parsed.data;
 
+    const phone = v.phone ? normalizePhone(v.phone) : null;
+    if (phone) {
+      const taken = await phoneTakenError(phone, student.id);
+      if (taken) return taken;
+    }
+    if (phone && phone !== student.phone) {
+      const synced = await syncLoginPhone(db, user.id, phone);
+      if (!synced.ok) return actionError(synced.error, { phone: synced.error });
+    }
+
     await db
       .update(students)
       .set({
         fullName: v.fullName.trim(),
-        phone: v.phone ? normalizePhone(v.phone) : null,
+        phone,
         parentPhone: v.parentPhone ? normalizePhone(v.parentPhone) : null,
         grade: clean(v.grade),
         field: clean(v.field),

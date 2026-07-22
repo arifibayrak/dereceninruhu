@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { accounts, enrollments, sessions, students } from "@/db/schema";
+import { syncLoginPhone } from "@/lib/auth-identity";
 import {
   actionError,
   guarded,
@@ -16,6 +17,13 @@ import { revalidatePath } from "next/cache";
 
 const resetPinSchema = z.object({
   studentId: z.coerce.number().int().positive(),
+  /** Boş bırakılırsa rastgele PIN üretilir. */
+  pin: z
+    .string()
+    .trim()
+    .regex(/^\d{4,6}$/, "PIN 4-6 rakam olmalı.")
+    .optional()
+    .or(z.literal("")),
 });
 
 function newInviteCode(): string {
@@ -33,9 +41,14 @@ export type PinResetResult =
   | { mode: "invite"; invitePath: string; phone: string | null };
 
 /**
- * Koç öğrencinin girişini yeniler. Hesabı varsa yeni bir PIN üretip Better
- * Auth'un kendi hash'iyle `accounts.password` satırını günceller (signIn.email
- * ile uyumlu) ve eski oturumları düşürür. Hesabı yoksa yeni bir davet kodu üretir.
+ * Koç öğrencinin girişini yeniler. Hesabı varsa PIN'i (koç bir PIN yazdıysa onu,
+ * yoksa rastgele üretileni) Better Auth'un kendi hash'iyle `accounts.password`
+ * satırına yazar (signIn.email ile uyumlu) ve eski oturumları düşürür. Hesabı
+ * yoksa yeni bir davet kodu üretir.
+ *
+ * Ayrıca girişi ONARIR: telefon panelden değişmişse auth satırı eski numarada
+ * kalmış olabilir (öğrenci "PIN doğru ama giremiyorum" der) ve nadiren credential
+ * satırı hiç oluşmamış olabilir. İkisi de burada güncel telefona eşitlenir.
  * Yetki: koç yalnız kendi kadrosundaki öğrenciyi sıfırlar; yönetici hepsini.
  */
 export async function resetStudentPin(
@@ -44,7 +57,10 @@ export async function resetStudentPin(
   return guarded<PinResetResult>(async () => {
     const actor = await requireCoach();
     const parsed = resetPinSchema.safeParse(input);
-    if (!parsed.success) return actionError("Geçersiz öğrenci.");
+    if (!parsed.success) {
+      const pinIssue = parsed.error.issues.find((i) => i.path[0] === "pin");
+      return actionError(pinIssue?.message ?? "Geçersiz öğrenci.");
+    }
     const { studentId } = parsed.data;
     const db = getDb();
 
@@ -86,18 +102,41 @@ export async function resetStudentPin(
       };
     }
 
-    // Hesabı var: yeni PIN'i Better Auth hash'iyle credential hesabına yaz.
-    const pin = randomPin();
+    // Giriş kimliğini güncel telefona eşitle (numara değiştiyse burada onarılır).
+    if (student.phone) {
+      const synced = await syncLoginPhone(db, student.userId, student.phone);
+      if (!synced.ok) return actionError(synced.error);
+    }
+
+    // Hesabı var: PIN'i Better Auth hash'iyle credential hesabına yaz.
+    const pin = parsed.data.pin ? parsed.data.pin : randomPin();
     const hash = await hashPassword(pin);
-    await db
-      .update(accounts)
-      .set({ password: hash, updatedAt: new Date() })
-      .where(
-        and(
-          eq(accounts.userId, student.userId),
-          eq(accounts.providerId, "credential"),
-        ),
-      );
+    const now = new Date();
+    const credential = await db.query.accounts.findFirst({
+      where: and(
+        eq(accounts.userId, student.userId),
+        eq(accounts.providerId, "credential"),
+      ),
+      columns: { id: true },
+    });
+    if (credential) {
+      await db
+        .update(accounts)
+        .set({ password: hash, updatedAt: now })
+        .where(eq(accounts.id, credential.id));
+    } else {
+      // Şifre satırı yoksa PIN hiçbir yere yazılmaz ve giriş sessizce başarısız
+      // olurdu — Better Auth'un beklediği credential satırını oluştur.
+      await db.insert(accounts).values({
+        id: crypto.randomUUID(),
+        accountId: student.userId,
+        providerId: "credential",
+        userId: student.userId,
+        password: hash,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
     // Eski oturumları düşür — eski PIN'le açık oturum kalmasın.
     await db.delete(sessions).where(eq(sessions.userId, student.userId));
 
