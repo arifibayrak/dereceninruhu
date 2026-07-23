@@ -65,16 +65,6 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5">
-          {/*
-            Sosyal ikonlar: md'de gezinme gizli olduğu için yer var; lg'de
-            7 maddelik gezinme + 3 buton çubuğu doldurduğundan gizlenir,
-            xl'de yeniden görünür. Mobilde çekmecenin altında (aşağıda).
-          */}
-          <SocialIconRow
-            urls={social}
-            className="hidden md:flex lg:hidden xl:flex"
-          />
-          <ThemeToggle className="hidden sm:inline-flex" />
           <Button
             variant="ghost"
             className="hidden lg:inline-flex"
@@ -93,6 +83,16 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
             <SparklesIcon data-icon="inline-start" />
             Ücretsiz Ön Görüşme
           </Button>
+          {/*
+            Sosyal ikonlar: md'de gezinme gizli olduğu için yer var; lg'de
+            7 maddelik gezinme + 3 buton çubuğu doldurduğundan gizlenir,
+            xl'de yeniden görünür. Mobilde çekmecenin altında (aşağıda).
+          */}
+          <SocialIconRow
+            urls={social}
+            className="hidden md:flex lg:hidden xl:flex"
+          />
+          <ThemeToggle className="hidden sm:inline-flex" />
 
           {/* Mobil menü */}
           <Sheet open={open} onOpenChange={setOpen}>
