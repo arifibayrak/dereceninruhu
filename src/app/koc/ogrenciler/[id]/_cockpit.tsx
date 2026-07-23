@@ -24,6 +24,7 @@ const NAV = [
   { seg: "program", label: "Program" },
   { seg: "gorusmeler", label: "Görüşmeler" },
   { seg: "konular", label: "Konular" },
+  { seg: "kaynaklar", label: "Kaynaklar" },
   { seg: "icerik", label: "İçerik" },
   { seg: "muhasebe", label: "Muhasebe" },
   { seg: "profil", label: "Profil" },

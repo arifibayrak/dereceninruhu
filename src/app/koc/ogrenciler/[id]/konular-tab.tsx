@@ -1,6 +1,7 @@
-import { getSectionsForEnrollment } from "@/db/queries/enrollment";
-import { getTopicResourceMatrix, listResources } from "@/db/queries/konular";
-import { ResourceManager } from "@/components/app/resource-manager";
+import { getTopicDeficits } from "@/db/queries/analiz";
+import { getKonuProgress, getTopicResourceMatrix } from "@/db/queries/konular";
+import { formatInt } from "@/lib/format";
+import { TopicDeficitList } from "@/components/app/topic-deficit-list";
 import { TopicResourceMatrix } from "@/components/app/topic-resource-matrix";
 import {
   Card,
@@ -10,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-/** Kokpit "Konular" sekmesi — kaynak CRUD + konu×kaynak "Bitti" matrisi. */
+/** Kokpit "Konular" sekmesi — konu ilerleme + en zayıf konular + Bitti matrisi. */
 export async function KonularTab({
   enrollmentId,
   examTemplateId,
@@ -20,22 +21,65 @@ export async function KonularTab({
   examTemplateId: number;
   trackCode: string | null;
 }) {
-  const [matrix, allResources, sections] = await Promise.all([
+  const [matrix, progress, deficits] = await Promise.all([
     getTopicResourceMatrix(enrollmentId, examTemplateId, trackCode),
-    listResources(enrollmentId),
-    getSectionsForEnrollment(examTemplateId, trackCode),
+    getKonuProgress(enrollmentId, examTemplateId, trackCode),
+    getTopicDeficits(enrollmentId),
   ]);
-  const subjectOptions = sections.flatMap((s) =>
-    s.loggable.map((sub) => ({ id: sub.id, name: `${sub.name} (${s.name})` })),
-  );
 
   return (
     <div className="flex flex-col gap-4">
-      <ResourceManager
-        enrollmentId={enrollmentId}
-        resources={allResources}
-        subjects={subjectOptions}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Konu ilerleme</CardTitle>
+          <CardDescription>
+            {formatInt(progress.doneTotal)} / {formatInt(progress.totalTopics)}{" "}
+            konu bitti · %{progress.pct} tamamlandı
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {progress.subjects.length === 0 ? (
+            <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
+              Konu takibi için önce kaynak ekleyip konuları işaretle.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2.5">
+              {progress.subjects.map((s) => {
+                const pct =
+                  s.total > 0 ? Math.round((s.done / s.total) * 100) : 0;
+                return (
+                  <li key={s.subjectId} className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{s.subjectName}</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {formatInt(s.done)}/{formatInt(s.total)} konu
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${pct}%`,
+                          background: s.chartColor ?? "var(--chart-1)",
+                        }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {deficits.length > 0 && (
+            <div className="flex flex-col gap-2 border-t pt-4">
+              <span className="text-sm font-semibold text-muted-foreground">
+                En zayıf konular
+              </span>
+              <TopicDeficitList deficits={deficits} limit={3} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Konu × kaynak takibi</CardTitle>

@@ -47,8 +47,8 @@ const LINKS = [
     exact: false,
   },
   {
-    href: "/ogrenci/icerik",
-    label: "İçerik",
+    href: "/ogrenci/kaynaklar",
+    label: "Kaynaklar",
     icon: LibraryIcon,
     exact: false,
   },

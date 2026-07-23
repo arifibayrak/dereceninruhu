@@ -325,6 +325,8 @@ export const resources = sqliteTable(
     /** Kaynak author label (e.g. subject teacher) — not a user. */
     author: text("author"),
     notes: text("notes"),
+    /** Opsiyonel bağlantı (kaynak linki). */
+    url: text("url"),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     createdAt: createdAt(),
   },
@@ -594,6 +596,37 @@ export const topicResourceProgress = sqliteTable(
       t.resourceId,
     ),
     index("topic_resource_progress_enrollment_idx").on(t.enrollmentId),
+  ],
+);
+
+/**
+ * Kaynak başına çözülen soru sayısı — konu takibinden ayrı, saf soru sayacı.
+ * question_logs (ders bazlı) ile çift saymamak için AYRI tutulur; toplamlar
+ * SUM(question_count) … GROUP BY resource_id, saklanmaz.
+ */
+export const resourceQuestionLogs = sqliteTable(
+  "resource_question_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    enrollmentId: integer("enrollment_id")
+      .notNull()
+      .references(() => enrollments.id),
+    resourceId: integer("resource_id")
+      .notNull()
+      .references(() => resources.id),
+    /** TRT gün başlangıcı — gün başına tek satır (upsert + artır). */
+    logDate: integer("log_date", { mode: "timestamp" }).notNull(),
+    questionCount: integer("question_count").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("resource_question_logs_enrollment_resource_date_uq").on(
+      t.enrollmentId,
+      t.resourceId,
+      t.logDate,
+    ),
+    index("resource_question_logs_enrollment_idx").on(t.enrollmentId),
   ],
 );
 
@@ -1498,7 +1531,22 @@ export const resourcesRelations = relations(resources, ({ one, many }) => ({
     references: [subjects.id],
   }),
   topicProgress: many(topicResourceProgress),
+  questionLogs: many(resourceQuestionLogs),
 }));
+
+export const resourceQuestionLogsRelations = relations(
+  resourceQuestionLogs,
+  ({ one }) => ({
+    enrollment: one(enrollments, {
+      fields: [resourceQuestionLogs.enrollmentId],
+      references: [enrollments.id],
+    }),
+    resource: one(resources, {
+      fields: [resourceQuestionLogs.resourceId],
+      references: [resources.id],
+    }),
+  }),
+);
 
 export const weeklyPlansRelations = relations(weeklyPlans, ({ one, many }) => ({
   enrollment: one(enrollments, {
@@ -1836,6 +1884,7 @@ export type Enrollment = typeof enrollments.$inferSelect;
 export type NewEnrollment = typeof enrollments.$inferInsert;
 export type SubjectAssignment = typeof subjectAssignments.$inferSelect;
 export type Resource = typeof resources.$inferSelect;
+export type ResourceQuestionLog = typeof resourceQuestionLogs.$inferSelect;
 export type WeeklyPlan = typeof weeklyPlans.$inferSelect;
 export type PlanTask = typeof planTasks.$inferSelect;
 export type QuestionLog = typeof questionLogs.$inferSelect;

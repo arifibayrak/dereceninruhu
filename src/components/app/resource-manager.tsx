@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArchiveIcon, ArchiveRestoreIcon, PencilIcon, PlusIcon } from "lucide-react";
+import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
+  ExternalLinkIcon,
+  PencilIcon,
+  PlusIcon,
+} from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
@@ -121,6 +127,17 @@ function ResourceFormFields({
         />
         <FieldError errors={[errors.notes]} />
       </Field>
+      <Field data-invalid={errors.url ? true : undefined}>
+        <FieldLabel htmlFor="kaynak-link">Bağlantı (opsiyonel)</FieldLabel>
+        <Input
+          id="kaynak-link"
+          type="url"
+          inputMode="url"
+          placeholder="https://…"
+          {...form.register("url")}
+        />
+        <FieldError errors={[errors.url]} />
+      </Field>
     </>
   );
 }
@@ -142,6 +159,7 @@ function ResourceCreateDialog({
       name: "",
       author: "",
       notes: "",
+      url: "",
       subjectId: null,
     },
   });
@@ -204,6 +222,7 @@ function ResourceEditDialog({
       name: resource.name,
       author: resource.author ?? "",
       notes: resource.notes ?? "",
+      url: resource.url ?? "",
       subjectId: resource.subjectId,
     },
   });
@@ -215,6 +234,7 @@ function ResourceEditDialog({
       name: values.name,
       author: values.author,
       notes: values.notes,
+      url: values.url,
       subjectId: values.subjectId,
     };
     const res = await updateResource(payload);
@@ -264,6 +284,7 @@ function ResourceArchiveButton({ resource }: { resource: ResourceRow }) {
       name: resource.name,
       author: resource.author ?? "",
       notes: resource.notes ?? "",
+      url: resource.url ?? "",
       subjectId: resource.subjectId,
       isActive: !resource.isActive,
     });
@@ -332,6 +353,17 @@ export function ResourceManager({
                 </span>
               </div>
               {!r.isActive && <Badge variant="outline">Arşiv</Badge>}
+              {r.url && (
+                <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Bağlantıyı aç"
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-primary"
+                >
+                  <ExternalLinkIcon className="size-4" />
+                </a>
+              )}
               <ResourceEditDialog resource={r} subjects={subjects} />
               <ResourceArchiveButton resource={r} />
             </li>

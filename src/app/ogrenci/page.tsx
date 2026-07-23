@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import {
   CalendarClockIcon,
   ChevronRightIcon,
+  LibraryIcon,
   SparklesIcon,
   VideoIcon,
 } from "lucide-react";
@@ -228,6 +229,22 @@ export default async function OgrenciBugunPage() {
             Gelişimin hakkında merak ettiğini sor.
           </span>
         </div>
+      </Link>
+
+      <Link
+        href="/ogrenci/icerik"
+        className="flex items-center gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10 hover:ring-foreground/20"
+      >
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-info/10">
+          <LibraryIcon className="size-4 text-info" />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-sm font-medium">İçerik</span>
+          <span className="text-xs text-muted-foreground">
+            Koçunun paylaştığı video, PDF ve notlar.
+          </span>
+        </div>
+        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
       </Link>
 
       <div className="flex flex-col gap-3">

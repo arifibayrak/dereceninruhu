@@ -2,9 +2,16 @@
 
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { enrollments, resources, topicResourceProgress } from "@/db/schema";
+import {
+  enrollments,
+  resourceQuestionLogs,
+  resources,
+  topicResourceProgress,
+} from "@/db/schema";
+import { startOfTrtDay } from "@/lib/dates";
 import {
   createResourceSchema,
+  logResourceQuestionsSchema,
   toggleTopicResourceSchema,
   updateResourceSchema,
 } from "@/lib/validation-konular";
@@ -12,7 +19,6 @@ import {
   actionError,
   fieldErrorsOf,
   guarded,
-  requireCoach,
   requireUser,
   type ActionResult,
 } from "@/actions/_guard";
@@ -23,18 +29,19 @@ const clean = (v?: string | null) => {
   return t === "" ? null : t;
 };
 
-/** Koç: öğrenciye kaynak ekler (kitap/fasikül/soru bankası…). */
+/** Kaynak ekler (koç ya da öğrencinin kendisi — kitap/fasikül/soru bankası…). */
 export async function createResource(
   input: unknown,
 ): Promise<ActionResult<{ resourceId: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireUser();
     const parsed = createResourceSchema.safeParse(input);
     if (!parsed.success) {
       return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
     }
     const v = parsed.data;
     const db = getDb();
+    await assertEnrollmentAccess(db, v.enrollmentId, user);
     const enrollment = await db.query.enrollments.findFirst({
       where: eq(enrollments.id, v.enrollmentId),
     });
@@ -47,6 +54,7 @@ export async function createResource(
         name: v.name,
         author: clean(v.author),
         notes: clean(v.notes),
+        url: clean(v.url),
         subjectId: v.subjectId ?? null,
       })
       .returning({ id: resources.id });
@@ -54,12 +62,12 @@ export async function createResource(
   });
 }
 
-/** Koç: kaynağı düzenler / arşivler (isActive=false — geçmiş korunur). */
+/** Kaynağı düzenler / arşivler (koç ya da öğrencinin kendisi; geçmiş korunur). */
 export async function updateResource(
   input: unknown,
 ): Promise<ActionResult<{ resourceId: number }>> {
   return guarded(async () => {
-    await requireCoach();
+    const user = await requireUser();
     const parsed = updateResourceSchema.safeParse(input);
     if (!parsed.success) {
       return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
@@ -70,6 +78,7 @@ export async function updateResource(
       where: eq(resources.id, v.resourceId),
     });
     if (!existing) return actionError("Kaynak bulunamadı.");
+    await assertEnrollmentAccess(db, existing.enrollmentId, user);
 
     await db
       .update(resources)
@@ -77,6 +86,7 @@ export async function updateResource(
         name: v.name,
         author: clean(v.author),
         notes: clean(v.notes),
+        url: clean(v.url),
         subjectId: v.subjectId ?? null,
         ...(v.isActive !== undefined ? { isActive: v.isActive } : {}),
       })
@@ -129,5 +139,50 @@ export async function toggleTopicResourceDone(
         },
       });
     return { ok: true, data: { isDone: v.isDone } };
+  });
+}
+
+/**
+ * Bir kaynaktan bir günde çözülen soru sayısını kaydeder (mutlak değer, upsert).
+ * Koç ya da öğrencinin kendisi; konu takibinden ayrı per-kaynak sayaç.
+ */
+export async function logResourceQuestions(
+  input: unknown,
+): Promise<ActionResult<{ questionCount: number }>> {
+  return guarded(async () => {
+    const user = await requireUser();
+    const parsed = logResourceQuestionsSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
+    }
+    const v = parsed.data;
+    const db = getDb();
+    await assertEnrollmentAccess(db, v.enrollmentId, user);
+
+    const resource = await db.query.resources.findFirst({
+      where: eq(resources.id, v.resourceId),
+    });
+    if (!resource || resource.enrollmentId !== v.enrollmentId) {
+      return actionError("Kaynak bu öğrenciye ait değil.");
+    }
+
+    const day = startOfTrtDay(v.logDate);
+    await db
+      .insert(resourceQuestionLogs)
+      .values({
+        enrollmentId: v.enrollmentId,
+        resourceId: v.resourceId,
+        logDate: day,
+        questionCount: v.questionCount,
+      })
+      .onConflictDoUpdate({
+        target: [
+          resourceQuestionLogs.enrollmentId,
+          resourceQuestionLogs.resourceId,
+          resourceQuestionLogs.logDate,
+        ],
+        set: { questionCount: v.questionCount, updatedAt: new Date() },
+      });
+    return { ok: true, data: { questionCount: v.questionCount } };
   });
 }

@@ -1,18 +1,15 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChevronRightIcon, LibraryIcon } from "lucide-react";
 
-import {
-  getTopicDeficits,
-  getTopicHeatmap,
-} from "@/db/queries/analiz";
+import { getTopicDeficits, getTopicHeatmap } from "@/db/queries/analiz";
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
-import { getTopicResourceMatrix } from "@/db/queries/konular";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { formatInt } from "@/lib/format";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { TopicDeficitList } from "@/components/app/topic-deficit-list";
 import { TopicHeatmap } from "@/components/app/topic-heatmap";
-import { TopicResourceMatrix } from "@/components/app/topic-resource-matrix";
 import {
   Card,
   CardContent,
@@ -34,14 +31,9 @@ export default async function OgrenciAnalizPage() {
   }
   const enrollmentId = detail.enrollment.id;
 
-  const [deficits, heatmap, matrix] = await Promise.all([
+  const [deficits, heatmap] = await Promise.all([
     getTopicDeficits(enrollmentId),
     getTopicHeatmap(enrollmentId),
-    getTopicResourceMatrix(
-      enrollmentId,
-      detail.enrollment.examTemplateId,
-      detail.enrollment.trackCode,
-    ),
   ]);
   const totalDeficit = deficits.reduce((acc, d) => acc + d.total, 0);
 
@@ -80,26 +72,21 @@ export default async function OgrenciAnalizPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Kaynak takibi</CardTitle>
-          <CardDescription>
-            Konu × kaynak — bitirdiğin fasikülü/testi işaretle.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TopicResourceMatrix
-            enrollmentId={enrollmentId}
-            groups={matrix.groups}
-            resources={matrix.resources.map((r) => ({
-              id: r.id,
-              name: r.name,
-              subjectId: r.subjectId,
-            }))}
-            initialDone={matrix.done}
-          />
-        </CardContent>
-      </Card>
+      <Link
+        href="/ogrenci/kaynaklar"
+        className="flex items-center gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-colors hover:ring-primary/40"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <LibraryIcon className="size-4 text-primary" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-sm font-medium">Kaynak takibi</span>
+          <span className="truncate text-xs text-muted-foreground">
+            Kaynaklarını ekle, soru sayısını gir, biten konuları işaretle
+          </span>
+        </span>
+        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
+      </Link>
     </>
   );
 }
