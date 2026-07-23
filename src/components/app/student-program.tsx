@@ -9,6 +9,7 @@ import { submitPlanForReview } from "@/actions/plans";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CoachNote } from "@/components/app/coach-note";
+import { PlanAiDraft } from "@/components/app/plan-ai-draft";
 import {
   ProgramChecklist,
   type ChecklistDay,
@@ -139,6 +140,14 @@ export function StudentProgram({
               : "Konularını düzenle, hazır olunca koçuna gönder."}
           </span>
         </div>
+        <div className="flex justify-end">
+          <PlanAiDraft
+            enrollmentId={enrollmentId}
+            weekKey={weekKey}
+            subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+            label="AI ile konu öner"
+          />
+        </div>
         <ProgramGrid
           enrollmentId={enrollmentId}
           weekKey={weekKey}
@@ -207,6 +216,13 @@ export function StudentProgram({
               hafta için bir program paylaşabilir.
             </p>
           </div>
+          <PlanAiDraft
+            enrollmentId={enrollmentId}
+            weekKey={weekKey}
+            subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+            label="AI ile program oluştur"
+            variant="default"
+          />
         </div>
         <ProgramGrid
           enrollmentId={enrollmentId}

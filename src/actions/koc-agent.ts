@@ -37,10 +37,15 @@ KURALLAR:
 - Bir öğrenciyle işlem yapmadan önce list_students ile ismi studentId'ye çöz.
   Birden çok eşleşme varsa hangi öğrenci olduğunu koça SOR, tahmin etme.
 - Soru sayısı eklemeden önce get_subjects ile doğru subjectId'yi al. ID UYDURMA.
-- create_plan_task ve add_question_log ONAY gerektirir: çağırınca koç onaylayana
-  kadar YAZILMAZ. "Ekledim/kaydettim" DEME; "onayına sunuyorum" de.
-- Tarihler YYYY-MM-DD; weekStart mutlaka pazartesi olmalı.
-- Bir seferde yalnız BİR yazma önerisi yap.
+- PROGRAM oluştururken önce list_past_plans / get_plan ile geçmişe bak; eskiyi
+  aynen tekrar etme, eksikleri tamamla. TÜM HAFTA programı için create_plan_task'ı
+  tek tek çağırma — propose_weekly_program ile konuları TEK öneride ver.
+- Yazma araçları (create_plan_task, add_question_log, propose_weekly_program) ONAY
+  gerektirir: çağırınca koç onaylayana kadar YAZILMAZ. "Ekledim/kaydettim" DEME;
+  "onayına sunuyorum" de.
+- Tarihler YYYY-MM-DD; weekStart mutlaka pazartesi olmalı. day boşsa konu güne
+  atanmamış (haftalık) demektir.
+- Bir seferde yalnız BİR yazma önerisi yap (bir program = tek propose_weekly_program).
 - Muhasebe, kullanıcı/şifre, silme, öğrenci bilgisi düzenleme YAPAMAZSIN.
 - Türkçe, kısa ve net konuş.`;
 
@@ -74,9 +79,16 @@ async function summarizeWrite(
   });
   const who = st?.fullName ?? `Öğrenci #${studentId}`;
   if (toolName === "create_plan_task") {
-    const day = DAY_NAMES_TR[Number(args.day) - 1] ?? `gün ${String(args.day)}`;
+    const day =
+      args.day == null
+        ? "bu hafta"
+        : (DAY_NAMES_TR[Number(args.day) - 1] ?? `gün ${String(args.day)}`);
     const subj = args.subjectId ? await subjectName(Number(args.subjectId)) : null;
     return `${who} · ${day}: ${String(args.description ?? "")}${subj ? ` [${subj}]` : ""}${args.targetQuestions ? ` (${String(args.targetQuestions)} soru)` : ""}`;
+  }
+  if (toolName === "propose_weekly_program") {
+    const items = Array.isArray(args.items) ? args.items : [];
+    return `${who} · ${String(args.weekStart ?? "")}: ${items.length} konuluk program taslağı`;
   }
   if (toolName === "add_question_log") {
     const subj = await subjectName(Number(args.subjectId));
@@ -166,8 +178,15 @@ export async function sendCoachAgentMessage(
 const confirmSchema = z.object({
   threadId: z.coerce.number().int().positive(),
   toolName: z.enum(AGENT_WRITE_TOOLS),
-  argsJson: z.string().max(4000),
+  argsJson: z.string().max(16000),
 });
+
+type ProgramItem = {
+  description: unknown;
+  subjectId?: unknown;
+  day?: unknown;
+  targetQuestions?: unknown;
+};
 
 /** Bekleyen yazma önerisini ONAYLA: mevcut Server Action çalışır, denetime yazılır. */
 export async function confirmCoachAgentWrite(
@@ -192,23 +211,45 @@ export async function confirmCoachAgentWrite(
     const enrollmentId = detail.enrollment.id;
     await assertEnrollmentAccess(db, enrollmentId, user);
 
-    const result: ActionResult<unknown> =
-      toolName === "create_plan_task"
-        ? await addPlanTask({
-            enrollmentId,
-            weekStart: args.weekStart,
-            day: args.day,
-            description: args.description,
-            subjectId: args.subjectId ?? null,
-            targetQuestions: args.targetQuestions ?? null,
-          })
-        : await upsertQuestionLogs({
-            enrollmentId,
-            logDate: args.logDate,
-            entries: [
-              { subjectId: args.subjectId, questionCount: args.questionCount },
-            ],
-          });
+    let result: ActionResult<unknown>;
+    if (toolName === "create_plan_task") {
+      result = await addPlanTask({
+        enrollmentId,
+        weekStart: args.weekStart,
+        day: args.day ?? null,
+        description: args.description,
+        subjectId: args.subjectId ?? null,
+        targetQuestions: args.targetQuestions ?? null,
+      });
+    } else if (toolName === "propose_weekly_program") {
+      const items = Array.isArray(args.items)
+        ? (args.items as ProgramItem[])
+        : [];
+      let added = 0;
+      for (const it of items) {
+        const r = await addPlanTask({
+          enrollmentId,
+          weekStart: args.weekStart,
+          day: it.day ?? null,
+          description: it.description,
+          subjectId: it.subjectId ?? null,
+          targetQuestions: it.targetQuestions ?? null,
+        });
+        if (r.ok) added++;
+      }
+      result =
+        added > 0
+          ? { ok: true, data: { added } }
+          : actionError("Program eklenemedi.");
+    } else {
+      result = await upsertQuestionLogs({
+        enrollmentId,
+        logDate: args.logDate,
+        entries: [
+          { subjectId: args.subjectId, questionCount: args.questionCount },
+        ],
+      });
+    }
 
     await db.insert(aiAuditLog).values({
       actorUserId: user.id,

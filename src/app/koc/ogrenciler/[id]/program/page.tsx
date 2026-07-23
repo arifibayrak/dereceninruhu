@@ -23,6 +23,7 @@ import {
   type BuilderSubject,
   type BuilderTask,
 } from "@/components/app/program-builder";
+import { PlanAiDraft } from "@/components/app/plan-ai-draft";
 import { Button } from "@/components/ui/button";
 import { CockpitShell, resolveCockpit } from "../_cockpit";
 
@@ -125,6 +126,15 @@ export default async function ProgramPage({
           >
             <ChevronRightIcon />
           </Button>
+        </div>
+
+        <div className="flex justify-end">
+          <PlanAiDraft
+            studentId={studentId}
+            enrollmentId={enrollment.id}
+            weekKey={planWeekKey}
+            subjects={builderSubjects.map((s) => ({ id: s.id, name: s.name }))}
+          />
         </div>
 
         {planWeeks.length > 0 && (

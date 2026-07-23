@@ -10,7 +10,9 @@ import {
 import { getNetSeries, getWeekQuestionTotal } from "@/db/queries/tracking";
 import { getTopicDeficits } from "@/db/queries/analiz";
 import { getCohortScoreboard } from "@/db/queries/cohort";
+import { getPlanForReuse, listWeeklyPlans } from "@/db/queries/plans";
 import { netTrend } from "@/lib/insights";
+import { trDayKey } from "@/lib/dates";
 
 /**
  * Koç ajanı araçları — güvenlik modeli:
@@ -21,7 +23,11 @@ import { netTrend } from "@/lib/insights";
  *   döngüsü — model çağıramaz çünkü araç yok.
  */
 
-export const AGENT_WRITE_TOOLS = ["create_plan_task", "add_question_log"] as const;
+export const AGENT_WRITE_TOOLS = [
+  "create_plan_task",
+  "add_question_log",
+  "propose_weekly_program",
+] as const;
 export type AgentWriteTool = (typeof AGENT_WRITE_TOOLS)[number];
 
 export function isWriteTool(name: string): name is AgentWriteTool {
@@ -162,20 +168,98 @@ export function buildAgentTools(coachUserId: string) {
       },
     }),
 
-    /* ------------------------- YAZMA (onay gerekir) ------------------------- */
-    create_plan_task: tool({
+    list_past_plans: tool({
       description:
-        "Programa YAPILACAK bir görev ekle (gelecekte çözülecek). Örn. 'salı 50 paragraf sorusu çöz'. ONAY gerekir.",
+        "Bir öğrencinin geçmiş + mevcut haftalık programlarını listele (hafta, durum, konu sayısı, motto). Yeni program önermeden ÖNCE eskiyi gör — tekrar etme, üstüne kur.",
+      inputSchema: z.object({
+        studentId: z.coerce.number().int().positive(),
+      }),
+      execute: async ({ studentId }) => {
+        const detail = await getEnrollmentDetailByStudentId(studentId);
+        if (!detail) return { error: "Öğrenci bulunamadı." };
+        const weeks = await listWeeklyPlans(detail.enrollment.id, 8);
+        await logAudit(coachUserId, "list_past_plans", { studentId }, detail.enrollment.id);
+        return {
+          plans: weeks.map((w) => ({
+            weekStart: trDayKey(w.weekStart),
+            status: w.status,
+            taskCount: w.taskCount,
+            motto: w.motto,
+          })),
+        };
+      },
+    }),
+
+    get_plan: tool({
+      description:
+        "Belirli bir haftanın programındaki konuları getir (uyarlamak/kopyalamak için). weekStart pazartesi YYYY-MM-DD.",
       inputSchema: z.object({
         studentId: z.coerce.number().int().positive(),
         weekStart: z.string().describe("Haftanın pazartesisi, YYYY-MM-DD"),
-        day: z.coerce.number().int().min(1).max(7).describe("1=Pazartesi … 7=Pazar"),
+      }),
+      execute: async ({ studentId, weekStart }) => {
+        const detail = await getEnrollmentDetailByStudentId(studentId);
+        if (!detail) return { error: "Öğrenci bulunamadı." };
+        const tasks = await getPlanForReuse(
+          detail.enrollment.id,
+          new Date(weekStart),
+        );
+        await logAudit(coachUserId, "get_plan", { studentId, weekStart }, detail.enrollment.id);
+        return {
+          topics: tasks.map((t) => ({
+            day: t.day,
+            subjectId: t.subjectId,
+            description: t.description,
+            targetQuestions: t.targetQuestions,
+          })),
+        };
+      },
+    }),
+
+    /* ------------------------- YAZMA (onay gerekir) ------------------------- */
+    create_plan_task: tool({
+      description:
+        "Programa TEK bir görev ekle. day boşsa haftalık konu (güne atanmamış). TÜM HAFTA için değil — tüm program için propose_weekly_program kullan. ONAY gerekir.",
+      inputSchema: z.object({
+        studentId: z.coerce.number().int().positive(),
+        weekStart: z.string().describe("Haftanın pazartesisi, YYYY-MM-DD"),
+        day: z.coerce
+          .number()
+          .int()
+          .min(1)
+          .max(7)
+          .nullish()
+          .describe("1=Pazartesi … 7=Pazar; boş = haftalık konu"),
         description: z.string().min(1).max(300),
         subjectId: z.coerce.number().int().positive().optional(),
         targetQuestions: z.coerce.number().int().min(0).max(2000).optional(),
       }),
       execute: async (args) => {
         pending.push({ toolName: "create_plan_task", args });
+        return { status: "onaya_sunuldu" as const };
+      },
+    }),
+
+    propose_weekly_program: tool({
+      description:
+        "Bir öğrenciye TÜM HAFTA için program öner (ders × konu) — konuları TEK çağrıda ver. Önce list_past_plans/get_plan ile geçmişe bak. subjectId için get_subjects'ten gerçek id kullan. day boşsa haftalık konu. ONAY gerekir.",
+      inputSchema: z.object({
+        studentId: z.coerce.number().int().positive(),
+        weekStart: z.string().describe("Haftanın pazartesisi, YYYY-MM-DD"),
+        items: z
+          .array(
+            z.object({
+              description: z.string().min(1).max(300),
+              subjectId: z.coerce.number().int().positive().optional(),
+              day: z.coerce.number().int().min(1).max(7).nullish(),
+              targetQuestions: z.coerce.number().int().min(0).max(2000).optional(),
+            }),
+          )
+          .min(1)
+          .max(40),
+      }),
+      execute: async (args) => {
+        pending.push({ toolName: "propose_weekly_program", args });
         return { status: "onaya_sunuldu" as const };
       },
     }),
