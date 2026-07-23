@@ -397,6 +397,35 @@ export default async function HomePage() {
         </Button>
       </section>
 
+      {/* ------------------------------ Kaynaklar ---------------------------- */}
+      <section className="flex flex-col gap-6 rounded-2xl bg-secondary/40 p-6 sm:p-8">
+        <SectionHeading
+          eyebrow="Ücretsiz kaynaklar"
+          title="Resmî kaynak merkezi"
+          description="ÖSYM ve MEB çıkmış soruları, OGM Materyal & MEBİ, YÖK Atlas ve net hesaplama aracı — hepsi tek sayfada, tamamen ücretsiz."
+        />
+        <div className="flex flex-wrap gap-2">
+          {[
+            "Çıkmış sorular",
+            "OGM Materyal & MEBİ",
+            "YÖK Atlas",
+            "Net hesaplama",
+            "Sınav geri sayımı",
+          ].map((label) => (
+            <span
+              key={label}
+              className="rounded-full bg-background px-3 py-1.5 text-sm font-medium text-muted-foreground ring-1 ring-foreground/10"
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+        <Button className="self-start" render={<Link href="/kaynaklar" />}>
+          Kaynaklara göz at
+          <ArrowRightIcon data-icon="inline-end" />
+        </Button>
+      </section>
+
       {/* ------------------------------ Fiyat teaser ------------------------- */}
       <section className="flex flex-col gap-8">
         <SectionHeading

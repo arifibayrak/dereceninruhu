@@ -13,6 +13,7 @@ import {
 import { addDays, mondayOf, trDayKey, weekRange } from "@/lib/dates";
 import type { StudentInsightInput } from "@/lib/insights";
 import type { SessionViewer } from "@/lib/session";
+import { getStudyWeekTotal } from "@/db/queries/study";
 
 /* -------------------------------------------------------------------------- */
 /*  Soru takibi                                                               */
@@ -397,6 +398,9 @@ export async function getStudentInsightInput(
   const thisWeek = await getWeekQuestionTotal(enrollmentId, now);
   const lastWeek = await getWeekQuestionTotal(enrollmentId, addDays(now, -7));
 
+  const thisWeekStudy = await getStudyWeekTotal(enrollmentId, now);
+  const lastWeekStudy = await getStudyWeekTotal(enrollmentId, addDays(now, -7));
+
   const series = await getNetSeries(enrollmentId);
 
   return {
@@ -404,6 +408,8 @@ export async function getStudentInsightInput(
     lastActivity,
     weekQuestionTotal: thisWeek,
     lastWeekQuestionTotal: lastWeek,
+    weekStudyMinutes: thisWeekStudy,
+    lastWeekStudyMinutes: lastWeekStudy,
     netSeries: series.map((p) => ({ takenOn: p.takenOn, net: p.net })),
     now,
   };

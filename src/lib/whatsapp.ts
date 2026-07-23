@@ -38,6 +38,10 @@ export const waTemplates = {
       when ?? "yaklaşan"
     } koçluk görüşmemiz var. Öncesinde bu haftanın programını ve soru takibini doldurmayı unutma 🙌`,
 
+  /** Görüşmesini henüz planlamamış öğrenciye uygulama-içi planlama hatırlatması. */
+  gorusmePlanla: ({ studentName }: ReminderCtx) =>
+    `Merhaba ${studentName} 👋 Koçluk görüşmelerini planlamanı bekliyorum. Uygulamadaki "Görüşmeler" sayfasından sana uygun saati seçmen yeterli — birkaç dakika sürer 🙌`,
+
   odemeGecikti: ({ studentName, amountTry }: ReminderCtx) =>
     `Merhaba ${studentName}, ${
       amountTry ? `${amountTry} tutarındaki ` : ""

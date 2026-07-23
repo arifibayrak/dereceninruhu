@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarClockIcon, SparklesIcon, VideoIcon } from "lucide-react";
+import {
+  CalendarClockIcon,
+  ChevronRightIcon,
+  SparklesIcon,
+  VideoIcon,
+} from "lucide-react";
 
 import {
   getEnrollmentDetailByUserId,
@@ -9,10 +14,12 @@ import {
 } from "@/db/queries/enrollment";
 import { getWeeklyPlan } from "@/db/queries/plans";
 import { getNextSessionForEnrollment } from "@/db/queries/sessions";
+import { getStudyWeekTotal } from "@/db/queries/study";
 import { getStudentInsightInput, getWeekGrid } from "@/db/queries/tracking";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { formatTrDate, trDayKey, trWeekday } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
+import { formatMinutes } from "@/lib/study";
 import {
   buildStudentInsights,
   computeStreak,
@@ -56,13 +63,14 @@ export default async function OgrenciBugunPage() {
 
   const now = new Date();
   const todayKey = trDayKey(now);
-  const [sections, grid, insightInput, weekPlan, nextSession] =
+  const [sections, grid, insightInput, weekPlan, nextSession, studyWeek] =
     await Promise.all([
       getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
       getWeekGrid(enrollment.id, now),
       getStudentInsightInput(enrollment.id, now),
       getWeeklyPlan(enrollment.id, now, { publishedOnly: true }),
       getNextSessionForEnrollment(enrollment.id, now),
+      getStudyWeekTotal(enrollment.id, now),
     ]);
 
   const todayDay = trWeekday(now);
@@ -119,7 +127,28 @@ export default async function OgrenciBugunPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      {enrollment.coachCalBookingUrl != null &&
+        enrollment.callsScheduledAt == null && (
+          <Link
+            href="/ogrenci/gorusmeler"
+            className="flex items-center gap-3 rounded-xl bg-warning/10 p-3.5 text-warning ring-1 ring-warning/20 transition hover:bg-warning/15"
+          >
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-warning/15">
+              <CalendarClockIcon className="size-4" />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="text-sm font-medium">
+                Görüşmelerini henüz planlamadın
+              </span>
+              <span className="text-xs text-warning/80">
+                Koçunla görüşme saatlerini seç — birkaç dakika sürer.
+              </span>
+            </div>
+            <ChevronRightIcon className="size-4 shrink-0" />
+          </Link>
+        )}
+
+      <div className="grid grid-cols-2 gap-2">
         <StatTile label="Seri" value={`${formatInt(streak)}`} hint="gün" />
         <StatTile
           label="Bu hafta"
@@ -131,39 +160,58 @@ export default async function OgrenciBugunPage() {
           value={trend.latest !== null ? formatNet(trend.latest) : "—"}
           hint="tam deneme"
         />
+        <Link href="/ogrenci/kronometre" className="rounded-xl">
+          <StatTile
+            label="Çalışma"
+            value={formatMinutes(studyWeek)}
+            hint="bu hafta →"
+          />
+        </Link>
       </div>
 
       <InsightList insights={insights} limit={2} />
 
       {todayTasks.length > 0 && <TodayPlanTasks tasks={todayTasks} />}
 
-      <div className="flex items-center gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-info/10">
-          <CalendarClockIcon className="size-4 text-info" />
-        </span>
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-sm font-medium">
-            {nextSession
-              ? `Sonraki görüşme · ${sessionFmt.format(nextSession.scheduledAt)}`
-              : "Sonraki görüşme"}
+      <div className="flex flex-col gap-2.5 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10">
+        <div className="flex items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-info/10">
+            <CalendarClockIcon className="size-4 text-info" />
           </span>
-          <span className="text-xs text-muted-foreground">
-            {nextSession
-              ? nextSession.studentVisibleNote ??
-                "Koçunla planlı görüşmen var — hazırlıklı gel."
-              : "Planlanmış görüşme yok — koçun seninle iletişime geçecek."}
-          </span>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-sm font-medium">
+              {nextSession
+                ? `Sonraki görüşme · ${sessionFmt.format(nextSession.scheduledAt)}`
+                : "Sonraki görüşme"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {nextSession
+                ? nextSession.studentVisibleNote ??
+                  "Koçunla planlı görüşmen var — hazırlıklı gel."
+                : enrollment.coachCalBookingUrl
+                  ? "Planlanmış görüşme yok — takvimden bir saat seç."
+                  : "Planlanmış görüşme yok — koçun seninle iletişime geçecek."}
+            </span>
+          </div>
+          {nextSession?.meetingUrl && (
+            <a
+              href={nextSession.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <VideoIcon className="size-4" />
+              Katıl
+            </a>
+          )}
         </div>
-        {nextSession?.meetingUrl && (
-          <a
-            href={nextSession.meetingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+        {enrollment.coachCalBookingUrl && (
+          <Link
+            href="/ogrenci/gorusmeler"
+            className="self-start text-xs font-medium text-primary underline-offset-4 hover:underline"
           >
-            <VideoIcon className="size-4" />
-            Katıl
-          </a>
+            {nextSession ? "Yeniden planla →" : "Görüşmelerini planla →"}
+          </Link>
         )}
       </div>
 

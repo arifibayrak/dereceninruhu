@@ -7,19 +7,27 @@ import {
   getSectionsForEnrollment,
 } from "@/db/queries/enrollment";
 import {
+  getStudyBySubject,
+  getStudyDayKeys,
   getStudyDayTotal,
   getStudyWeekTotal,
+  getTotalStudyMinutes,
+  getWeeklyStudyMinutes,
   listStudyLogs,
 } from "@/db/queries/study";
-import { trDayKey } from "@/lib/dates";
+import { formatWeekLabel, trDayKey } from "@/lib/dates";
+import { formatInt } from "@/lib/format";
+import { computeStreak } from "@/lib/insights";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { formatMinutes, STUDY_SOURCE_LABELS } from "@/lib/study";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
+import { StudySubjectBars } from "@/components/app/study-subject-bars";
 import {
   StudyLogger,
   type StudySubject,
 } from "@/components/app/study-logger";
 import { StudyLogDelete } from "@/components/app/study-log-delete";
+import { WeeklyStudyChart } from "@/components/charts/weekly-study-chart";
 import { StatTile } from "@/components/brand/stat-tile";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -51,12 +59,26 @@ export default async function KronometrePage() {
   const now = new Date();
   const todayKey = trDayKey(now);
 
-  const [sections, todayLogs, dayTotal, weekTotal] = await Promise.all([
+  const [
+    sections,
+    todayLogs,
+    dayTotal,
+    weekTotal,
+    totalMinutes,
+    weekly,
+    bySubject,
+    studyDayKeys,
+  ] = await Promise.all([
     getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
     listStudyLogs(enrollment.id, { day: now }),
     getStudyDayTotal(enrollment.id, now),
     getStudyWeekTotal(enrollment.id, now),
+    getTotalStudyMinutes(enrollment.id),
+    getWeeklyStudyMinutes(enrollment.id, 8, now),
+    getStudyBySubject(enrollment.id, 8, now),
+    getStudyDayKeys(enrollment.id),
   ]);
+  const studyStreak = computeStreak(studyDayKeys, now);
 
   const subjects: StudySubject[] = sections.flatMap((s) =>
     s.loggable.map((sub) => ({
@@ -82,6 +104,12 @@ export default async function KronometrePage() {
           value={formatMinutes(weekTotal)}
           hint="Pzt–Paz"
         />
+        <StatTile
+          label="Toplam"
+          value={formatMinutes(totalMinutes)}
+          hint="tüm zamanlar"
+        />
+        <StatTile label="Seri" value={formatInt(studyStreak)} hint="çalışma günü" />
       </div>
 
       <StudyLogger
@@ -143,6 +171,39 @@ export default async function KronometrePage() {
               ))}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Haftalık çalışma süresi</CardTitle>
+          <CardDescription>Son 8 hafta · toplam dakika</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {totalMinutes > 0 ? (
+            <WeeklyStudyChart
+              points={weekly.map((w) => ({
+                label: formatWeekLabel(w.weekStart),
+                minutes: w.minutes,
+              }))}
+            />
+          ) : (
+            <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
+              Çalışma kaydettikçe haftalık süre grafiğin burada çizilecek.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Ders ders çalışma</CardTitle>
+          <CardDescription>
+            Son 8 hafta · en çok süre ayırdığın dersler
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <StudySubjectBars rows={bySubject} />
         </CardContent>
       </Card>
     </>

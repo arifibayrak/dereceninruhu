@@ -8,13 +8,14 @@ import {
   payments,
   students,
 } from "@/db/schema";
-import { startOfTrtDay } from "@/lib/dates";
+import { daysBetween, startOfTrtDay } from "@/lib/dates";
 import {
   trtMonthRange,
   type BillingType,
   type InvoiceStatus,
   type PaymentNoticeStatus,
 } from "@/lib/muhasebe";
+import type { SessionViewer } from "@/lib/session";
 
 /* -------------------------------------------------------------------------- */
 /*  Ortak görünüm tipleri                                                     */
@@ -273,6 +274,150 @@ export async function getMuhasebeDashboard(
     collectionRate: invoiced > 0 ? collected / invoiced : null,
     overdue,
     recentPayments: await listPayments({ limit: 8, coachUserId }),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Kadro geneli ödeme durumu (kadro tablosu rozeti)                          */
+/* -------------------------------------------------------------------------- */
+
+export type RosterPayment = {
+  /** Açık faturaların toplam bakiyesi (kuruş). */
+  outstandingKurus: number;
+  /** Gecikmiş (vadesi geçmiş açık) faturaların bakiyesi (kuruş). */
+  overdueKurus: number;
+  isOverdue: boolean;
+  /** Gecikmede geçen gün (en eski gecikmiş vadeye göre); değilse null. */
+  overdueDays: number | null;
+  /** Sıradaki vade — gelecekteki en yakın fatura vadesi ya da plan kesim günü. */
+  nextDueOn: Date | null;
+  /** Aktif ücret planı var mı. */
+  hasPlan: boolean;
+};
+
+/**
+ * Kadro geneli ödeme durumu: enrollmentId → durum. Satır başına sorgu YOK —
+ * tek `listInvoices` (açık faturalar) + tek `feePlans` sorgusuyla türetilir.
+ * Koç yalnız kendi kadrosunu; yönetici tüm kadroyu görür.
+ */
+export async function getRosterPayments(
+  viewer: SessionViewer,
+  now: Date = new Date(),
+): Promise<Map<number, RosterPayment>> {
+  const db = getDb();
+  const coachUserId = viewer.role === "coach" ? viewer.id : null;
+  const coachFilter = coachUserId
+    ? eq(enrollments.coachUserId, coachUserId)
+    : undefined;
+
+  const planRows = await db
+    .select({
+      id: feePlans.id,
+      enrollmentId: feePlans.enrollmentId,
+      nextBillingOn: feePlans.nextBillingOn,
+    })
+    .from(feePlans)
+    .innerJoin(enrollments, eq(enrollments.id, feePlans.enrollmentId))
+    .where(and(eq(feePlans.isActive, true), coachFilter))
+    .orderBy(feePlans.id);
+
+  const out = new Map<number, RosterPayment>();
+  // En son (en büyük id) aktif plan kazanır — getEnrollmentFinance ile tutarlı.
+  for (const p of planRows) {
+    out.set(p.enrollmentId, {
+      outstandingKurus: 0,
+      overdueKurus: 0,
+      isOverdue: false,
+      overdueDays: null,
+      nextDueOn: p.nextBillingOn,
+      hasPlan: true,
+    });
+  }
+
+  const open = await listInvoices({ status: "açık", coachUserId, now });
+  const earliestOverdue = new Map<number, Date>();
+  const earliestFuture = new Map<number, Date>();
+  for (const inv of open) {
+    if (inv.balanceKurus <= 0) continue;
+    const cur =
+      out.get(inv.enrollmentId) ??
+      ({
+        outstandingKurus: 0,
+        overdueKurus: 0,
+        isOverdue: false,
+        overdueDays: null,
+        nextDueOn: null,
+        hasPlan: false,
+      } satisfies RosterPayment);
+    cur.outstandingKurus += inv.balanceKurus;
+    if (inv.isOverdue) {
+      cur.overdueKurus += inv.balanceKurus;
+      cur.isOverdue = true;
+      if (inv.dueOn) {
+        const prev = earliestOverdue.get(inv.enrollmentId);
+        if (!prev || inv.dueOn < prev)
+          earliestOverdue.set(inv.enrollmentId, inv.dueOn);
+      }
+    } else if (inv.dueOn) {
+      const prev = earliestFuture.get(inv.enrollmentId);
+      if (!prev || inv.dueOn < prev)
+        earliestFuture.set(inv.enrollmentId, inv.dueOn);
+    }
+    out.set(inv.enrollmentId, cur);
+  }
+
+  for (const [enrollmentId, p] of out) {
+    // Açık faturanın yaklaşan vadesi varsa onu tercih et (plan gününün önüne).
+    const fut = earliestFuture.get(enrollmentId);
+    if (fut && (!p.nextDueOn || fut < p.nextDueOn)) p.nextDueOn = fut;
+    const od = earliestOverdue.get(enrollmentId);
+    if (od) p.overdueDays = daysBetween(od, now);
+  }
+
+  return out;
+}
+
+/** Tek kayıt için ödeme durumu (kokpit KPI rozeti) — getRosterPayments'in tekli hâli. */
+export async function getEnrollmentPayment(
+  enrollmentId: number,
+  now: Date = new Date(),
+): Promise<RosterPayment | null> {
+  const db = getDb();
+  const plan = await db.query.feePlans.findFirst({
+    where: and(
+      eq(feePlans.enrollmentId, enrollmentId),
+      eq(feePlans.isActive, true),
+    ),
+    orderBy: desc(feePlans.id),
+  });
+  const open = await listInvoices({ status: "açık", enrollmentId, now });
+  if (!plan && open.length === 0) return null;
+
+  let outstandingKurus = 0;
+  let overdueKurus = 0;
+  let isOverdue = false;
+  let earliestOverdue: Date | null = null;
+  let earliestFuture: Date | null = null;
+  for (const inv of open) {
+    if (inv.balanceKurus <= 0) continue;
+    outstandingKurus += inv.balanceKurus;
+    if (inv.isOverdue) {
+      overdueKurus += inv.balanceKurus;
+      isOverdue = true;
+      if (inv.dueOn && (!earliestOverdue || inv.dueOn < earliestOverdue))
+        earliestOverdue = inv.dueOn;
+    } else if (inv.dueOn && (!earliestFuture || inv.dueOn < earliestFuture)) {
+      earliestFuture = inv.dueOn;
+    }
+  }
+
+  return {
+    outstandingKurus,
+    overdueKurus,
+    isOverdue,
+    overdueDays: earliestOverdue ? daysBetween(earliestOverdue, now) : null,
+    nextDueOn: earliestFuture ?? plan?.nextBillingOn ?? null,
+    hasPlan: plan != null,
   };
 }
 

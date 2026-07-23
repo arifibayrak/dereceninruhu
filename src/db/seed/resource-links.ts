@@ -67,32 +67,32 @@ export const resourceLinkSeeds: ResourceLinkSeed[] = [
   /* ----------------------------- Çıkmış sorular ---------------------------- */
   {
     category: "cikmis-sorular",
-    title: "ÖSYM Çıkmış Sorular Arşivi",
+    title: "YKS Çıkmış Soru Kitapları (TYT/AYT/YDT)",
     description:
-      "YKS, KPSS ve diğer sınavların geçmiş yıl soru kitapçıkları ile cevap anahtarları — doğrudan ÖSYM kaynağından.",
-    url: "https://www.osym.gov.tr/TR,8797/cikmis-sorular.html",
-    examCode: null,
-    provider: "ÖSYM",
+      "Yıllara göre ayrılmış çıkmış soru kitapları — TYT, AYT (SAY/EA/SÖZ) ve YDT; PDF olarak indirilebilir, çözümlü. MEB OGM Materyal'den ücretsiz.",
+    url: "https://ogmmateryal.eba.gov.tr/yks-cikmis-soru-kitaplari",
+    examCode: "YKS",
+    provider: "OGM Materyal",
     sortOrder: 0,
     isFeatured: true,
   },
   {
     category: "cikmis-sorular",
-    title: "YKS Çıkmış Sorular — Son 8 Yıl (TYT/AYT/YDT)",
+    title: "ÖSYM Çıkmış Sınav Soruları (KPSS/DGS/ALES)",
     description:
-      "TYT, AYT (SAY/EA/SÖZ) ve YDT için yıllara göre ayrılmış çıkmış soru kitapları; konularına göre gruplanmış ve video çözümlü.",
-    url: "https://ogmmateryal.eba.gov.tr/panel/etkilesimli-kitap",
-    examCode: "YKS",
-    provider: "OGM Materyal",
+      "KPSS, DGS, ALES ve diğer ÖSYM sınavlarının Temel Soru Kitapçıkları ve cevap anahtarlarına ÖSYM duyurularından ulaş.",
+    url: "https://www.osym.gov.tr/",
+    examCode: null,
+    provider: "ÖSYM",
     sortOrder: 1,
     isFeatured: true,
   },
   {
     category: "cikmis-sorular",
-    title: "LGS Örnek Sorular ve Geçmiş Sınavlar",
+    title: "LGS Örnek Soru Kitapçıkları",
     description:
-      "MEB Ölçme ve Değerlendirme Genel Müdürlüğü'nün yayımladığı LGS örnek soruları ve geçmiş yıl sınavları.",
-    url: "https://odsgm.meb.gov.tr/www/ornek-sorular/kategori/23",
+      "MEB Ölçme, Değerlendirme ve Sınav Hizmetleri Genel Müdürlüğü'nün yayımladığı LGS merkezî sınav örnek soru kitapçıkları.",
+    url: "https://odsgm.meb.gov.tr/www/ornek-soru-kitapciklari/kategori/151",
     examCode: "LGS",
     provider: "MEB ÖDSGM",
     sortOrder: 2,
@@ -113,22 +113,22 @@ export const resourceLinkSeeds: ResourceLinkSeed[] = [
   },
   {
     category: "ogm-mebi",
-    title: "MEBİ — MEB Bilişim Sistemi",
+    title: "MEBİ YKS Denemeleri",
     description:
-      "Ders ders konu anlatım videoları, soru çözümleri ve ücretsiz deneme sınavları.",
-    url: "https://mebi.meb.gov.tr/",
-    examCode: null,
-    provider: "MEB",
+      "MEB'in ücretsiz YKS deneme sınavları — TYT, AYT (SAY/EA/SÖZ) ve YDT; çözümleriyle birlikte. Eski MEBİ platformu OGM Materyal'e taşındı.",
+    url: "https://ogmmateryal.eba.gov.tr/mebi-yks-denemeleri",
+    examCode: "YKS",
+    provider: "MEB OGM Materyal",
     sortOrder: 1,
     isFeatured: true,
   },
   {
     category: "ogm-mebi",
-    title: "OGM Materyal Online Deneme Sınavları",
+    title: "OGM Materyal Soru Bankası",
     description:
-      "TYT ve AYT formatında, güncel müfredata uygun ücretsiz online denemeler; bitince net ve analiz raporu verir.",
-    url: "https://ogmmateryal.eba.gov.tr/panel/test",
-    examCode: "YKS",
+      "Ders ve konu bazında binlerce çözümlü soru; istersen kendi testini oluştur. Güncel müfredata uygun, ücretsiz.",
+    url: "https://ogmmateryal.eba.gov.tr/soru-bankasi",
+    examCode: null,
     provider: "OGM Materyal",
     sortOrder: 2,
     isFeatured: false,
@@ -137,10 +137,10 @@ export const resourceLinkSeeds: ResourceLinkSeed[] = [
   /* ----------------------------- Ders notları ------------------------------ */
   {
     category: "ders-notlari",
-    title: "OGM Materyal Ders Anlatım Videoları",
+    title: "OGM Materyal YKS Konu Anlatımları",
     description:
-      "Konu konu ders anlatımları — MEB öğretmenleri tarafından hazırlanmış, tamamen ücretsiz.",
-    url: "https://ogmmateryal.eba.gov.tr/panel/video",
+      "TYT ve AYT için konu konu video anlatımlar — MEB öğretmenleri tarafından hazırlanmış, tamamen ücretsiz.",
+    url: "https://ogmmateryal.eba.gov.tr/yks-konu-anlatim",
     examCode: null,
     provider: "MEB OGM",
     sortOrder: 0,
@@ -172,9 +172,9 @@ export const resourceLinkSeeds: ResourceLinkSeed[] = [
   },
   {
     category: "tercih-atlas",
-    title: "ÖSYM Tercih Robotu ve Kılavuzlar",
+    title: "ÖSYM Tercih Kılavuzları ve İşlemleri",
     description:
-      "Resmî tercih kılavuzları, kontenjan tabloları ve tercih işlemleri.",
+      "Resmî tercih kılavuzları, kontenjan tabloları ve tercih işlemleri — ÖSYM ana sayfasındaki güncel duyurulardan.",
     url: "https://www.osym.gov.tr/",
     examCode: null,
     provider: "ÖSYM",

@@ -50,9 +50,10 @@ export async function buildStudentContextText(params: {
     lines.push("");
     lines.push(`Bu haftaki plan (${done}/${plan.tasks.length} tamam):`);
     for (const t of plan.tasks.slice(0, 12)) {
+      const when =
+        t.day == null ? "Bu hafta" : (DAY_NAMES_TR[t.day - 1] ?? `gün ${t.day}`);
       lines.push(
-        `- ${DAY_NAMES_TR[t.day - 1] ?? `gün ${t.day}`}: ${t.description ?? "-"}` +
-          (t.isDone ? " [yapıldı]" : ""),
+        `- ${when}: ${t.description ?? "-"}` + (t.isDone ? " [yapıldı]" : ""),
       );
     }
   }

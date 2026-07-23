@@ -90,7 +90,7 @@ export default async function OdemelerPage() {
                 <TableRow key={p.id}>
                   <TableCell className="pl-4 font-medium">
                     <Link
-                      href={`/koc/ogrenciler/${p.studentId}?tab=muhasebe`}
+                      href={`/koc/ogrenciler/${p.studentId}/muhasebe`}
                       className="hover:text-primary"
                     >
                       {p.studentName}

@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MenuIcon, SparklesIcon } from "lucide-react";
+import { LogInIcon, MenuIcon, SparklesIcon } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
 import {
   SocialIconRow,
+  SocialIconScroller,
   type SocialUrls,
 } from "@/components/brand/social-icons";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -25,7 +26,6 @@ const NAV = [
   { href: "/nasil-calisir", label: "Nasıl Çalışır" },
   { href: "/koclar", label: "Koçlar" },
   { href: "/fiyatlar", label: "Fiyatlar" },
-  { href: "/kaynaklar", label: "Kaynaklar" },
   { href: "/blog", label: "Blog" },
   { href: "/basarilar", label: "Başarılar" },
   { href: "/sss", label: "SSS" },
@@ -38,7 +38,7 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:px-6">
         <Link href="/" aria-label="Derecenin Ruhu — ana sayfa" className="shrink-0">
           <Logo size={28} />
         </Link>
@@ -52,7 +52,7 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
                 key={href}
                 href={href}
                 className={cn(
-                  "inline-flex h-8 items-center rounded-lg px-2.5 text-sm font-medium transition-colors",
+                  "inline-flex h-10 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium transition-colors",
                   active
                     ? "bg-secondary text-secondary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -72,11 +72,13 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
           >
             Koç Ol
           </Button>
+          {/* Giriş — çerçeveli/ikonlu, sade nav bağlantılarından ayrışsın, kolay bulunsun. */}
           <Button
-            variant="ghost"
-            className="hidden md:inline-flex"
+            variant="outline"
+            className="hidden font-semibold md:inline-flex"
             render={<Link href="/giris" />}
           >
+            <LogInIcon data-icon="inline-start" />
             Giriş
           </Button>
           <Button className="hidden sm:inline-flex" render={<Link href="/iletisim" />}>
@@ -84,14 +86,10 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
             Ücretsiz Ön Görüşme
           </Button>
           {/*
-            Sosyal ikonlar: md'de gezinme gizli olduğu için yer var; lg'de
-            7 maddelik gezinme + 3 buton çubuğu doldurduğundan gizlenir,
-            xl'de yeniden görünür. Mobilde çekmecenin altında (aşağıda).
+            Sosyal ikonlar: tek-ikon genişliğinde yatay kayan şerit (alan kazanır);
+            her breakpoint'te görünür. Mobil çekmecede tam sıra (aşağıda).
           */}
-          <SocialIconRow
-            urls={social}
-            className="hidden md:flex lg:hidden xl:flex"
-          />
+          <SocialIconScroller urls={social} className="hidden md:flex" />
           <ThemeToggle className="hidden sm:inline-flex" />
 
           {/* Mobil menü */}
@@ -143,8 +141,9 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
                 <Link
                   href="/giris"
                   onClick={() => setOpen(false)}
-                  className="flex h-10 items-center rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="mt-1 flex h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
                 >
+                  <LogInIcon className="size-4" />
                   Giriş
                 </Link>
               </nav>

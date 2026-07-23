@@ -1,11 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDaysIcon, HistoryIcon } from "lucide-react";
+import { redirect } from "next/navigation";
+import {
+  CalendarDaysIcon,
+  HistoryIcon,
+  MessageCircleIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 
-import { listAllSessions } from "@/db/queries/sessions";
+import { getDb } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { listAllSessions, listUnplannedStudents } from "@/db/queries/sessions";
+import { getViewer } from "@/lib/session";
 import { formatInt } from "@/lib/format";
+import { absoluteUrl } from "@/lib/seo";
+import { buildWaLink, waTemplates } from "@/lib/whatsapp";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,6 +29,8 @@ import {
 import type { CoachSessionRow } from "@/db/queries/sessions";
 
 export const metadata: Metadata = { title: "Görüşmeler" };
+
+const GORUSME_URL = absoluteUrl("/ogrenci/gorusmeler");
 
 const dtFmt = new Intl.DateTimeFormat("tr-TR", {
   timeZone: "Europe/Istanbul",
@@ -33,6 +48,10 @@ const STATUS_META = {
   cancelled: { label: "İptal", className: "bg-muted text-muted-foreground" },
 } as const;
 
+function firstName(name: string) {
+  return name.trim().split(/\s+/)[0] ?? name;
+}
+
 function SessionRow({ s }: { s: CoachSessionRow }) {
   const meta = STATUS_META[s.status];
   const at = s.heldAt ?? s.scheduledAt;
@@ -42,7 +61,7 @@ function SessionRow({ s }: { s: CoachSessionRow }) {
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/koc/ogrenciler/${s.studentId}?tab=gorusmeler`}
+            href={`/koc/ogrenciler/${s.studentId}/gorusmeler`}
             className="truncate text-sm font-medium hover:text-primary"
           >
             {s.studentName}
@@ -62,7 +81,22 @@ function SessionRow({ s }: { s: CoachSessionRow }) {
 }
 
 export default async function KocGorusmelerPage() {
-  const { upcoming, recent } = await listAllSessions();
+  const viewer = await getViewer();
+  if (!viewer) redirect("/giris");
+
+  const db = getDb();
+  const [{ upcoming, recent }, unplanned, self] = await Promise.all([
+    listAllSessions(),
+    listUnplannedStudents(viewer),
+    viewer.role === "coach"
+      ? db.query.users.findFirst({
+          where: eq(users.id, viewer.id),
+          columns: { calBookingUrl: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const needsOwnCalLink = viewer.role === "coach" && !self?.calBookingUrl;
 
   return (
     <>
@@ -71,6 +105,78 @@ export default async function KocGorusmelerPage() {
         title="Görüşmeler"
         description="Tüm öğrencilerin planlı ve geçmiş görüşmeleri. Yeni görüşme planlamak için öğrencinin kokpitine gir."
       />
+
+      {needsOwnCalLink ? (
+        <div className="flex items-start gap-3 rounded-xl bg-warning/10 p-4 text-sm text-warning">
+          <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+          <p>
+            <strong className="font-medium">Görüşme takvimin eksik.</strong>{" "}
+            Öğrencilerin uygulamadan randevu alamıyor.{" "}
+            <Link href="/koc/profil" className="underline underline-offset-4">
+              Profilinden Cal linkini ekle
+            </Link>
+            .
+          </p>
+        </div>
+      ) : (
+        unplanned.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                Görüşmesini planlamayanlar · {formatInt(unplanned.length)}
+              </CardTitle>
+              <CardDescription>
+                Takvimin hazır ama henüz randevu almamış aktif öğrenciler — bir
+                hatırlatma gönder.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="flex flex-col divide-y">
+                {unplanned.map((s) => (
+                  <li
+                    key={s.studentId}
+                    className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                  >
+                    <Link
+                      href={`/koc/ogrenciler/${s.studentId}/gorusmeler`}
+                      className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm font-medium hover:text-primary"
+                    >
+                      <span className="truncate">{s.studentName}</span>
+                      <Badge
+                        variant="outline"
+                        className="h-4 px-1.5 text-[10px]"
+                      >
+                        {s.examCode}
+                      </Badge>
+                    </Link>
+                    {s.phone && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        render={
+                          <a
+                            href={buildWaLink(
+                              s.phone,
+                              `${waTemplates.gorusmePlanla({
+                                studentName: firstName(s.studentName),
+                              })}\n${GORUSME_URL}`,
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          />
+                        }
+                      >
+                        <MessageCircleIcon data-icon="inline-start" />
+                        Hatırlat
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

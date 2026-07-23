@@ -116,7 +116,7 @@ export function SessionsPanel({
           description: "Şimdi görevleri ekleyip yayınlayabilirsin.",
         });
         router.push(
-          `/koc/ogrenciler/${studentId}?tab=program&hafta=${res.data.weekKey}`,
+          `/koc/ogrenciler/${studentId}/program?hafta=${res.data.weekKey}`,
         );
         router.refresh();
       } else {
@@ -324,7 +324,7 @@ function SessionCard({
             className="text-primary hover:text-primary"
             render={
               <Link
-                href={`/koc/ogrenciler/${studentId}?tab=program&hafta=${s.nextPlanWeekKey}`}
+                href={`/koc/ogrenciler/${studentId}/program?hafta=${s.nextPlanWeekKey}`}
               />
             }
           >

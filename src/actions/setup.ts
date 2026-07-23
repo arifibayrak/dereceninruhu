@@ -142,7 +142,7 @@ export async function updateMyContact(
         fieldErrorsOf(parsed.error.issues),
       );
     }
-    const { phone, telegram, instagram, iban } = parsed.data;
+    const { phone, telegram, instagram, calBookingUrl, iban } = parsed.data;
     const db = getDb();
 
     await db
@@ -151,6 +151,7 @@ export async function updateMyContact(
         phoneNumber: phone ? normalizePhone(phone) : null,
         telegram: telegram?.trim() || null,
         instagram: instagram?.trim() || null,
+        calBookingUrl: calBookingUrl?.trim() || null,
         iban: iban?.trim() || null,
         updatedAt: new Date(),
       })

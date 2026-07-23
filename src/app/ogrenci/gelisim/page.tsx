@@ -5,6 +5,11 @@ import { ChevronRightIcon, CrosshairIcon } from "lucide-react";
 
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import {
+  getStudyBySubject,
+  getTotalStudyMinutes,
+  getWeeklyStudyMinutes,
+} from "@/db/queries/study";
+import {
   getNetSeries,
   getStudentInsightInput,
   getSubjectBreakdown,
@@ -16,10 +21,13 @@ import { formatWeekLabel } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
 import { buildStudentInsights, netTrend } from "@/lib/insights";
 import { accuracyPct } from "@/lib/question-log";
+import { formatMinutes } from "@/lib/study";
 import { InsightList } from "@/components/app/insight-list";
+import { StudySubjectBars } from "@/components/app/study-subject-bars";
 import { SubjectBreakdownTable } from "@/components/app/subject-breakdown-table";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { NetProgressChart } from "@/components/charts/net-progress-chart";
+import { WeeklyStudyChart } from "@/components/charts/weekly-study-chart";
 import { WeeklyVolumeChart } from "@/components/charts/weekly-volume-chart";
 import { StatTile } from "@/components/brand/stat-tile";
 import {
@@ -50,16 +58,34 @@ export default async function GelisimPage() {
   const enrollmentId = detail.enrollment.id;
 
   const now = new Date();
-  const [netSeries, volume, insightInput, totalQuestions, breakdown] =
-    await Promise.all([
-      getNetSeries(enrollmentId),
-      getWeeklyVolume(enrollmentId, 8, now),
-      getStudentInsightInput(enrollmentId, now),
-      getTotalQuestions(enrollmentId),
-      getSubjectBreakdown(enrollmentId, 8, now),
-    ]);
+  const [
+    netSeries,
+    volume,
+    insightInput,
+    totalQuestions,
+    breakdown,
+    studyWeekly,
+    studyTotal,
+    studyBySubject,
+  ] = await Promise.all([
+    getNetSeries(enrollmentId),
+    getWeeklyVolume(enrollmentId, 8, now),
+    getStudentInsightInput(enrollmentId, now),
+    getTotalQuestions(enrollmentId),
+    getSubjectBreakdown(enrollmentId, 8, now),
+    getWeeklyStudyMinutes(enrollmentId, 8, now),
+    getTotalStudyMinutes(enrollmentId),
+    getStudyBySubject(enrollmentId, 8, now),
+  ]);
   const insights = buildStudentInsights(insightInput);
   const trend = netTrend(insightInput.netSeries);
+
+  // Verimlilik: bu haftaki çalışma dakikasının soru başına ortalaması.
+  const weekStudy = insightInput.weekStudyMinutes ?? 0;
+  const perQuestion =
+    weekStudy > 0 && insightInput.weekQuestionTotal > 0
+      ? weekStudy / insightInput.weekQuestionTotal
+      : null;
 
   // Tüm derslerin (kırılım girilmiş satırlarının) toplam doğruluğu.
   const totals = breakdown.rows.reduce(
@@ -160,6 +186,50 @@ export default async function GelisimPage() {
               total: v.total,
             }))}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Çalışma süresi</CardTitle>
+          <CardDescription>Kronometre + manuel · son 8 hafta</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <StatTile
+              label="Bu hafta"
+              value={formatMinutes(weekStudy)}
+              hint="çalışma"
+            />
+            <StatTile
+              label="Toplam"
+              value={formatMinutes(studyTotal)}
+              hint="tüm zamanlar"
+            />
+            {perQuestion !== null && (
+              <StatTile
+                label="Soru başına"
+                value={formatMinutes(perQuestion)}
+                hint="bu hafta"
+              />
+            )}
+          </div>
+          {studyTotal > 0 ? (
+            <WeeklyStudyChart
+              points={studyWeekly.map((w) => ({
+                label: formatWeekLabel(w.weekStart),
+                minutes: w.minutes,
+              }))}
+            />
+          ) : (
+            <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
+              Kronometreyle ya da manuel çalışma kaydettikçe süre analizin burada
+              görünecek.
+            </p>
+          )}
+          {studyBySubject.length > 0 && (
+            <StudySubjectBars rows={studyBySubject} />
+          )}
         </CardContent>
       </Card>
 

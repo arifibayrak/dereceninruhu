@@ -2,6 +2,7 @@ import {
   AlarmClockIcon,
   ChartColumnIncreasingIcon,
   CircleAlertIcon,
+  ClockIcon,
   FlameIcon,
   SparklesIcon,
   TargetIcon,
@@ -22,6 +23,7 @@ const ICONS: Record<string, LucideIcon> = {
   Flame: FlameIcon,
   ChartColumnIncreasing: ChartColumnIncreasingIcon,
   CircleAlert: CircleAlertIcon,
+  Clock: ClockIcon,
 };
 
 const TONE_STYLES: Record<InsightTone, { chip: string; icon: string }> = {

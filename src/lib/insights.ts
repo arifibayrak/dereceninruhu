@@ -5,6 +5,7 @@
  */
 import { addDays, daysBetween, trDayKey } from "@/lib/dates";
 import { formatDelta, formatInt, formatNet } from "@/lib/format";
+import { formatMinutes } from "@/lib/study";
 
 export type InsightTone = "positive" | "warning" | "neutral";
 
@@ -75,6 +76,9 @@ export type StudentInsightInput = {
   lastActivity: Date | null;
   weekQuestionTotal: number;
   lastWeekQuestionTotal: number;
+  /** Bu hafta / geçen hafta toplam çalışma dakikası (kronometre + manuel). */
+  weekStudyMinutes?: number;
+  lastWeekStudyMinutes?: number;
   /** Optional weekly soru target for the gap insight. */
   weeklyTarget?: number | null;
   /** Total net per FULL deneme, chronological. */
@@ -176,6 +180,40 @@ export function buildStudentInsights(input: StudentInsightInput): Insight[] {
         tone: "positive",
         icon: "ChartColumnIncreasing",
         title: `Geçen haftaya göre ${formatInt(d)} soru fazla`,
+      });
+    }
+  }
+
+  // Çalışma süresi momentumu (bu hafta vs geçen hafta dakika).
+  if (input.weekStudyMinutes !== undefined && input.weekStudyMinutes > 0) {
+    const cur = input.weekStudyMinutes;
+    const prev = input.lastWeekStudyMinutes ?? 0;
+    if (prev > 0) {
+      const pct = Math.round(((cur - prev) / prev) * 100);
+      if (pct >= 15) {
+        out.push({
+          id: "study-up",
+          tone: "positive",
+          icon: "Clock",
+          title: `Çalışma süren %${pct} arttı`,
+          detail: `Bu hafta ${formatMinutes(cur)} · geçen hafta ${formatMinutes(prev)}`,
+        });
+      } else if (pct <= -15) {
+        out.push({
+          id: "study-down",
+          tone: "warning",
+          icon: "Clock",
+          title: `Çalışma süren %${Math.abs(pct)} düştü`,
+          detail: `Bu hafta ${formatMinutes(cur)} · geçen hafta ${formatMinutes(prev)}`,
+        });
+      }
+    } else {
+      out.push({
+        id: "study-week",
+        tone: "positive",
+        icon: "Clock",
+        title: `Bu hafta ${formatMinutes(cur)} çalıştın`,
+        detail: "Süreni tutmaya devam et.",
       });
     }
   }

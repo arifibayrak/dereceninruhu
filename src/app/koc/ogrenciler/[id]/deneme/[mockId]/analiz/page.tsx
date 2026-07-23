@@ -54,7 +54,7 @@ export default async function DenemeAnalizPage({
     getMockTopicErrors(mockExamId),
   ]);
 
-  const backHref = `/koc/ogrenciler/${studentId}?tab=denemeler`;
+  const backHref = `/koc/ogrenciler/${studentId}/denemeler`;
 
   return (
     <>

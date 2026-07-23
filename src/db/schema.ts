@@ -61,6 +61,8 @@ export const users = sqliteTable("users", {
   telegram: text("telegram"),
   /** Koç sosyal — Instagram kullanıcı adı/bağlantısı. */
   instagram: text("instagram"),
+  /** Koç görüşme takvimi — Cal.com randevu linki (öğrenciler uygulamadan planlar). */
+  calBookingUrl: text("cal_booking_url"),
   /** Koç ödeme bilgisi — IBAN (hassas; yalnız yönetim görünümü). */
   iban: text("iban"),
   createdAt: createdAt(),
@@ -296,6 +298,8 @@ export const enrollments = sqliteTable(
     })
       .notNull()
       .default("active"),
+    /** Öğrenci görüşmelerini ilk planladığında damgalanır (gerekli-adım nudge'ı). */
+    callsScheduledAt: integer("calls_scheduled_at", { mode: "timestamp" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -370,6 +374,18 @@ export const weeklyPlans = sqliteTable(
     status: text("status", { enum: ["draft", "published", "completed"] })
       .notNull()
       .default("draft"),
+    /**
+     * Taslağı öğrenci mi oluşturdu — öğrencinin KENDİ taslağını görüp
+     * düzenlemesini sağlar (koçun yayınlanmamış taslağı öğrenciye görünmez).
+     */
+    proposedByStudent: integer("proposed_by_student", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    /**
+     * Öğrenci kendi taslağını "koça gönder"diyse dolu — koç inceleme kuyruğunu
+     * ve "öğrenci önerisi" rozetini besler. Yayınlanınca anlamsızlaşır.
+     */
+    studentSubmittedAt: integer("student_submitted_at", { mode: "timestamp" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -388,8 +404,11 @@ export const planTasks = sqliteTable(
     weeklyPlanId: integer("weekly_plan_id")
       .notNull()
       .references(() => weeklyPlans.id),
-    /** 1 = Pazartesi … 7 = Pazar. */
-    day: integer("day").notNull(),
+    /**
+     * 1 = Pazartesi … 7 = Pazar. null = haftalık konu (güne atanmamış):
+     * ders × konu ("hafta") görünümünde yaşar, günlük dağılıma dahil değildir.
+     */
+    day: integer("day"),
     /** Order within the day; the grid is a rendering, rows are sparse. */
     slot: integer("slot").notNull().default(0),
     subjectId: integer("subject_id").references(() => subjects.id),

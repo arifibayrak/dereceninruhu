@@ -96,11 +96,19 @@ export const createCoachSchema = z.object({
 });
 export type CreateCoachInput = z.infer<typeof createCoachSchema>;
 
+/** Koç görüşme takvimi — Cal.com randevu linki (öğrenciler uygulamadan planlar). */
+export const calBookingUrlSchema = z
+  .url("Geçerli bir randevu linki girin (ör. https://cal.com/...).")
+  .max(500)
+  .optional()
+  .or(z.literal(""));
+
 /** Koç kendi iletişim/ödeme bilgisini günceller (self-servis). */
 export const updateMyContactSchema = z.object({
   phone: phoneSchema.optional().or(z.literal("")),
   telegram: optionalHandle,
   instagram: optionalHandle,
+  calBookingUrl: calBookingUrlSchema,
   iban: optionalIban,
 });
 export type UpdateMyContactInput = z.infer<typeof updateMyContactSchema>;
@@ -211,11 +219,14 @@ export const upsertWeeklyPlanSchema = z.object({
 });
 export type UpsertWeeklyPlanInput = z.infer<typeof upsertWeeklyPlanSchema>;
 
-/** Program görevi — ekleme (plan yoksa taslak olarak oluşturulur). */
+/**
+ * Program görevi — ekleme (plan yoksa taslak olarak oluşturulur).
+ * `day` boşsa haftalık konu (güne atanmamış); doluysa 1..7.
+ */
 export const planTaskCreateSchema = z.object({
   enrollmentId: z.coerce.number().int().positive(),
   weekStart: z.coerce.date(),
-  day: z.coerce.number().int().min(1).max(7),
+  day: z.coerce.number().int().min(1).max(7).nullish(),
   subjectId: z.coerce.number().int().positive().nullish(),
   resourceId: z.coerce.number().int().positive().nullish(),
   description: z.string().trim().min(1, "Görev açıklaması gerekli.").max(300),
@@ -223,10 +234,10 @@ export const planTaskCreateSchema = z.object({
 });
 export type PlanTaskCreateInput = z.infer<typeof planTaskCreateSchema>;
 
-/** Program görevi — düzenleme. */
+/** Program görevi — düzenleme. `day` boşsa haftalık konuya çevirir. */
 export const planTaskUpdateSchema = z.object({
   taskId: z.coerce.number().int().positive(),
-  day: z.coerce.number().int().min(1).max(7),
+  day: z.coerce.number().int().min(1).max(7).nullish(),
   subjectId: z.coerce.number().int().positive().nullish(),
   resourceId: z.coerce.number().int().positive().nullish(),
   description: z.string().trim().min(1, "Görev açıklaması gerekli.").max(300),
@@ -249,6 +260,28 @@ export const togglePlanTaskSchema = z.object({
 export const publishPlanSchema = z.object({
   planId: z.coerce.number().int().positive(),
 });
+
+/** Öğrenci: kendi taslağını koç incelemesine gönderme. */
+export const submitPlanForReviewSchema = z.object({
+  planId: z.coerce.number().int().positive(),
+});
+
+/** Geçen haftanın programını bu haftaya kopyalama. */
+export const copyPreviousWeekSchema = z.object({
+  enrollmentId: z.coerce.number().int().positive(),
+  weekStart: z.coerce.date(),
+});
+
+/**
+ * AI ile haftalık program taslağı üretme isteği. `studentId` yalnız koç
+ * tarafında kullanılır (öğrenci kendi kaydı için çağırır, id enjekte edilir).
+ */
+export const generatePlanDraftSchema = z.object({
+  studentId: z.coerce.number().int().positive().nullish(),
+  weekStart: z.coerce.date(),
+  focus: z.string().trim().max(200).optional().or(z.literal("")),
+});
+export type GeneratePlanDraftInput = z.infer<typeof generatePlanDraftSchema>;
 
 /** Görüşme dış sağlayıcıda (Meet/Zoom…) yapılır; link uygulamadan açılır. */
 export const meetingUrlSchema = z

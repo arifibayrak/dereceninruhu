@@ -178,7 +178,7 @@ export default async function KocDenemelerPage({
                   <TableRow key={r.mockId}>
                     <TableCell className="font-medium">
                       <Link
-                        href={`/koc/ogrenciler/${r.studentId}?tab=denemeler`}
+                        href={`/koc/ogrenciler/${r.studentId}/denemeler`}
                         className="hover:text-primary"
                       >
                         {r.studentName}

@@ -44,6 +44,10 @@ export type EnrollmentDetail = {
     /** Atanan koç — null = henüz atanmadı. */
     coachUserId: string | null;
     coachName: string | null;
+    /** Koçun Cal.com randevu linki — öğrenci görüşmelerini buradan planlar. */
+    coachCalBookingUrl: string | null;
+    /** Öğrenci görüşmelerini ilk planladığında damgalanır (gerekli-adım nudge'ı). */
+    callsScheduledAt: Date | null;
   };
 };
 
@@ -96,6 +100,8 @@ export async function getEnrollmentDetailByStudentId(
       trackName: enrollment.track?.name ?? null,
       coachUserId: enrollment.coachUserId,
       coachName: enrollment.coach?.name ?? null,
+      coachCalBookingUrl: enrollment.coach?.calBookingUrl ?? null,
+      callsScheduledAt: enrollment.callsScheduledAt,
     },
   };
 }

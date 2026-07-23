@@ -82,8 +82,9 @@ export async function buildGroundingText(enrollmentId: number): Promise<string> 
         (plan.motto ? ` | motto: ${plan.motto}` : ""),
     );
     for (const t of plan.tasks) {
+      const when = t.day == null ? "hafta konusu" : `gün ${t.day}`;
       lines.push(
-        `  gün ${t.day}${t.subjectName ? ` ${t.subjectName}` : ""}: ${t.description ?? "-"}` +
+        `  ${when}${t.subjectName ? ` ${t.subjectName}` : ""}: ${t.description ?? "-"}` +
           (t.targetQuestions ? ` (hedef ${t.targetQuestions} soru)` : "") +
           (t.isDone ? " [yapıldı]" : ""),
       );

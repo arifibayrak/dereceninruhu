@@ -37,6 +37,7 @@ export function CoachContactForm({
       phone: initial.phone ?? "",
       telegram: initial.telegram ?? "",
       instagram: initial.instagram ?? "",
+      calBookingUrl: initial.calBookingUrl ?? "",
       iban: initial.iban ?? "",
     },
   });
@@ -90,7 +91,28 @@ export function CoachContactForm({
             />
             <FieldError errors={[errors.instagram]} />
           </Field>
-          <Field data-invalid={errors.iban ? true : undefined}>
+          <Field
+            className="sm:col-span-2"
+            data-invalid={errors.calBookingUrl ? true : undefined}
+          >
+            <FieldLabel htmlFor="koc-c-cal">Görüşme takvimi (Cal linki)</FieldLabel>
+            <Input
+              id="koc-c-cal"
+              inputMode="url"
+              placeholder="https://cal.com/kullaniciadi/haftalik"
+              aria-invalid={errors.calBookingUrl ? true : undefined}
+              {...form.register("calBookingUrl")}
+            />
+            <FieldError errors={[errors.calBookingUrl]} />
+            <FieldDescription>
+              Öğrencilerinin randevu alabilmesi için Cal.com görüşme linkini
+              yapıştır — takvimin öğrencinin uygulamasına gömülü gelir.
+            </FieldDescription>
+          </Field>
+          <Field
+            className="sm:col-span-2"
+            data-invalid={errors.iban ? true : undefined}
+          >
             <FieldLabel htmlFor="koc-c-iban">IBAN</FieldLabel>
             <Input
               id="koc-c-iban"

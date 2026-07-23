@@ -1,10 +1,11 @@
-import { and, asc, eq, gte, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, isNotNull, lt } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   coachingSessions,
   enrollments,
   examTemplates,
   students,
+  users,
   weeklyPlans,
 } from "@/db/schema";
 import { addDays, startOfTrtDay, trDayKey } from "@/lib/dates";
@@ -235,6 +236,51 @@ export async function getUpcomingSessions(
     )
     .orderBy(asc(coachingSessions.scheduledAt));
   return rows.filter((r): r is UpcomingSession => r.scheduledAt != null);
+}
+
+export type UnplannedStudentRow = {
+  studentId: number;
+  studentName: string;
+  phone: string | null;
+  examCode: string;
+};
+
+/**
+ * Koçunun görüşme takvimi (Cal linki) hazır ama görüşmesini henüz planlamamış
+ * aktif öğrenciler — koç "hatırlat" listesi. Görünürlük roster ile aynı: yönetici
+ * hepsini, koç yalnız kendi kayıtlarını görür. Koçu olmayan / takvimi olmayan
+ * kayıtlar (planlanamaz) elenir.
+ */
+export async function listUnplannedStudents(
+  viewer: SessionViewer,
+): Promise<UnplannedStudentRow[]> {
+  const db = getDb();
+  const scope =
+    viewer.role === "coach"
+      ? eq(enrollments.coachUserId, viewer.id)
+      : undefined;
+
+  return db
+    .select({
+      studentId: students.id,
+      studentName: students.fullName,
+      phone: students.phone,
+      examCode: examTemplates.code,
+    })
+    .from(enrollments)
+    .innerJoin(students, eq(students.id, enrollments.studentId))
+    .innerJoin(examTemplates, eq(examTemplates.id, enrollments.examTemplateId))
+    .innerJoin(users, eq(users.id, enrollments.coachUserId))
+    .where(
+      and(
+        eq(enrollments.status, "active"),
+        isNull(enrollments.callsScheduledAt),
+        isNotNull(users.calBookingUrl),
+        isNull(students.deletedAt),
+        scope,
+      ),
+    )
+    .orderBy(asc(students.fullName));
 }
 
 /* -------------------------------------------------------------------------- */

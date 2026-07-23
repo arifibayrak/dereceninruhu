@@ -134,3 +134,42 @@ export function SocialIconRow({
     </div>
   );
 }
+
+/**
+ * Kompakt sosyal ikon şeridi — tek ikon genişliğinde, yatay kayan (snap) liste.
+ * Header'da yer kazanmak için: tüm ikonlar sığar ama yalnız biri görünür,
+ * kaydırınca diğerleri gelir. Her biri ayrı, tıklanabilir bağlantı; scrollbar
+ * gizli. Tek bağlantı varsa kayma gereksiz — sıradan bir ikon gibi görünür.
+ */
+export function SocialIconScroller({
+  urls,
+  className,
+}: {
+  urls: SocialUrls;
+  className?: string;
+}) {
+  const links = socialLinksOf(urls);
+  if (links.length === 0) return null;
+  return (
+    <div
+      aria-label="Sosyal medya"
+      className={cn(
+        "flex w-10 snap-x snap-mandatory items-center gap-0.5 overflow-x-auto scroll-smooth rounded-lg [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        className,
+      )}
+    >
+      {links.map(({ label, href, Icon }) => (
+        <a
+          key={label}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${label} (yeni sekmede açılır)`}
+          className="inline-flex size-10 shrink-0 snap-start items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <Icon className="size-5" />
+        </a>
+      ))}
+    </div>
+  );
+}

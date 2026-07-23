@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
@@ -67,6 +68,7 @@ export default async function ProfilPage() {
         phoneNumber: true,
         telegram: true,
         instagram: true,
+        calBookingUrl: true,
         iban: true,
       },
     }),
@@ -120,13 +122,24 @@ export default async function ProfilPage() {
       <SectionHeading
         eyebrow="İletişim"
         title="İletişim & ödeme bilgilerim"
-        description="Telefon, Telegram, Instagram ve ödeme için IBAN — bunlar ekip içi kayıttır, herkese açık profilde görünmez."
+        description="Telefon, Telegram, Instagram, görüşme takvimi ve ödeme için IBAN — bunlar ekip içi kayıttır, herkese açık profilde görünmez."
       />
+      {!contact?.calBookingUrl && (
+        <div className="flex items-start gap-3 rounded-xl bg-warning/10 p-4 text-sm text-warning">
+          <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+          <p>
+            <strong className="font-medium">Görüşme takvimin eksik.</strong>{" "}
+            Öğrencilerin görüşme randevusu alamıyor — aşağıya Cal.com görüşme
+            linkini ekle. Takvimin öğrencinin uygulamasına gömülü gelecek.
+          </p>
+        </div>
+      )}
       <CoachContactForm
         initial={{
           phone: contact?.phoneNumber ?? "",
           telegram: contact?.telegram ?? "",
           instagram: contact?.instagram ?? "",
+          calBookingUrl: contact?.calBookingUrl ?? "",
           iban: contact?.iban ?? "",
         }}
       />

@@ -151,7 +151,7 @@ export default async function MuhasebePage() {
                 >
                   <div className="flex min-w-0 flex-1 flex-col">
                     <Link
-                      href={`/koc/ogrenciler/${n.studentId}?tab=muhasebe`}
+                      href={`/koc/ogrenciler/${n.studentId}/muhasebe`}
                       className="truncate text-sm font-medium hover:text-primary"
                     >
                       {n.studentName}
@@ -197,7 +197,7 @@ export default async function MuhasebePage() {
                   >
                     <div className="flex min-w-0 flex-1 flex-col">
                       <Link
-                        href={`/koc/ogrenciler/${inv.studentId}?tab=muhasebe`}
+                        href={`/koc/ogrenciler/${inv.studentId}/muhasebe`}
                         className="truncate text-sm font-medium hover:text-primary"
                       >
                         {inv.studentName}
@@ -261,7 +261,7 @@ export default async function MuhasebePage() {
                   >
                     <div className="flex min-w-0 flex-1 flex-col">
                       <Link
-                        href={`/koc/ogrenciler/${p.studentId}?tab=muhasebe`}
+                        href={`/koc/ogrenciler/${p.studentId}/muhasebe`}
                         className="truncate text-sm font-medium hover:text-primary"
                       >
                         {p.studentName}

@@ -113,6 +113,20 @@
       "when": 1784721968640,
       "tag": "0015_stormy_agent_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1784833406912,
+      "tag": "0016_blushing_spot",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1784836284440,
+      "tag": "0017_spotty_caretaker",
+      "breakpoints": true
     }
   ]
 }

@@ -7,10 +7,13 @@ import {
   mockExams,
   questionLogs,
   students,
+  studyLogs,
   tracks,
   users,
 } from "@/db/schema";
-import { daysBetween, weekRange } from "@/lib/dates";
+import { getRosterPayments, type RosterPayment } from "@/db/queries/muhasebe";
+import { addDays, daysBetween, startOfTrtDay, weekRange } from "@/lib/dates";
+import { trtMonthRange } from "@/lib/muhasebe";
 import type { SessionViewer } from "@/lib/session";
 
 /**
@@ -36,6 +39,12 @@ export type RosterRow = {
   coachUserId: string | null;
   coachName: string | null;
   weekQuestionTotal: number;
+  /** Çalışma dakikası (kronometre + manuel) — bugün / bu hafta / bu ay. */
+  studyToday: number;
+  studyWeek: number;
+  studyMonth: number;
+  /** Ödeme durumu (açık fatura + plan); plan da fatura da yoksa null. */
+  payment: RosterPayment | null;
   /** Son aktivite (soru girişi ya da deneme) — null = hiç giriş yok. */
   lastActivity: Date | null;
   /** TRT gün cinsinden bayatlık; null = hiç giriş yok. */
@@ -92,6 +101,27 @@ export async function getRoster(
     .where(and(gte(questionLogs.logDate, start), lt(questionLogs.logDate, end)))
     .groupBy(questionLogs.enrollmentId);
 
+  // Çalışma dakikası: bugün / bu hafta / bu ay — tek grup, koşullu toplamlar.
+  // logDate saniye (timestamp) saklanır; CASE sınırlarını saniyeye çeviririz.
+  const dayStart = startOfTrtDay(now);
+  const dayEnd = addDays(dayStart, 1);
+  const { start: monthStart, end: monthEnd } = trtMonthRange(now);
+  const sec = (d: Date) => Math.floor(d.getTime() / 1000);
+  // Hafta ay sınırını aşabilir; en erken alt sınırdan tara.
+  const studyFloor = start.getTime() < monthStart.getTime() ? start : monthStart;
+  const studyTotals = await db
+    .select({
+      enrollmentId: studyLogs.enrollmentId,
+      today: sql<number>`coalesce(sum(case when ${studyLogs.logDate} >= ${sec(dayStart)} and ${studyLogs.logDate} < ${sec(dayEnd)} then ${studyLogs.minutes} else 0 end), 0)`,
+      week: sql<number>`coalesce(sum(case when ${studyLogs.logDate} >= ${sec(start)} and ${studyLogs.logDate} < ${sec(end)} then ${studyLogs.minutes} else 0 end), 0)`,
+      month: sql<number>`coalesce(sum(case when ${studyLogs.logDate} >= ${sec(monthStart)} and ${studyLogs.logDate} < ${sec(monthEnd)} then ${studyLogs.minutes} else 0 end), 0)`,
+    })
+    .from(studyLogs)
+    .where(gte(studyLogs.logDate, studyFloor))
+    .groupBy(studyLogs.enrollmentId);
+
+  const payments = await getRosterPayments(viewer, now);
+
   const lastLogs = await db
     .select({
       enrollmentId: questionLogs.enrollmentId,
@@ -110,17 +140,28 @@ export async function getRoster(
     .groupBy(mockExams.enrollmentId);
 
   const totalBy = new Map(weekTotals.map((r) => [r.enrollmentId, Number(r.total)]));
+  const studyBy = new Map(
+    studyTotals.map((r) => [
+      r.enrollmentId,
+      {
+        today: Number(r.today),
+        week: Number(r.week),
+        month: Number(r.month),
+      },
+    ]),
+  );
   const lastBy = new Map<number, number>();
   for (const r of [...lastLogs, ...lastMocks]) {
-    const sec = Number(r.last);
-    if (sec > 0) {
-      lastBy.set(r.enrollmentId, Math.max(lastBy.get(r.enrollmentId) ?? 0, sec));
+    const last = Number(r.last);
+    if (last > 0) {
+      lastBy.set(r.enrollmentId, Math.max(lastBy.get(r.enrollmentId) ?? 0, last));
     }
   }
 
   return base.map((r) => {
     const lastSec = lastBy.get(r.enrollmentId) ?? 0;
     const lastActivity = lastSec > 0 ? new Date(lastSec * 1000) : null;
+    const study = studyBy.get(r.enrollmentId);
     return {
       studentId: r.studentId,
       enrollmentId: r.enrollmentId,
@@ -133,6 +174,10 @@ export async function getRoster(
       coachUserId: r.coachUserId ?? null,
       coachName: r.coachName ?? null,
       weekQuestionTotal: totalBy.get(r.enrollmentId) ?? 0,
+      studyToday: study?.today ?? 0,
+      studyWeek: study?.week ?? 0,
+      studyMonth: study?.month ?? 0,
+      payment: payments.get(r.enrollmentId) ?? null,
       lastActivity,
       staleDays: lastActivity ? daysBetween(lastActivity, now) : null,
       inviteAccepted: r.userId != null,

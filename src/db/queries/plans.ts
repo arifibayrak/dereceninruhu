@@ -17,8 +17,8 @@ export type PlanStatus = "draft" | "published" | "completed";
 
 export type PlanTaskView = {
   id: number;
-  /** 1 = Pazartesi … 7 = Pazar. */
-  day: number;
+  /** 1 = Pazartesi … 7 = Pazar. null = haftalık konu (güne atanmamış). */
+  day: number | null;
   slot: number;
   subjectId: number | null;
   subjectName: string | null;
@@ -36,6 +36,8 @@ export type WeeklyPlanView = {
   motto: string | null;
   coachNote: string | null;
   status: PlanStatus;
+  proposedByStudent: boolean;
+  studentSubmittedAt: Date | null;
   tasks: PlanTaskView[];
 };
 
@@ -50,12 +52,16 @@ export function planCompletion(tasks: Pick<PlanTaskView, "isDone">[]): {
   return { done, total, pct: total === 0 ? 0 : Math.round((done / total) * 100) };
 }
 
-/** Görevleri gün numarasına göre gruplar (1..7; boş günler yer almaz). */
+/**
+ * Görevleri gün numarasına göre gruplar (1..7; boş günler yer almaz).
+ * Haftalık konular (day null) dahil edilmez — onlar "hafta" görünümüne aittir.
+ */
 export function groupTasksByDay(
   tasks: PlanTaskView[],
 ): Map<number, PlanTaskView[]> {
   const byDay = new Map<number, PlanTaskView[]>();
   for (const t of tasks) {
+    if (t.day == null) continue;
     const list = byDay.get(t.day) ?? [];
     list.push(t);
     byDay.set(t.day, list);
@@ -88,7 +94,13 @@ export async function getWeeklyPlan(
     ),
     with: {
       tasks: {
-        orderBy: [asc(planTasks.day), asc(planTasks.slot), asc(planTasks.id)],
+        // Güne atanmış görevler gün sırasında; haftalık konular (day null) sona.
+        orderBy: [
+          sql`${planTasks.day} is null`,
+          asc(planTasks.day),
+          asc(planTasks.slot),
+          asc(planTasks.id),
+        ],
         with: { subject: true, resource: true },
       },
     },
@@ -101,6 +113,8 @@ export async function getWeeklyPlan(
     motto: plan.motto,
     coachNote: plan.coachNote,
     status: plan.status,
+    proposedByStudent: plan.proposedByStudent,
+    studentSubmittedAt: plan.studentSubmittedAt,
     tasks: plan.tasks.map((t) => ({
       id: t.id,
       day: t.day,
@@ -186,9 +200,14 @@ export type PendingPlan = {
   studentName: string;
   weekStart: Date;
   taskCount: number;
+  /** Öğrenci önerisi mi (koça gönderilmiş) — kart rozeti + sıralama. */
+  studentSubmittedAt: Date | null;
 };
 
-/** Yayınlanmayı bekleyen (taslak) programlar — koç panosu kartı. */
+/**
+ * Yayınlanmayı bekleyen (taslak) programlar — koç panosu kartı. Öğrenci
+ * önerileri (koça gönderilenler) en üstte.
+ */
 export async function getPlansAwaitingPublish(
   limit = 10,
 ): Promise<PendingPlan[]> {
@@ -200,6 +219,7 @@ export async function getPlansAwaitingPublish(
       studentName: students.fullName,
       weekStart: weeklyPlans.weekStart,
       taskCount: sql<number>`count(${planTasks.id})`,
+      studentSubmittedAt: weeklyPlans.studentSubmittedAt,
     })
     .from(weeklyPlans)
     .innerJoin(enrollments, eq(enrollments.id, weeklyPlans.enrollmentId))
@@ -207,9 +227,57 @@ export async function getPlansAwaitingPublish(
     .leftJoin(planTasks, eq(planTasks.weeklyPlanId, weeklyPlans.id))
     .where(and(eq(weeklyPlans.status, "draft"), isNull(students.deletedAt)))
     .groupBy(weeklyPlans.id)
-    .orderBy(desc(weeklyPlans.weekStart))
+    .orderBy(
+      // Koça gönderilmiş öğrenci önerileri önce, sonra en yeni hafta.
+      sql`${weeklyPlans.studentSubmittedAt} is null`,
+      desc(weeklyPlans.weekStart),
+    )
     .limit(limit);
   return rows.map((r) => ({ ...r, taskCount: Number(r.taskCount) }));
+}
+
+export type ReusableTask = {
+  day: number | null;
+  subjectId: number | null;
+  resourceId: number | null;
+  description: string | null;
+  targetQuestions: number | null;
+};
+
+/**
+ * Geçmiş bir haftanın görevlerini "yeniden kullan"/"kopyala" için sadeleştirir
+ * (id/isDone yok; yeni haftaya olduğu gibi eklenebilir). Plan yoksa boş dizi.
+ */
+export async function getPlanForReuse(
+  enrollmentId: number,
+  anyDayOfWeek: Date,
+): Promise<ReusableTask[]> {
+  const db = getDb();
+  const weekStart = mondayOf(anyDayOfWeek);
+  const plan = await db.query.weeklyPlans.findFirst({
+    where: and(
+      eq(weeklyPlans.enrollmentId, enrollmentId),
+      eq(weeklyPlans.weekStart, weekStart),
+    ),
+    with: {
+      tasks: {
+        orderBy: [
+          sql`${planTasks.day} is null`,
+          asc(planTasks.day),
+          asc(planTasks.slot),
+          asc(planTasks.id),
+        ],
+      },
+    },
+  });
+  if (!plan) return [];
+  return plan.tasks.map((t) => ({
+    day: t.day,
+    subjectId: t.subjectId,
+    resourceId: t.resourceId,
+    description: t.description,
+    targetQuestions: t.targetQuestions,
+  }));
 }
 
 export type ResourceOption = { id: number; name: string };

@@ -300,8 +300,8 @@ export default async function KocPanelPage() {
           <CardHeader>
             <CardTitle>Yayınlanmayı bekleyen programlar</CardTitle>
             <CardDescription>
-              Taslak kalan haftalık programlar — öğrenci yayınlanana kadar
-              görmez.
+              Taslak kalan haftalık programlar — öğrenci önerileri en üstte,
+              incele ve yayınla.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -319,7 +319,7 @@ export default async function KocPanelPage() {
                   >
                     <div className="flex min-w-0 flex-1 flex-col">
                       <Link
-                        href={`/koc/ogrenciler/${p.studentId}?tab=program&hafta=${trDayKey(p.weekStart)}`}
+                        href={`/koc/ogrenciler/${p.studentId}/program?hafta=${trDayKey(p.weekStart)}`}
                         className="truncate text-sm font-medium hover:text-primary"
                       >
                         {p.studentName}
@@ -329,7 +329,13 @@ export default async function KocPanelPage() {
                         {formatInt(p.taskCount)} görev
                       </span>
                     </div>
-                    <Badge className="bg-warning/10 text-warning">Taslak</Badge>
+                    {p.studentSubmittedAt != null ? (
+                      <Badge className="bg-info/10 text-info">
+                        Öğrenci önerisi
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-warning/10 text-warning">Taslak</Badge>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -359,7 +365,7 @@ export default async function KocPanelPage() {
                   >
                     <div className="flex min-w-0 flex-1 flex-col">
                       <Link
-                        href={`/koc/ogrenciler/${s.studentId}?tab=gorusmeler`}
+                        href={`/koc/ogrenciler/${s.studentId}/gorusmeler`}
                         className="truncate text-sm font-medium hover:text-primary"
                       >
                         {s.studentName}

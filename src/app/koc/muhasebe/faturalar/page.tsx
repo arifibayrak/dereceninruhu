@@ -146,7 +146,7 @@ export default async function FaturalarPage({
                 <TableRow key={inv.id}>
                   <TableCell className="pl-4 font-medium">
                     <Link
-                      href={`/koc/ogrenciler/${inv.studentId}?tab=muhasebe`}
+                      href={`/koc/ogrenciler/${inv.studentId}/muhasebe`}
                       className="hover:text-primary"
                     >
                       {inv.studentName}

@@ -7,7 +7,9 @@ import { UserRoundCheckIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { bulkAssignStudentCoach } from "@/actions/admin";
+import type { RosterPayment } from "@/db/queries/muhasebe";
 import { formatInt } from "@/lib/format";
+import { formatMinutes } from "@/lib/study";
 import {
   CoachAssignSelect,
   type CoachOption,
@@ -16,6 +18,7 @@ import {
   CopyInviteButton,
   WaInviteButton,
 } from "@/components/app/invite-actions";
+import { PaymentStatusBadge } from "@/components/app/payment-status-badge";
 import { PinResetButton } from "@/components/app/pin-reset-button";
 import { StalenessBadge } from "@/components/app/staleness-badge";
 import { Badge } from "@/components/ui/badge";
@@ -44,8 +47,11 @@ export type RosterTableRow = {
   phone: string | null;
   examCode: string;
   trackCode: string | null;
-  targetText: string | null;
   weekQuestionTotal: number;
+  studyToday: number;
+  studyWeek: number;
+  studyMonth: number;
+  payment: RosterPayment | null;
   staleDays: number | null;
   inviteAccepted: boolean;
   inviteCode: string | null;
@@ -184,8 +190,9 @@ export function RosterTable({
               <TableHead className={isAdmin ? undefined : "pl-4"}>Ad</TableHead>
               <TableHead>Sınav</TableHead>
               {isAdmin && <TableHead>Koç</TableHead>}
-              <TableHead>Hedef</TableHead>
               <TableHead className="text-right">Bu hafta soru</TableHead>
+              <TableHead className="text-right">Süre</TableHead>
+              <TableHead>Ödeme</TableHead>
               <TableHead>Son giriş</TableHead>
               <TableHead className="pr-4">Davet</TableHead>
             </TableRow>
@@ -231,11 +238,22 @@ export function RosterTable({
                     />
                   </TableCell>
                 )}
-                <TableCell className="max-w-52 truncate text-muted-foreground">
-                  {r.targetText ?? "—"}
-                </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
                   {formatInt(r.weekQuestionTotal)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-medium tabular-nums">
+                      {formatMinutes(r.studyWeek)}
+                    </span>
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      bugün {formatMinutes(r.studyToday)} · ay{" "}
+                      {formatMinutes(r.studyMonth)}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <PaymentStatusBadge payment={r.payment} />
                 </TableCell>
                 <TableCell>
                   <StalenessBadge staleDays={r.staleDays} />

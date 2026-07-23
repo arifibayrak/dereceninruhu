@@ -6,6 +6,7 @@ import {
   CheckCircle2Icon,
   ChevronDownIcon,
   CircleIcon,
+  CopyIcon,
   ListChecksIcon,
   PencilIcon,
   PlusIcon,
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 
 import {
   addPlanTask,
+  copyPreviousWeekPlan,
   deletePlanTask,
   publishPlan,
   togglePlanTaskDone,
@@ -49,12 +51,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ProgramGrid } from "@/components/app/program-grid";
 
 export type BuilderSubject = { id: number; name: string; sectionName: string };
 export type BuilderResource = { id: number; name: string };
 export type BuilderTask = {
   id: number;
-  day: number;
+  /** 1..7 = güne atanmış; null = haftalık konu (güne atanmamış). */
+  day: number | null;
   subjectId: number | null;
   subjectName: string | null;
   resourceId: number | null;
@@ -70,6 +74,8 @@ export type BuilderPlan = {
   status: "draft" | "published" | "completed";
   motto: string | null;
   coachNote: string | null;
+  proposedByStudent?: boolean;
+  studentSubmittedAt?: Date | string | null;
 } | null;
 
 type Props = {
@@ -96,7 +102,9 @@ type TaskDialogState =
   | { mode: "edit"; task: BuilderTask }
   | null;
 
-/** Koç kokpiti — haftalık program kurucusu (Pzt–Paz, görev ekle/düzenle/yayınla). */
+type View = "hafta" | "gun";
+
+/** Koç kokpiti — haftalık program kurucusu (ders × konu + günlük dağılım). */
 export function ProgramBuilder({
   enrollmentId,
   weekKey,
@@ -108,10 +116,12 @@ export function ProgramBuilder({
   todayDay,
 }: Props) {
   const router = useRouter();
+  const [view, setView] = useState<View>("hafta");
   const [motto, setMotto] = useState(plan?.motto ?? "");
   const [coachNote, setCoachNote] = useState(plan?.coachNote ?? "");
   const [savingMeta, setSavingMeta] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [taskDialog, setTaskDialog] = useState<TaskDialogState>(null);
   const [convertOpen, setConvertOpen] = useState(false);
   const [openDays, setOpenDays] = useState<Record<number, boolean>>({});
@@ -127,6 +137,7 @@ export function ProgramBuilder({
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const status = plan?.status ?? "draft";
   const statusMeta = STATUS_META[status];
+  const weekTasks = tasks.filter((t) => t.day == null);
 
   const metaDirty =
     motto !== (plan?.motto ?? "") || coachNote !== (plan?.coachNote ?? "");
@@ -141,7 +152,7 @@ export function ProgramBuilder({
     });
     setSavingMeta(false);
     if (res.ok) {
-      toast.success("Program kaydedildi");
+      toast.success("Strateji kaydedildi");
       router.refresh();
     } else {
       toast.error(res.error);
@@ -157,6 +168,18 @@ export function ProgramBuilder({
       toast.success("Program yayınlandı 🎉", {
         description: "Öğrenci artık bu haftanın programını görüyor.",
       });
+      router.refresh();
+    } else {
+      toast.error(res.error);
+    }
+  };
+
+  const copyPrevious = async () => {
+    setCopying(true);
+    const res = await copyPreviousWeekPlan({ enrollmentId, weekStart: weekKey });
+    setCopying(false);
+    if (res.ok) {
+      toast.success(`${res.data.added} konu geçen haftadan kopyalandı`);
       router.refresh();
     } else {
       toast.error(res.error);
@@ -191,36 +214,28 @@ export function ProgramBuilder({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Üst bilgi: durum + tamamlanma + motto/not + yayınla */}
-      <div className="flex flex-col gap-4 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+      {/* Durum + tamamlanma + yayınla */}
+      <div className="flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={statusMeta.className}>{statusMeta.label}</Badge>
+            {plan?.studentSubmittedAt != null && status === "draft" && (
+              <Badge className="bg-info/10 text-info">Öğrenci önerisi</Badge>
+            )}
             <span className="text-sm text-muted-foreground tabular-nums">
-              {done}/{total} görev · %{pct}
+              {done}/{total} konu · %{pct}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          {status === "draft" && (
             <Button
-              variant="outline"
               size="sm"
-              onClick={saveMeta}
-              disabled={savingMeta || !metaDirty}
+              onClick={publish}
+              disabled={publishing || !plan || total === 0}
             >
-              <SaveIcon data-icon="inline-start" />
-              {savingMeta ? "Kaydediliyor…" : "Kaydet"}
+              <SendIcon data-icon="inline-start" />
+              {publishing ? "Yayınlanıyor…" : "Yayınla"}
             </Button>
-            {status === "draft" && (
-              <Button
-                size="sm"
-                onClick={publish}
-                disabled={publishing || !plan || total === 0}
-              >
-                <SendIcon data-icon="inline-start" />
-                {publishing ? "Yayınlanıyor…" : "Yayınla"}
-              </Button>
-            )}
-          </div>
+          )}
         </div>
 
         {total > 0 && (
@@ -239,6 +254,31 @@ export function ProgramBuilder({
           </div>
         )}
 
+        {status === "draft" && total > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Program taslak — öğrenci <span className="font-medium">Yayınla</span>
+            &apos;ya basana kadar görmez.
+          </p>
+        )}
+      </div>
+
+      {/* Strateji / Koç notu — programdan ayrı, stratejik panel */}
+      <div className="flex flex-col gap-4 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-heading text-sm font-semibold">
+            Strateji / Koç notu
+          </h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={saveMeta}
+            disabled={savingMeta || !metaDirty}
+          >
+            <SaveIcon data-icon="inline-start" />
+            {savingMeta ? "Kaydediliyor…" : "Kaydet"}
+          </Button>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="plan-motto">Haftanın mottosu</FieldLabel>
@@ -254,7 +294,7 @@ export function ProgramBuilder({
             <FieldLabel htmlFor="plan-not">Koç notu</FieldLabel>
             <Textarea
               id="plan-not"
-              placeholder="Öğrencinin bu hafta odaklanacağı noktalar…"
+              placeholder="Öğrencinin bu hafta odaklanacağı stratejik noktalar…"
               value={coachNote}
               maxLength={2000}
               rows={2}
@@ -266,175 +306,151 @@ export function ProgramBuilder({
         {/*
           Uzun not = öğrenci ekranında metin duvarı. Notu gün gün göreve
           çevirmeyi öner — öğrenci "ne çalışacağım"ı işaretlenebilir maddeler
-          hâlinde görsün (bkz. geri bildirim, Görsel 7).
+          hâlinde görsün.
         */}
-        {noteCandidates.length > 1 &&
-          coachNote.length > LONG_NOTE_CHARS && (
-            <div className="flex flex-col items-start gap-2 rounded-xl bg-info/10 p-3.5 text-sm text-pretty text-muted-foreground sm:flex-row sm:items-center">
-              <ListChecksIcon className="size-4 shrink-0 text-info" />
-              <span className="min-w-0 flex-1">
-                Bu not uzun — öğrenciler gün gün işaretlenebilir görev
-                listesini çok daha rahat okuyor.
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={() => setConvertOpen(true)}
-              >
-                Notu görevlere dönüştür
-              </Button>
-            </div>
-          )}
-
-        {status === "draft" && total > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Program taslak — öğrenci <span className="font-medium">Yayınla</span>
-            &apos;ya basana kadar görmez.
-          </p>
+        {noteCandidates.length > 1 && coachNote.length > LONG_NOTE_CHARS && (
+          <div className="flex flex-col items-start gap-2 rounded-xl bg-info/10 p-3.5 text-sm text-pretty text-muted-foreground sm:flex-row sm:items-center">
+            <ListChecksIcon className="size-4 shrink-0 text-info" />
+            <span className="min-w-0 flex-1">
+              Bu not uzun — öğrenciler gün gün işaretlenebilir görev listesini çok
+              daha rahat okuyor.
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setConvertOpen(true)}
+            >
+              Notu görevlere dönüştür
+            </Button>
+          </div>
         )}
       </div>
 
-      {/* Gün sütunları (mobilde akordeon) */}
-      <div className="grid gap-3 lg:grid-cols-7 lg:gap-2">
-        {days.map((d) => {
-          const dayTasks = tasks.filter((t) => t.day === d.day);
-          const open = isDayOpen(d.day);
-          const isToday = todayDay === d.day;
-          return (
-            <section
-              key={d.day}
-              className={cn(
-                "flex flex-col rounded-xl bg-card ring-1 ring-foreground/10",
-                isToday && "ring-primary/40",
-              )}
-            >
-              <button
-                type="button"
-                aria-expanded={open}
-                onClick={() =>
-                  setOpenDays((prev) => ({ ...prev, [d.day]: !open }))
-                }
-                className="flex items-center justify-between gap-2 p-3 text-left lg:pointer-events-none"
-              >
-                <span className="flex min-w-0 flex-col">
-                  <span
-                    className={cn(
-                      "text-sm font-semibold",
-                      isToday && "text-primary",
-                    )}
-                  >
-                    {d.name}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {d.dateLabel}
-                    {dayTasks.length > 0 && ` · ${dayTasks.length} görev`}
-                  </span>
-                </span>
-                <ChevronDownIcon
-                  className={cn(
-                    "size-4 shrink-0 text-muted-foreground transition-transform lg:hidden",
-                    open && "rotate-180",
-                  )}
-                />
-              </button>
-              <div
-                className={cn(
-                  "flex-col gap-2 px-3 pb-3",
-                  open ? "flex" : "hidden lg:flex",
-                )}
-              >
-                {dayTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex flex-col gap-1.5 rounded-lg bg-muted/50 p-2.5"
-                  >
-                    <div className="flex items-start gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleTask(task)}
-                        disabled={togglePending}
-                        aria-label={
-                          task.isDone
-                            ? "Görevi geri al"
-                            : "Görevi tamamlandı işaretle"
-                        }
-                        className="mt-0.5 shrink-0"
-                      >
-                        {task.isDone ? (
-                          <CheckCircle2Icon className="size-4.5 text-success" />
-                        ) : (
-                          <CircleIcon className="size-4.5 text-muted-foreground/50" />
-                        )}
-                      </button>
-                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        {task.subjectName && (
-                          <span className="text-[11px] font-semibold text-primary">
-                            {task.subjectName}
-                          </span>
-                        )}
-                        <p
-                          className={cn(
-                            "text-sm break-words",
-                            task.isDone &&
-                              "text-muted-foreground line-through",
-                          )}
-                        >
-                          {task.description}
-                        </p>
-                        {(task.targetQuestions != null ||
-                          task.resourceName) && (
-                          <span className="text-[11px] text-muted-foreground">
-                            {[
-                              task.targetQuestions != null
-                                ? `${task.targetQuestions} soru`
-                                : null,
-                              task.resourceName,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-end gap-0.5">
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label="Görevi düzenle"
-                        onClick={() => setTaskDialog({ mode: "edit", task })}
-                      >
-                        <PencilIcon />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label="Görevi sil"
-                        className="text-destructive hover:text-destructive"
-                        disabled={togglePending}
-                        onClick={() => removeTask(task)}
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="justify-center border-dashed"
-                  onClick={() => setTaskDialog({ mode: "add", day: d.day })}
-                >
-                  <PlusIcon data-icon="inline-start" />
-                  Görev ekle
-                </Button>
-              </div>
-            </section>
-          );
-        })}
+      {/* Görünüm geçişi + araçlar */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ViewToggle view={view} onChange={setView} />
+        {total === 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={copyPrevious}
+            disabled={copying}
+          >
+            <CopyIcon data-icon="inline-start" />
+            {copying ? "Kopyalanıyor…" : "Geçen haftadan kopyala"}
+          </Button>
+        )}
       </div>
 
-      {/* Görev ekle/düzenle diyaloğu */}
+      {view === "hafta" ? (
+        <ProgramGrid
+          enrollmentId={enrollmentId}
+          weekKey={weekKey}
+          subjects={subjects}
+          resources={resources}
+          days={days}
+          tasks={tasks}
+          mode="edit"
+        />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {/* Gün atanmamış (haftalık) konular */}
+          {weekTasks.length > 0 && (
+            <section className="flex flex-col gap-2 rounded-xl bg-card p-3 ring-1 ring-foreground/10">
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Bu hafta · gün atanmamış
+              </span>
+              {weekTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  togglePending={togglePending}
+                  onToggle={() => toggleTask(task)}
+                  onEdit={() => setTaskDialog({ mode: "edit", task })}
+                  onRemove={() => removeTask(task)}
+                />
+              ))}
+            </section>
+          )}
+
+          {/* Gün sütunları (mobilde akordeon) */}
+          <div className="grid gap-3 lg:grid-cols-7 lg:gap-2">
+            {days.map((d) => {
+              const dayTasks = tasks.filter((t) => t.day === d.day);
+              const open = isDayOpen(d.day);
+              const isToday = todayDay === d.day;
+              return (
+                <section
+                  key={d.day}
+                  className={cn(
+                    "flex flex-col rounded-xl bg-card ring-1 ring-foreground/10",
+                    isToday && "ring-primary/40",
+                  )}
+                >
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() =>
+                      setOpenDays((prev) => ({ ...prev, [d.day]: !open }))
+                    }
+                    className="flex items-center justify-between gap-2 p-3 text-left lg:pointer-events-none"
+                  >
+                    <span className="flex min-w-0 flex-col">
+                      <span
+                        className={cn(
+                          "text-sm font-semibold",
+                          isToday && "text-primary",
+                        )}
+                      >
+                        {d.name}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {d.dateLabel}
+                        {dayTasks.length > 0 && ` · ${dayTasks.length} görev`}
+                      </span>
+                    </span>
+                    <ChevronDownIcon
+                      className={cn(
+                        "size-4 shrink-0 text-muted-foreground transition-transform lg:hidden",
+                        open && "rotate-180",
+                      )}
+                    />
+                  </button>
+                  <div
+                    className={cn(
+                      "flex-col gap-2 px-3 pb-3",
+                      open ? "flex" : "hidden lg:flex",
+                    )}
+                  >
+                    {dayTasks.map((task) => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        togglePending={togglePending}
+                        onToggle={() => toggleTask(task)}
+                        onEdit={() => setTaskDialog({ mode: "edit", task })}
+                        onRemove={() => removeTask(task)}
+                      />
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="justify-center border-dashed"
+                      onClick={() => setTaskDialog({ mode: "add", day: d.day })}
+                    >
+                      <PlusIcon data-icon="inline-start" />
+                      Görev ekle
+                    </Button>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Görev ekle/düzenle diyaloğu (gün görünümü) */}
       <Dialog
         open={taskDialog !== null}
         onOpenChange={(open) => {
@@ -447,8 +463,8 @@ export function ProgramBuilder({
               {taskDialog?.mode === "edit" ? "Görevi düzenle" : "Yeni görev"}
             </DialogTitle>
             <DialogDescription>
-              Ders seçimi opsiyonel — açıklama yeterli. Konu listeleri sonraki
-              fazda geliyor.
+              Ders seçimi opsiyonel. Günü boş bırakırsan bu haftanın genel konusu
+              olur.
             </DialogDescription>
           </DialogHeader>
           {taskDialog && (
@@ -501,7 +517,130 @@ export function ProgramBuilder({
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Koç notu → görev dönüştürücü                                              */
+/*  Görünüm geçişi                                                            */
+/* -------------------------------------------------------------------------- */
+
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: View;
+  onChange: (v: View) => void;
+}) {
+  const items: { value: View; label: string }[] = [
+    { value: "hafta", label: "Hafta · ders" },
+    { value: "gun", label: "Gün" },
+  ];
+  return (
+    <div className="inline-flex rounded-full bg-muted p-0.5">
+      {items.map((it) => (
+        <button
+          key={it.value}
+          type="button"
+          onClick={() => onChange(it.value)}
+          className={cn(
+            "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+            view === it.value
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground",
+          )}
+        >
+          {it.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Gün görünümü görev satırı                                                 */
+/* -------------------------------------------------------------------------- */
+
+function TaskRow({
+  task,
+  togglePending,
+  onToggle,
+  onEdit,
+  onRemove,
+}: {
+  task: BuilderTask;
+  togglePending: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg bg-muted/50 p-2.5">
+      <div className="flex items-start gap-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={togglePending}
+          aria-label={
+            task.isDone ? "Görevi geri al" : "Görevi tamamlandı işaretle"
+          }
+          className="mt-0.5 shrink-0"
+        >
+          {task.isDone ? (
+            <CheckCircle2Icon className="size-4.5 text-success" />
+          ) : (
+            <CircleIcon className="size-4.5 text-muted-foreground/50" />
+          )}
+        </button>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          {task.subjectName && (
+            <span className="text-[11px] font-semibold text-primary">
+              {task.subjectName}
+            </span>
+          )}
+          <p
+            className={cn(
+              "text-sm break-words",
+              task.isDone && "text-muted-foreground line-through",
+            )}
+          >
+            {task.description}
+          </p>
+          {(task.targetQuestions != null || task.resourceName) && (
+            <span className="text-[11px] text-muted-foreground">
+              {[
+                task.targetQuestions != null
+                  ? `${task.targetQuestions} soru`
+                  : null,
+                task.resourceName,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-0.5">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label="Görevi düzenle"
+          onClick={onEdit}
+        >
+          <PencilIcon />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label="Görevi sil"
+          className="text-destructive hover:text-destructive"
+          disabled={togglePending}
+          onClick={onRemove}
+        >
+          <Trash2Icon />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Koç notu → görev dönüştürücü                                             */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -600,10 +739,7 @@ function NoteConverter({
                 if (typeof v === "number") update(row.key, { day: v });
               }}
             >
-              <SelectTrigger
-                aria-label="Gün"
-                className="h-9 w-28 shrink-0"
-              >
+              <SelectTrigger aria-label="Gün" className="h-9 w-28 shrink-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -623,9 +759,7 @@ function NoteConverter({
           {selectedCount}/{rows.length} madde seçili
         </span>
         <Button onClick={convert} disabled={saving || selectedCount === 0}>
-          {saving
-            ? "Ekleniyor…"
-            : `${selectedCount} görev olarak ekle`}
+          {saving ? "Ekleniyor…" : `${selectedCount} görev olarak ekle`}
         </Button>
       </div>
     </div>
@@ -633,7 +767,7 @@ function NoteConverter({
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Görev formu (diyalog içi)                                                 */
+/*  Görev formu (gün görünümü diyaloğu)                                       */
 /* -------------------------------------------------------------------------- */
 
 function TaskForm({
@@ -656,8 +790,9 @@ function TaskForm({
   const router = useRouter();
   const editTask = initial.mode === "edit" ? initial.task : null;
   const [saving, setSaving] = useState(false);
+  // 0 = güne atanmamış (haftalık konu).
   const [day, setDay] = useState<number>(
-    editTask ? editTask.day : initial.mode === "add" ? initial.day : 1,
+    editTask ? (editTask.day ?? 0) : initial.mode === "add" ? initial.day : 0,
   );
   const [subjectId, setSubjectId] = useState<number>(editTask?.subjectId ?? 0);
   const [resourceId, setResourceId] = useState<number>(
@@ -668,7 +803,10 @@ function TaskForm({
     editTask?.targetQuestions != null ? String(editTask.targetQuestions) : "",
   );
 
-  const dayItems = days.map((d) => ({ value: d.day, label: d.name }));
+  const dayItems = [
+    { value: 0, label: "Bu hafta (gün yok)" },
+    ...days.map((d) => ({ value: d.day, label: d.name })),
+  ];
   const subjectItems = [
     { value: 0, label: "Genel (ders seçme)" },
     ...subjects.map((s) => ({
@@ -687,7 +825,7 @@ function TaskForm({
       return;
     }
     const shared = {
-      day,
+      day: day === 0 ? null : day,
       subjectId: subjectId === 0 ? null : subjectId,
       resourceId: resourceId === 0 ? null : resourceId,
       description,
