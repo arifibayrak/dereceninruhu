@@ -9,7 +9,6 @@ import {
   InboxIcon,
   MessageCircleIcon,
   PlusIcon,
-  RouteIcon,
   SendIcon,
   SparklesIcon,
 } from "lucide-react";
@@ -31,6 +30,7 @@ import { formatInt } from "@/lib/format";
 import { buildWaLink, waTemplates } from "@/lib/whatsapp";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
 import { StalenessBadge } from "@/components/app/staleness-badge";
+import { TourLauncher } from "@/components/rehber/tour-launcher";
 import { StatTile } from "@/components/brand/stat-tile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,10 +96,7 @@ export default async function KocPanelPage() {
           <h1 className="font-heading text-title">Koç paneli</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" render={<Link href="/koc/tur" />}>
-            <RouteIcon data-icon="inline-start" />
-            Paneli tanı
-          </Button>
+          <TourLauncher tourId="koc" label="Paneli tanı" />
           <Button render={<Link href="/koc/ogrenciler/yeni" />}>
             <PlusIcon data-icon="inline-start" />
             Yeni öğrenci

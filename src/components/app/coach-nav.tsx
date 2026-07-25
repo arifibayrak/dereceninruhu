@@ -170,6 +170,7 @@ export function CoachNav({
             <Link
               key={item.href}
               href={item.href}
+              data-tour-nav={item.href}
               className={itemClass(isActive(item))}
             >
               <Icon className="size-4 shrink-0" />
@@ -185,7 +186,10 @@ export function CoachNav({
 
         return (
           <DropdownMenu key={entry.label}>
-            <DropdownMenuTrigger className={cn(itemClass(groupActive), "outline-none")}>
+            <DropdownMenuTrigger
+              data-tour-nav-group={items.map((it) => it.href).join(" ")}
+              className={cn(itemClass(groupActive), "outline-none")}
+            >
               <Icon className="size-4 shrink-0" />
               <span className="hidden sm:inline">{entry.label}</span>
               <ChevronDownIcon className="size-3.5 shrink-0 opacity-70" />

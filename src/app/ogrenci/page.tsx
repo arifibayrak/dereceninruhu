@@ -5,7 +5,6 @@ import {
   CalendarClockIcon,
   ChevronRightIcon,
   LibraryIcon,
-  RouteIcon,
   SparklesIcon,
   VideoIcon,
 } from "lucide-react";
@@ -29,6 +28,7 @@ import {
 } from "@/lib/insights";
 import { InsightList } from "@/components/app/insight-list";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
+import { TourLauncherCard } from "@/components/rehber/tour-launcher";
 import {
   TodayPlanTasks,
   type ChecklistTask,
@@ -248,21 +248,11 @@ export default async function OgrenciBugunPage() {
         <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
       </Link>
 
-      <Link
-        href="/ogrenci/tur"
-        className="flex items-center gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10 hover:ring-foreground/20"
-      >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gold/15">
-          <RouteIcon className="size-4 text-gold" />
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-sm font-medium">Uygulamayı tanı</span>
-          <span className="text-xs text-muted-foreground">
-            Ekran ekran kısa bir tur — hangi sayfa ne işe yarıyor.
-          </span>
-        </div>
-        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
-      </Link>
+      <TourLauncherCard
+        tourId="ogrenci"
+        title="Uygulamayı tanı"
+        description="Ekranların üstünde kısa bir tur — hangi sayfa ne işe yarıyor."
+      />
 
       <div className="flex flex-col gap-3">
         <h2 className="font-heading text-base font-semibold">

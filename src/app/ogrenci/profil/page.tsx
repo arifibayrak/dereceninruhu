@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpenIcon, RouteIcon, WalletIcon } from "lucide-react";
+import { BookOpenIcon, WalletIcon } from "lucide-react";
 
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { StudentProfileForm } from "@/components/app/student-profile-form";
+import { TourLauncher } from "@/components/rehber/tour-launcher";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -73,10 +74,7 @@ export default async function OgrenciProfilPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
-            variant="outline"
-            render={<Link href="/ogrenci/odemeler" />}
-          >
+          <Button variant="outline" render={<Link href="/ogrenci/odemeler" />}>
             <WalletIcon data-icon="inline-start" />
             Ödemelerime git
           </Button>
@@ -91,10 +89,11 @@ export default async function OgrenciProfilPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button render={<Link href="/ogrenci/tur" />}>
-            <RouteIcon data-icon="inline-start" />
-            Uygulamayı tanı (tur)
-          </Button>
+          <TourLauncher
+            tourId="ogrenci"
+            label="Uygulamayı tanı (tur)"
+            variant="default"
+          />
           <Button variant="outline" render={<Link href="/ogrenci/rehber" />}>
             <BookOpenIcon data-icon="inline-start" />
             Rehberi aç
@@ -104,6 +103,9 @@ export default async function OgrenciProfilPage() {
             render={<Link href="/ogrenci/rehber/akis" />}
           >
             Baştan sona nasıl işler
+          </Button>
+          <Button variant="ghost" render={<Link href="/ogrenci/tur" />}>
+            Turu yazılı oku
           </Button>
         </CardContent>
       </Card>

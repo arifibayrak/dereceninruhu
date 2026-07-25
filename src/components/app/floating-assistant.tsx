@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { SparklesIcon, XIcon } from "lucide-react";
 
+import {
+  getTourServerSnapshot,
+  getTourSnapshot,
+  subscribeTour,
+} from "@/lib/rehber/tour-store";
 import { cn } from "@/lib/utils";
 import { CoachAgentChat } from "./coach-agent-chat";
 import { StudentChat } from "./student-chat";
@@ -34,6 +39,15 @@ const META: Record<
 export function FloatingAssistant({ role }: { role: Role }) {
   const [open, setOpen] = useState(false);
   const meta = META[role];
+
+  // Tur çalışırken FAB gizlenir: ikisi de sağ-alt köşeyi paylaşıyor ve
+  // asistan tur kartının üstüne biniyor. Tur bitince geri gelir.
+  const tourActive = useSyncExternalStore(
+    subscribeTour,
+    getTourSnapshot,
+    getTourServerSnapshot,
+  );
+  if (tourActive) return null;
 
   // Öğrenci alt gezinme çubuğunun üstünde; koçta köşede.
   const fabPos =

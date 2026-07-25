@@ -4,13 +4,13 @@ import { redirect } from "next/navigation";
 import {
   ArrowRightIcon,
   BookOpenIcon,
-  RouteIcon,
   PuzzleIcon,
   ShieldCheckIcon,
   UserRoundIcon,
 } from "lucide-react";
 
 import { getCurrentUser, getViewer } from "@/lib/session";
+import { TourLauncher } from "@/components/rehber/tour-launcher";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,16 +77,20 @@ export default async function AyarlarPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <Button render={<Link href="/koc/tur" />}>
-              <RouteIcon data-icon="inline-start" />
-              Paneli tanı (tur)
-            </Button>
+            <TourLauncher
+              tourId="koc"
+              label="Paneli tanı (tur)"
+              variant="default"
+            />
             <Button variant="outline" render={<Link href="/koc/rehber" />}>
               Koç rehberini aç
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
             <Button variant="outline" render={<Link href="/koc/rehber/akis" />}>
               Baştan sona nasıl işler
+            </Button>
+            <Button variant="ghost" render={<Link href="/koc/tur" />}>
+              Turu yazılı oku
             </Button>
             {isAdmin && (
               <Button
