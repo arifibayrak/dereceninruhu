@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpenIcon, WalletIcon } from "lucide-react";
+import { BookOpenIcon, RouteIcon, WalletIcon } from "lucide-react";
 
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { getCurrentUser, type Role } from "@/lib/session";
@@ -90,10 +90,17 @@ export default async function OgrenciProfilPage() {
             adım adım.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-wrap gap-2">
           <Button variant="outline" render={<Link href="/ogrenci/rehber" />}>
             <BookOpenIcon data-icon="inline-start" />
             Rehberi aç
+          </Button>
+          <Button
+            variant="outline"
+            render={<Link href="/ogrenci/rehber/akis" />}
+          >
+            <RouteIcon data-icon="inline-start" />
+            Baştan sona nasıl işler
           </Button>
         </CardContent>
       </Card>

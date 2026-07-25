@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import {
   ArrowRightIcon,
   BookOpenIcon,
+  RouteIcon,
   PuzzleIcon,
   ShieldCheckIcon,
   UserRoundIcon,
@@ -79,6 +80,10 @@ export default async function AyarlarPage() {
             <Button variant="outline" render={<Link href="/koc/rehber" />}>
               Koç rehberini aç
               <ArrowRightIcon data-icon="inline-end" />
+            </Button>
+            <Button variant="outline" render={<Link href="/koc/rehber/akis" />}>
+              <RouteIcon data-icon="inline-start" />
+              Baştan sona nasıl işler
             </Button>
             {isAdmin && (
               <Button

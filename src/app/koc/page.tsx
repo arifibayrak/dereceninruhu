@@ -9,6 +9,7 @@ import {
   InboxIcon,
   MessageCircleIcon,
   PlusIcon,
+  RouteIcon,
   SendIcon,
   SparklesIcon,
 } from "lucide-react";
@@ -94,10 +95,16 @@ export default async function KocPanelPage() {
           </span>
           <h1 className="font-heading text-title">Koç paneli</h1>
         </div>
-        <Button render={<Link href="/koc/ogrenciler/yeni" />}>
-          <PlusIcon data-icon="inline-start" />
-          Yeni öğrenci
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" render={<Link href="/koc/rehber/akis" />}>
+            <RouteIcon data-icon="inline-start" />
+            Nasıl işler
+          </Button>
+          <Button render={<Link href="/koc/ogrenciler/yeni" />}>
+            <PlusIcon data-icon="inline-start" />
+            Yeni öğrenci
+          </Button>
+        </div>
       </div>
 
       {newLeadCount > 0 && (
