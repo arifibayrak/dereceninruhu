@@ -787,7 +787,7 @@ export const kocRehberi: Guide = {
       blocks: [
         {
           kind: "para",
-          text: "Yazıya çevirme tamamen senin cihazında çalışır; ilk kullanımda model bir kez (~250 MB) iner, sonrası hızlıdır. Varsayılanda ses hiçbir yere gönderilmez ve kaydedilmez — yalnız üretilen metin \"Kaydet\" dediğinde uygulamaya işlenir. KVKK kutusunu işaretlersen (öğrenci/veli onayı şart) ses kaydı da saklanır. Durdurduktan sonra \"Devam et\" aynı kayda ekler, \"Yeniden başlat\" sıfırdan başlar.",
+          text: "Yazıya çevirme tamamen senin cihazında çalışır; ilk kullanımda model bir kez iner (cihazına göre ~80–410 MB), sonrası hızlıdır. Varsayılanda ses hiçbir yere gönderilmez ve kaydedilmez — yalnız üretilen metin \"Kaydet\" dediğinde uygulamaya işlenir. KVKK kutusunu işaretlersen (öğrenci/veli onayı şart) ses kaydı da saklanır. Durdurduktan sonra \"Devam et\" aynı kayda ekler, \"Yeniden başlat\" sıfırdan başlar.",
         },
         {
           kind: "steps",
@@ -813,7 +813,7 @@ export const kocRehberi: Guide = {
         },
         {
           kind: "warning",
-          text: "WebGPU olmayan tarayıcılarda canlı transkript çalışmaz — güncel Chrome/Brave/Edge kullan. Alternatif olarak kokpitteki transkript sayfasından \"Ses kaydından\" yükleme ya da \"Metin yapıştır\" yolunu kullanabilirsin.",
+          text: "Uygulama modeli cihazına göre seçer: ekran kartı hızlandırma (WebGPU) varsa büyük ve isabetli model, yoksa küçük model ya da işlemci modu devreye girer — hangisinin seçildiğini \"Motor:\" satırında görürsün. Zayıf tablet/telefonlarda işlemci modu konuşmanın gerisinde kalabilir; uzun görüşmelerde kokpitteki transkript sayfasından \"Ses kaydından\" yükleme ya da \"Metin yapıştır\" yolu daha güvenli.",
         },
       ],
     },
@@ -1247,7 +1247,7 @@ export const kocRehberi: Guide = {
             },
             {
               q: "Canlı transkript başlamıyor.",
-              a: "Tarayıcı WebGPU desteklemiyor ya da mikrofon izni reddedilmiş olabilir. Güncel Chrome/Brave/Edge kullan; adres çubuğundaki kilit simgesinden mikrofonu aç. İlk açılışta modelin (~250 MB) inmesini bekle. Olmuyorsa \"Ses kaydından\" ya da \"Metin yapıştır\" yolunu kullan.",
+              a: "En sık sebep mikrofon izni: adres çubuğundaki kilit simgesinden mikrofonu aç ve tekrar dene. İlk açılışta modelin inmesini bekle (bir kez iner). Tablet/telefonda ekran kartı büyük modeli kaldırmıyorsa uygulama kendiliğinden küçük modele ya da işlemci moduna iner — \"Motor:\" satırı hangisinin seçildiğini gösterir; bu mod yavaş olabilir. Olmuyorsa \"Ses kaydından\" ya da \"Metin yapıştır\" yolunu kullan.",
             },
             {
               q: "Transkript önerileri kayda geçmedi.",

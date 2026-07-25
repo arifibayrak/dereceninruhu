@@ -31,7 +31,7 @@ export default async function EklentiPage() {
       <SectionHeading
         eyebrow="Eklenti"
         title="Canlı transkript eklentisi"
-        description="Görüşmelerini tarayıcıda cihaz-içi (Whisper Turbo) canlı yazıya çevir; ses kaydedilmez, yalnız metin uygulamaya işlenir."
+        description="Görüşmelerini tarayıcıda cihaz-içi (Whisper) canlı yazıya çevir; ses kaydedilmez, yalnız metin uygulamaya işlenir."
       />
 
       <div className="grid max-w-3xl gap-4">

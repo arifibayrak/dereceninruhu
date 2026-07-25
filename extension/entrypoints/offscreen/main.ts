@@ -1,5 +1,6 @@
 import { env, pipeline } from "@huggingface/transformers";
 import { sendMessage, type ExtMessage } from "@/lib/messages";
+import { AsrError, asrErrorMessage, asrPlans } from "@/lib/asr-engine";
 
 /**
  * Cihaz-içi (WebGPU) canlı transkript. Ses YALNIZ burada işlenir; hiçbir yere
@@ -24,20 +25,17 @@ if (env.backends?.onnx?.wasm) {
   env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL("/ort/");
 }
 
-// Model seçimi — indirme boyutu ↔ Türkçe doğruluk dengesi. Tek yerden değiştir.
-// Boyutlar YAKLAŞIKTIR (ilk kullanımda bir kez inip tarayıcı önbelleğine alınır;
-// sonra anında ve çevrimdışı):
-//   whisper-base           + {enc fp16, dec q4} ≈ ~70 MB   (en küçük/hızlı; TR orta)
-//   whisper-small          + {enc fp16, dec q4} ≈ ~250 MB  (TR belirgin daha iyi)
-//   whisper-large-v3-turbo + fp16               ≈ ~800 MB+ (en yüksek doğruluk)
-// `encoder fp16 + decoder q4` WebGPU'da kanıtlanmış konfig (transformers.js
-// gerçek-zamanlı Whisper örneğiyle aynı). Doğruluk yetmezse MODEL_ID'yi büyüt
-// (ve gerekirse aşağıdaki dtype'ı fp16'ya çek).
-const MODEL_ID = "onnx-community/whisper-small";
+// Model/motor seçimi CİHAZA GÖRE yapılır — bkz. `@/lib/asr-engine`. Özet:
+// GPU fp16 (`shader-f16`) destekliyorsa whisper-small {enc fp16, dec q4};
+// desteklemiyorsa (çoğu tablet/telefon GPU'su) whisper-base {enc fp32, dec q4};
+// WebGPU hiç yoksa CPU'da whisper-base q8. Model listesini oradan değiştir.
 const SAMPLE_RATE = 16000;
 const COMMIT_SECONDS = 24;
 const CARRYOVER_SECONDS = 2;
 const TICK_MS = 4000;
+// Emniyet supabı: cihaz gerçek zamanlının gerisinde kalırsa tampon sonsuza
+// büyümesin (1 saat ham Float32 ≈ 230 MB). Sağlıklı cihazda buraya gelinmez.
+const MAX_BUFFER_SECONDS = 90;
 // Sessizlik eşiği (RMS, 0..1). Bunun altındaki bloklar Whisper'a VERİLMEZ —
 // aksi halde model boşluğu "halüsinasyonla" (tekrar eden saçma token'lar)
 // doldurur. Sesli konuşma ~0.02+; sessizlik ~0.001–0.005.
@@ -58,6 +56,12 @@ let bufferedSamples = 0;
 let running = false;
 let busy = false;
 let tickTimer: ReturnType<typeof setInterval> | null = null;
+// Son çıkarımın süresi (ms) — yavaş cihazlarda "partial" turlarını atlamak için.
+let lastInferMs = 0;
+// Son anlık görüntüden BERİ tamponun BAŞINDAN atılan örnek sayısı — `dropConsumed`
+// bunu düşmezse çevrilmemiş sesi de atar.
+let frontDropped = 0;
+let droppedAudio = false;
 
 function rms(samples: Float32Array): number {
   if (samples.length === 0) return 0;
@@ -76,33 +80,70 @@ function takeBuffer(): Float32Array {
   return out;
 }
 
-function keepCarryover(): void {
+/**
+ * Çevrilen `consumed` örneği tampondan at, CARRYOVER kadarını başa taşı.
+ * ÖNEMLİ: çıkarım sürerken kaydedilen ses tamponda BİRİKİR; bu yüzden "son N
+ * saniyeyi tut" yerine "işlenen kadarını at" yapılır — yavaş cihazda konuşma
+ * kaybolmaz.
+ */
+function dropConsumed(consumed: number): void {
   const carry = Math.floor(CARRYOVER_SECONDS * SAMPLE_RATE);
   const all = takeBuffer();
-  const tail = all.slice(Math.max(0, all.length - carry));
-  chunks = tail.length ? [tail] : [];
-  bufferedSamples = tail.length;
+  const rest = all.slice(Math.min(all.length, Math.max(0, consumed - carry)));
+  chunks = rest.length ? [rest] : [];
+  bufferedSamples = rest.length;
 }
 
 async function ensureModel(): Promise<void> {
   if (transcriber) return;
   sendMessage({ type: "MODEL_PROGRESS", status: "Model yükleniyor…", progress: 0 });
-  transcriber = (await pipeline("automatic-speech-recognition", MODEL_ID, {
-    device: "webgpu",
-    // Encoder fp16 (WebGPU dostu) + decoder q4 (asıl boyut kazancı).
-    dtype: { encoder_model: "fp16", decoder_model_merged: "q4" },
-    progress_callback: (p: unknown) => {
-      const prog = p as { status?: string; progress?: number };
-      if (prog.status === "progress" && typeof prog.progress === "number") {
+
+  // Cihaza göre seçilmiş plan merdiveni: ilki yetenek yoklamasıyla SEÇİLİR,
+  // yine de patlarsa (sürücü hatası, bellek…) bir alttakine inilir.
+  const plans = await asrPlans();
+  let lastError: unknown = null;
+
+  for (let i = 0; i < plans.length; i++) {
+    const plan = plans[i];
+    try {
+      transcriber = (await pipeline(
+        "automatic-speech-recognition",
+        plan.modelId,
+        {
+          device: plan.device,
+          dtype: plan.dtype,
+          progress_callback: (p: unknown) => {
+            const prog = p as { status?: string; progress?: number };
+            if (prog.status === "progress" && typeof prog.progress === "number") {
+              sendMessage({
+                type: "MODEL_PROGRESS",
+                status: `Model indiriliyor… %${Math.round(prog.progress)} (${plan.label}, ~${plan.approxMb} MB)`,
+                progress: prog.progress,
+              });
+            }
+          },
+        },
+      )) as unknown as Transcriber;
+      sendMessage({
+        type: "MODEL_PROGRESS",
+        status: `Model hazır — ${plan.label}`,
+        progress: 100,
+      });
+      return;
+    } catch (e) {
+      lastError = e;
+      const next = plans[i + 1];
+      if (next) {
         sendMessage({
           type: "MODEL_PROGRESS",
-          status: `Model indiriliyor… %${Math.round(prog.progress)}`,
-          progress: prog.progress,
+          status: `${plan.label} bu cihazda çalışmadı; ${next.label} deneniyor…`,
+          progress: 0,
         });
       }
-    },
-  })) as unknown as Transcriber;
-  sendMessage({ type: "MODEL_PROGRESS", status: "Model hazır", progress: 100 });
+    }
+  }
+
+  throw new AsrError(asrErrorMessage(lastError));
 }
 
 async function transcribe(samples: Float32Array): Promise<string> {
@@ -110,6 +151,7 @@ async function transcribe(samples: Float32Array): Promise<string> {
   // Sessiz blokları modele hiç verme — halüsinasyonu (tekrar eden saçma çıktı)
   // baştan engeller.
   if (rms(samples) < SILENCE_RMS) return "";
+  const startedAt = performance.now();
   const out = await transcriber(samples, {
     language: "tr",
     task: "transcribe",
@@ -118,6 +160,7 @@ async function transcribe(samples: Float32Array): Promise<string> {
     no_repeat_ngram_size: 3, // "-A -A -A" gibi tekrar döngülerini kır
     temperature: 0,
   });
+  lastInferMs = performance.now() - startedAt;
   const text = Array.isArray(out) ? out.map((o) => o.text).join(" ") : out.text;
   return (text ?? "").trim();
 }
@@ -128,10 +171,26 @@ async function tick(): Promise<void> {
   try {
     const durationS = bufferedSamples / SAMPLE_RATE;
     if (durationS >= COMMIT_SECONDS) {
-      const text = await transcribe(takeBuffer());
+      // Anlık görüntüyü al; çıkarım sürerken tampon büyümeye devam eder.
+      const buf = takeBuffer();
+      frontDropped = 0;
+      const text = await transcribe(buf);
       if (text) sendMessage({ type: "SEGMENT", text, kind: "final" });
-      keepCarryover();
-    } else if (durationS >= 2) {
+      // Çıkarım sürerken tavan aşılıp baştan atılan kısım zaten gitti; yalnız
+      // tamponda KALAN çevrilmiş bölümü at.
+      dropConsumed(buf.length - frontDropped);
+      if (droppedAudio) {
+        droppedAudio = false;
+        sendMessage({
+          type: "CAPTURE_STATE",
+          state: "running",
+          error:
+            "Cihaz konuşmaya yetişemedi; arada kalan bir bölüm çevrilemedi.",
+        });
+      }
+    } else if (durationS >= 2 && lastInferMs <= TICK_MS) {
+      // "Partial" bir lükstür: cihaz gerçek zamanlının gerisindeyse atla ki
+      // asıl iş (COMMIT turu) sıraya girebilsin.
       const text = await transcribe(takeBuffer());
       if (text) sendMessage({ type: "SEGMENT", text, kind: "partial" });
     }
@@ -146,6 +205,9 @@ async function start(streamId: string | null): Promise<void> {
   if (running) return;
   sendMessage({ type: "CAPTURE_STATE", state: "starting" });
   try {
+    lastInferMs = 0;
+    frontDropped = 0;
+    droppedAudio = false;
     await ensureModel();
     audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
     const mix = audioContext.createGain();
@@ -206,6 +268,16 @@ async function start(streamId: string | null): Promise<void> {
       if (!running) return;
       chunks.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
       bufferedSamples += ev.inputBuffer.length;
+      // Tampon tavanı: çıkarım sesin gerisinde kalırsa en ESKİ bloklar atılır
+      // (bellek sabit kalsın). Atılan ses = çevrilemeyen konuşma → bildirilir.
+      const max = MAX_BUFFER_SECONDS * SAMPLE_RATE;
+      while (bufferedSamples > max && chunks.length > 1) {
+        const dropped = chunks.shift();
+        if (!dropped) break;
+        bufferedSamples -= dropped.length;
+        frontDropped += dropped.length;
+        droppedAudio = true;
+      }
     };
 
     running = true;
@@ -215,7 +287,7 @@ async function start(streamId: string | null): Promise<void> {
     sendMessage({
       type: "CAPTURE_STATE",
       state: "error",
-      error: e instanceof Error ? e.message : "Yakalama başlatılamadı.",
+      error: asrErrorMessage(e),
     });
     await stop();
   }

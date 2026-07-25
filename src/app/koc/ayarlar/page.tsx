@@ -130,8 +130,8 @@ export default async function AyarlarPage() {
               Canlı transkript eklentisi
             </CardTitle>
             <CardDescription>
-              Görüşmelerini tarayıcıda cihaz-içi canlı yazıya çevir (Whisper
-              Turbo); eklenti token&apos;ını buradan yönet.
+              Görüşmelerini tarayıcıda cihaz-içi canlı yazıya çevir (Whisper);
+              eklenti token&apos;ını buradan yönet.
             </CardDescription>
           </CardHeader>
           <CardContent>

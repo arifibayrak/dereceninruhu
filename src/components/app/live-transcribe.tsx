@@ -17,6 +17,13 @@ import {
   createLiveTranscript,
 } from "@/actions/transcripts";
 import { Button } from "@/components/ui/button";
+import {
+  AsrError,
+  asrErrorMessage,
+  asrPlans,
+  gpuCapabilities,
+  type AsrPlan,
+} from "@/lib/asr-engine";
 
 /**
  * Canlı (cihaz-içi) mikrofon transkripti — eklentisiz web sürümü.
@@ -32,13 +39,19 @@ import { Button } from "@/components/ui/button";
  * sürdürür — metin/ses birikir) ve "Yeniden başlat" (sıfırdan). `transcriptId`
  * verilirse (kaydedilmiş bir transkripti tekrar açıp sürdürme) metin mevcut
  * kayda EKLENİR; verilmezse yeni transkript oluşturulur.
+ *
+ * Model/motor seçimi CİHAZA GÖRE yapılır — bkz. `@/lib/asr-engine`. fp16'sız
+ * GPU'larda (çoğu tablet) küçük modele, WebGPU hiç yoksa CPU'ya iner.
  */
 
-const MODEL_ID = "onnx-community/whisper-small";
 const SAMPLE_RATE = 16000;
 const COMMIT_SECONDS = 24;
 const CARRYOVER_SECONDS = 2;
 const TICK_MS = 4000;
+// Emniyet supabı: cihaz gerçek zamanlının gerisinde kalırsa tampon sonsuza
+// büyümesin (1 saat ham Float32 ≈ 230 MB → tablette çökme). Sağlıklı cihazda
+// tampon ~26 sn'yi geçmez; bu sınıra ancak CPU modu gibi yavaş yollarda gelinir.
+const MAX_BUFFER_SECONDS = 90;
 const SILENCE_RMS = 0.008; // altındaki bloklar modele verilmez (halüsinasyon önlenir)
 const AUDIO_BITS_PER_SECOND = 24000; // konuşma için opus'ta bol (~11 MB/saat)
 
@@ -76,10 +89,13 @@ function pickAudioMime(): string | null {
   return null;
 }
 
-// WebGPU/AudioContext desteği — SSR-güvenli okuma (hidrasyon uyuşmazlığı yok).
+// Asgari tarayıcı desteği — SSR-güvenli okuma (hidrasyon uyuşmazlığı yok).
+// WebGPU ŞART DEĞİL: yoksa `asr-engine` CPU (wasm) planına iner. Burada yalnız
+// ses yakalama API'leri aranır.
 const noopSubscribe = () => () => {};
 const getSupportSnapshot = (): boolean | null =>
-  "gpu" in navigator && typeof AudioContext !== "undefined";
+  typeof AudioContext !== "undefined" &&
+  typeof navigator.mediaDevices?.getUserMedia === "function";
 const getSupportServerSnapshot = (): boolean | null => null;
 
 export function LiveTranscribe({
@@ -106,6 +122,19 @@ export function LiveTranscribe({
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [keepAudio, setKeepAudio] = useState(false);
+  // Seçilen motor (tanı için gösterilir) + cihazın GPU yeteneği (ön uyarı için).
+  const [engine, setEngine] = useState<AsrPlan | null>(null);
+  const [gpuOk, setGpuOk] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void gpuCapabilities().then((c) => {
+      if (alive) setGpuOk(c.available);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Motor durumu (render tetiklemez).
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -117,6 +146,12 @@ export function LiveTranscribe({
   const bufferedRef = useRef(0);
   const runningRef = useRef(false);
   const busyRef = useRef(false);
+  // Son çıkarımın süresi (ms) — yavaş cihazlarda "partial" turlarını atlamak için.
+  const lastInferMsRef = useRef(0);
+  // Son anlık görüntüden BERİ tamponun BAŞINDAN atılan örnek sayısı — `dropConsumed`
+  // bunu düşmezse çevrilmemiş sesi de atar.
+  const frontDropRef = useRef(0);
+  const droppedAudioRef = useRef(false);
 
   // Ses kaydı (yalnız KVKK onayı işaretliyse). Her başlat→durdur bir "parça"dır;
   // parçalar kaydederken sırayla R2'ye yüklenir.
@@ -181,12 +216,18 @@ export function LiveTranscribe({
     return out;
   };
 
-  const keepCarryover = (): void => {
+  /**
+   * Çevrilen `consumed` örneği tampondan at, CARRYOVER kadarını başa taşı.
+   * ÖNEMLİ: çıkarım sürerken kaydedilen ses tamponda BİRİKİR; bu yüzden "son N
+   * saniyeyi tut" yerine "işlenen kadarını at" yapılır — yavaş cihazda konuşma
+   * kaybolmaz.
+   */
+  const dropConsumed = (consumed: number): void => {
     const carry = Math.floor(CARRYOVER_SECONDS * SAMPLE_RATE);
     const all = takeBuffer();
-    const tail = all.slice(Math.max(0, all.length - carry));
-    chunksRef.current = tail.length ? [tail] : [];
-    bufferedRef.current = tail.length;
+    const rest = all.slice(Math.min(all.length, Math.max(0, consumed - carry)));
+    chunksRef.current = rest.length ? [rest] : [];
+    bufferedRef.current = rest.length;
   };
 
   const ensureModel = async (): Promise<void> => {
@@ -195,24 +236,57 @@ export function LiveTranscribe({
     // Dinamik import: yalnız tarayıcıda yüklenir (SSR/Worker'a girmez).
     const { pipeline, env } = await import("@huggingface/transformers");
     env.allowLocalModels = false; // ağırlıklar HF hub CDN'inden
-    const t = await pipeline("automatic-speech-recognition", MODEL_ID, {
-      device: "webgpu",
-      dtype: { encoder_model: "fp16", decoder_model_merged: "q4" },
-      progress_callback: (p: unknown) => {
-        const prog = p as { status?: string; progress?: number };
-        if (prog.status === "progress" && typeof prog.progress === "number") {
-          setModelStatus(`Model indiriliyor… %${Math.round(prog.progress)}`);
+    env.useBrowserCache = true; // model bir kez insin, sonra önbellekten
+
+    // Cihaza göre seçilmiş plan merdiveni: ilki yetenek yoklamasıyla SEÇİLİR,
+    // yine de patlarsa (sürücü hatası, bellek…) bir alttakine inilir.
+    const plans = await asrPlans();
+    let lastError: unknown = null;
+
+    for (let i = 0; i < plans.length; i++) {
+      const plan = plans[i];
+      try {
+        const t = await pipeline("automatic-speech-recognition", plan.modelId, {
+          device: plan.device,
+          dtype: plan.dtype,
+          progress_callback: (p: unknown) => {
+            const prog = p as { status?: string; progress?: number };
+            if (prog.status === "progress" && typeof prog.progress === "number") {
+              setModelStatus(
+                `Model indiriliyor… %${Math.round(prog.progress)} (${plan.label}, ~${plan.approxMb} MB)`,
+              );
+            }
+          },
+        });
+        transcriberRef.current = t as unknown as Transcriber;
+        setEngine(plan);
+        setModelStatus("");
+        if (plan.slow) {
+          setNotice(
+            "Bu cihazda GPU hızlandırma (WebGPU) yok; transkript işlemciyle üretilecek ve konuşmanın gerisinde kalabilir. Uzun görüşmelerde \"Ses kaydından\" yolu daha güvenli.",
+          );
         }
-      },
-    });
-    transcriberRef.current = t as unknown as Transcriber;
+        return;
+      } catch (e) {
+        lastError = e;
+        const next = plans[i + 1];
+        if (next) {
+          setModelStatus(
+            `${plan.label} bu cihazda çalışmadı; ${next.label} deneniyor…`,
+          );
+        }
+      }
+    }
+
     setModelStatus("");
+    throw new AsrError(asrErrorMessage(lastError));
   };
 
   const transcribe = async (samples: Float32Array): Promise<string> => {
     const t = transcriberRef.current;
     if (!t || samples.length < SAMPLE_RATE) return "";
     if (rms(samples) < SILENCE_RMS) return ""; // sessizlik → çevirme yok
+    const startedAt = performance.now();
     const out = await t(samples, {
       language: "tr",
       task: "transcribe",
@@ -221,6 +295,7 @@ export function LiveTranscribe({
       no_repeat_ngram_size: 3,
       temperature: 0,
     });
+    lastInferMsRef.current = performance.now() - startedAt;
     const text = Array.isArray(out)
       ? out.map((o) => o.text).join(" ")
       : out.text;
@@ -233,13 +308,26 @@ export function LiveTranscribe({
     try {
       const durationS = bufferedRef.current / SAMPLE_RATE;
       if (durationS >= COMMIT_SECONDS) {
-        const text = await transcribe(takeBuffer());
+        // Anlık görüntüyü al; çıkarım sürerken tampon büyümeye devam eder.
+        const buf = takeBuffer();
+        frontDropRef.current = 0;
+        const text = await transcribe(buf);
         if (text) {
           setFinals((f) => [...f, text]);
           setPartial("");
         }
-        keepCarryover();
-      } else if (durationS >= 2) {
+        // Çıkarım sürerken tavan aşılıp baştan atılan kısım zaten gitti; yalnız
+        // tamponda KALAN çevrilmiş bölümü at.
+        dropConsumed(buf.length - frontDropRef.current);
+        if (droppedAudioRef.current) {
+          droppedAudioRef.current = false;
+          setNotice(
+            "Cihaz konuşmaya yetişemedi; arada kalan bir bölüm çevrilemedi. Daha güçlü bir cihaz kullan ya da \"Ses kaydından\" yolunu tercih et.",
+          );
+        }
+      } else if (durationS >= 2 && lastInferMsRef.current <= TICK_MS) {
+        // "Partial" bir lükstür: cihaz gerçek zamanlının gerisindeyse atla ki
+        // asıl iş (COMMIT turu) sıraya girebilsin.
         const text = await transcribe(takeBuffer());
         if (text) setPartial(text);
       }
@@ -254,6 +342,9 @@ export function LiveTranscribe({
   const beginCapture = async (): Promise<void> => {
     setNotice(null);
     setStatus("starting");
+    lastInferMsRef.current = 0;
+    frontDropRef.current = 0;
+    droppedAudioRef.current = false;
 
     // Mikrofon izni — web sayfasında tarayıcı istemi normal görünür.
     let stream: MediaStream;
@@ -290,6 +381,17 @@ export function LiveTranscribe({
         if (!runningRef.current) return;
         chunksRef.current.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
         bufferedRef.current += ev.inputBuffer.length;
+        // Tampon tavanı: çıkarım sesin gerisinde kalırsa en ESKİ bloklar atılır
+        // (bellek sabit kalsın). Atılan ses = çevrilemeyen konuşma → kullanıcıya
+        // dürüstçe bildirilir.
+        const max = MAX_BUFFER_SECONDS * SAMPLE_RATE;
+        while (bufferedRef.current > max && chunksRef.current.length > 1) {
+          const dropped = chunksRef.current.shift();
+          if (!dropped) break;
+          bufferedRef.current -= dropped.length;
+          frontDropRef.current += dropped.length;
+          droppedAudioRef.current = true;
+        }
       };
 
       // Ses kaydı: yalnız KVKK onayı işaretliyse ve tarayıcı destekliyorsa.
@@ -320,7 +422,7 @@ export function LiveTranscribe({
     } catch (e) {
       teardown();
       setStatus(finals.length || partial ? "stopped" : "idle");
-      setNotice(e instanceof Error ? e.message : "Transkript başlatılamadı.");
+      setNotice(asrErrorMessage(e));
     }
   };
 
@@ -455,9 +557,9 @@ export function LiveTranscribe({
   if (supported === false) {
     return (
       <p className="text-sm text-muted-foreground">
-        Bu tarayıcı cihaz-içi transkripti (WebGPU) desteklemiyor. Güncel bir
-        Chrome/Brave/Edge kullan ya da &quot;metin yapıştır&quot; yolunu tercih
-        et.
+        Bu tarayıcı mikrofondan canlı transkripti desteklemiyor. Güncel bir
+        Chrome/Brave/Edge kullan ya da &quot;Ses kaydından&quot; /
+        &quot;Metin yapıştır&quot; yolunu tercih et.
       </p>
     );
   }
@@ -468,10 +570,18 @@ export function LiveTranscribe({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
-        Mikrofonunu dinler, konuşmayı <strong>cihazında</strong> (WebGPU) canlı
-        yazıya çevirir. İlk kullanımda model bir kez (~250&nbsp;MB) indirilir,
-        sonra çevrimdışı çalışır.
+        Mikrofonunu dinler, konuşmayı <strong>cihazında</strong> canlı yazıya
+        çevirir. İlk kullanımda model bir kez indirilir (cihazına göre
+        ~80–410&nbsp;MB), sonra çevrimdışı çalışır.
       </p>
+
+      {gpuOk === false && status === "idle" ? (
+        <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+          Bu cihazda GPU hızlandırma (WebGPU) görünmüyor. Canlı transkript yine
+          de çalışır ama işlemciyle üretileceği için yavaş olabilir; uzun
+          görüşmelerde &quot;Ses kaydından&quot; yolu daha güvenli.
+        </p>
+      ) : null}
 
       {isAppend && initialText ? (
         <div className="rounded-lg border border-dashed border-foreground/15 bg-muted/50 p-3 text-sm">
@@ -538,6 +648,10 @@ export function LiveTranscribe({
         <p className="rounded-lg border border-dashed border-foreground/15 bg-muted px-3 py-2 text-xs text-muted-foreground">
           {modelStatus}
         </p>
+      ) : engine ? (
+        // Tanı satırı: "tablette çalışmıyor" gibi durumlarda hangi planın
+        // seçildiğini görmek için.
+        <p className="text-xs text-muted-foreground">Motor: {engine.label}</p>
       ) : null}
 
       <div
