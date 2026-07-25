@@ -6,6 +6,7 @@ import { CoachNav } from "@/components/app/coach-nav";
 import { FloatingAssistant } from "@/components/app/floating-assistant";
 import { TranscribeShortcut } from "@/components/app/transcribe-shortcut";
 import { SignOutButton } from "@/components/app/sign-out-button";
+import { RehberLink } from "@/components/rehber/rehber-link";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -37,6 +38,7 @@ export default async function KocLayout({
               <span className="hidden max-w-[22ch] truncate text-sm text-muted-foreground sm:block">
                 {session.user.name}
               </span>
+              <RehberLink />
               <ThemeToggle />
               <SignOutButton iconOnly />
             </div>

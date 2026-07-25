@@ -6,6 +6,7 @@ import { getSession, type Role } from "@/lib/session";
 import { FloatingAssistant } from "@/components/app/floating-assistant";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { StudentBottomNav } from "@/components/app/student-nav";
+import { RehberLink } from "@/components/rehber/rehber-link";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ export default async function OgrenciLayout({
             {isCoachPreview && (
               <Badge variant="secondary">Koç önizlemesi</Badge>
             )}
+            <RehberLink />
             <Button
               variant="ghost"
               size="icon"

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { WalletIcon } from "lucide-react";
+import { BookOpenIcon, WalletIcon } from "lucide-react";
 
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { getCurrentUser, type Role } from "@/lib/session";
@@ -79,6 +79,21 @@ export default async function OgrenciProfilPage() {
           >
             <WalletIcon data-icon="inline-start" />
             Ödemelerime git
+          </Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Kullanım rehberi</CardTitle>
+          <CardDescription>
+            Hangi ekran ne işe yarıyor, hangi butona basınca ne oluyor — hepsi
+            adım adım.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" render={<Link href="/ogrenci/rehber" />}>
+            <BookOpenIcon data-icon="inline-start" />
+            Rehberi aç
           </Button>
         </CardContent>
       </Card>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowRightIcon,
+  BookOpenIcon,
   PuzzleIcon,
   ShieldCheckIcon,
   UserRoundIcon,
@@ -58,6 +59,36 @@ export default async function AyarlarPage() {
             <span className="text-muted-foreground">
               {(user as { email?: string } | null)?.email ?? ""}
             </span>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpenIcon className="size-4" />
+              Kullanım rehberi
+            </CardTitle>
+            <CardDescription>
+              Paneldeki her ekran ve her buton adım adım anlatılıyor.
+              {isAdmin
+                ? " Yöneticiye açık ekranlar için ayrı bir rehber var."
+                : ""}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button variant="outline" render={<Link href="/koc/rehber" />}>
+              Koç rehberini aç
+              <ArrowRightIcon data-icon="inline-end" />
+            </Button>
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                render={<Link href="/koc/rehber/yonetici" />}
+              >
+                Yönetici rehberi
+                <ArrowRightIcon data-icon="inline-end" />
+              </Button>
+            )}
           </CardContent>
         </Card>
 
