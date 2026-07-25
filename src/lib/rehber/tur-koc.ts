@@ -165,6 +165,7 @@ export const kocTuru: Tour = {
       id: "kokpit",
       nav: "Öğrenci kokpiti",
       title: "Öğrenci kokpiti: her şey tek çatı altında",
+      route: "/koc/ogrenciler",
       purpose:
         "Bir öğrenciyle ilgili her iş burada döner. Başlıkta kimlik ve hızlı eylemler, altında 10 sekmelik ikincil gezinme.",
       highlights: [
@@ -202,6 +203,7 @@ export const kocTuru: Tour = {
       id: "kokpit-takip",
       nav: "Öğrenci kokpiti",
       title: "Genel Bakış ve Soru Takibi",
+      route: "/koc/ogrenciler",
       purpose:
         "Genel Bakış öğrencinin fotoğrafını çeker; Soru Takibi haftalık soru girişinin işlendiği ızgaradır — ikisi kokpitin kalbidir.",
       highlights: [
@@ -236,6 +238,7 @@ export const kocTuru: Tour = {
       id: "kokpit-program",
       nav: "Öğrenci kokpiti",
       title: "Program: haftalık planı kur ve yayınla",
+      route: "/koc/ogrenciler",
       purpose:
         "Haftalık programı ders × konu görevleriyle burada kurarsın. Taslak sende kalır; öğrenci ancak Yayınla'ya bastığında görür.",
       highlights: [
@@ -278,6 +281,7 @@ export const kocTuru: Tour = {
       id: "kokpit-deneme",
       nav: "Öğrenci kokpiti",
       title: "Denemeler ve deneme analizi",
+      route: "/koc/ogrenciler",
       purpose:
         "Deneme sonuçlarını D/Y/B olarak girersin, net otomatik hesaplanır; ardından analizle yanlışları konu konu işlersin.",
       highlights: [
@@ -311,6 +315,7 @@ export const kocTuru: Tour = {
       id: "kokpit-konu",
       nav: "Öğrenci kokpiti",
       title: "Konular, Kaynaklar ve İçerik",
+      route: "/koc/ogrenciler",
       purpose:
         "Bu üç sekme öğrencinin ne bildiğini, neyle çalıştığını ve ona ne verdiğini izler — müfredat, kitaplık ve atanan materyal.",
       highlights: [
@@ -338,6 +343,7 @@ export const kocTuru: Tour = {
       id: "denemeler",
       nav: "Denemeler",
       title: "Haftalık deneme panosu",
+      route: "/koc/denemeler",
       purpose:
         "Kadronun bu haftaki tüm deneme netleri tek tabloda. Kim girdi, kim girmedi, ortalama nerede — haftalık kalite kontrolün.",
       highlights: [
@@ -361,6 +367,7 @@ export const kocTuru: Tour = {
       id: "duyuru",
       nav: "Duyuru",
       title: "Duyuru: toplu WhatsApp, tek tek onay",
+      route: "/koc/duyuru",
       purpose:
         "Tüm öğrencilerine kişiselleştirilmiş WhatsApp mesajı hazırlarsın; her mesajı sen açıp yollarsın — otomatik gönderim yok.",
       highlights: [
@@ -395,6 +402,7 @@ export const kocTuru: Tour = {
       id: "asistan",
       nav: "Asistan",
       title: "Koç Asistanı: sor, önersin, sen onayla",
+      route: "/koc/asistan",
       purpose:
         "Kadron hakkında doğal dille soru sorar, plan ve soru eklemesi istersin. Okuma anında yanıtlanır; her yazma işlemi onayına sunulur.",
       highlights: [
@@ -422,6 +430,7 @@ export const kocTuru: Tour = {
       id: "gorusmeler",
       nav: "Görüşmeler",
       title: "Görüşmeler: planlı ve geçmiş, tek panoda",
+      route: "/koc/gorusmeler",
       purpose:
         "Tüm öğrencilerin planlı ve geçmiş koçluk görüşmeleri burada. Yeni görüşme planlamak içinse öğrencinin kokpitine girersin.",
       highlights: [
@@ -455,6 +464,7 @@ export const kocTuru: Tour = {
       id: "canli",
       nav: "Canlı",
       title: "Canlı transkript: görüşmeyi yazıya çevir",
+      route: "/koc/canli-transkript",
       purpose:
         "Öğrenciyi seç, Başlat'a bas: görüşme cihazında (WebGPU) canlı yazıya dönüşür. Varsayılanda ses kaydedilmez, yalnız metin saklanır.",
       highlights: [
@@ -488,6 +498,7 @@ export const kocTuru: Tour = {
       id: "muhasebe",
       nav: "Muhasebe",
       title: "Muhasebe: fatura, ödeme ve gecikmeler",
+      route: "/koc/muhasebe",
       purpose:
         "Ayın gelir fotoğrafı, öğrencilerin bildirdiği ödemeler ve gecikmiş faturalar tek ekranda — tahsilatı buradan yönetirsin.",
       highlights: [

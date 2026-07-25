@@ -23,6 +23,37 @@ const GUIDE_FOR_TOUR: Record<string, { sections: { id: string }[] }> = {
   yonetici: yoneticiRehberi,
 };
 
+/** `src/app` altındaki gerçek sayfa rotaları (dinamik segmentler dahil). */
+function appRoutes(): string[] {
+  const routes: string[] = [];
+  const walk = (dir: string, prefix: string) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) {
+        // (grup) klasörleri URL'e yansımaz.
+        const seg = name.startsWith("(") ? "" : `/${name}`;
+        walk(p, prefix + seg);
+      } else if (name === "page.tsx") {
+        routes.push(prefix || "/");
+      }
+    }
+  };
+  walk("src/app", "");
+  return routes;
+}
+
+const REAL_ROUTES = appRoutes();
+
+/** Dinamik segmentleri joker sayarak rota eşleştirir. */
+function isRealRoute(route: string): boolean {
+  const parts = route.split("/").filter(Boolean);
+  return REAL_ROUTES.some((r) => {
+    const rp = r.split("/").filter(Boolean);
+    if (rp.length !== parts.length) return false;
+    return rp.every((seg, i) => seg.startsWith("[") || seg === parts[i]);
+  });
+}
+
 function appSource(): string {
   const files: string[] = [];
   const walk = (dir: string) => {
@@ -58,6 +89,38 @@ describe.each(TOURS)("tur: %s", (name, tour) => {
   it("route değerleri uygulama içi mutlak yol", () => {
     for (const s of tour.steps) {
       if (s.route) expect(s.route.startsWith("/"), s.id).toBe(true);
+    }
+  });
+
+  /**
+   * Turun tamamı gerçek ekranlarda yürür. Rotası olmayan adımda gezinme
+   * olmaz; kart değişir ama ekran sabit kalır ve tur "takılmış" görünür.
+   * Yalnız açılış adımı rotasız olabilir (bulunduğun yerde başlar).
+   */
+  it("açılış dışındaki her adımın rotası var", () => {
+    const missing = tour.steps
+      .slice(1)
+      .filter((s) => !s.route)
+      .map((s) => s.id);
+    expect(missing).toEqual([]);
+  });
+
+  it("her rota gerçekten var olan bir sayfaya karşılık geliyor", () => {
+    const unknown = tour.steps
+      .filter((s) => s.route && !isRealRoute(s.route))
+      .map((s) => `${s.id} → ${s.route}`);
+    expect(unknown).toEqual([]);
+  });
+
+  it("tur ilerledikçe ekran da değişiyor", () => {
+    // Aynı ekranda üst üste 5'ten fazla adım kalırsa tur takılmış hissettirir.
+    let run = 0;
+    let prev: string | undefined;
+    for (const s of tour.steps) {
+      if (s.route && s.route === prev) run++;
+      else run = 1;
+      prev = s.route ?? prev;
+      expect(run, `${s.id} — aynı ekranda çok fazla adım`).toBeLessThanOrEqual(5);
     }
   });
 
