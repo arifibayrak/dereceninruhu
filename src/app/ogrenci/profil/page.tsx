@@ -91,6 +91,10 @@ export default async function OgrenciProfilPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
+          <Button render={<Link href="/ogrenci/tur" />}>
+            <RouteIcon data-icon="inline-start" />
+            Uygulamayı tanı (tur)
+          </Button>
           <Button variant="outline" render={<Link href="/ogrenci/rehber" />}>
             <BookOpenIcon data-icon="inline-start" />
             Rehberi aç
@@ -99,7 +103,6 @@ export default async function OgrenciProfilPage() {
             variant="outline"
             render={<Link href="/ogrenci/rehber/akis" />}
           >
-            <RouteIcon data-icon="inline-start" />
             Baştan sona nasıl işler
           </Button>
         </CardContent>

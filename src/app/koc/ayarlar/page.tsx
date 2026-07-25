@@ -77,12 +77,15 @@ export default async function AyarlarPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
+            <Button render={<Link href="/koc/tur" />}>
+              <RouteIcon data-icon="inline-start" />
+              Paneli tanı (tur)
+            </Button>
             <Button variant="outline" render={<Link href="/koc/rehber" />}>
               Koç rehberini aç
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
             <Button variant="outline" render={<Link href="/koc/rehber/akis" />}>
-              <RouteIcon data-icon="inline-start" />
               Baştan sona nasıl işler
             </Button>
             {isAdmin && (

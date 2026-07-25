@@ -41,9 +41,12 @@ describe("route-map", () => {
     expect(resolveRehberHref("/ogrenci/bilinmeyen")).toBe("/ogrenci/rehber");
   });
 
-  it("rehberin kendi sayfalarında bağlantı üretmez", () => {
+  it("rehberin ve turun kendi sayfalarında bağlantı üretmez", () => {
     expect(resolveRehberHref("/ogrenci/rehber")).toBeNull();
     expect(resolveRehberHref("/koc/rehber/yonetici")).toBeNull();
+    expect(resolveRehberHref("/ogrenci/tur")).toBeNull();
+    expect(resolveRehberHref("/koc/tur")).toBeNull();
+    expect(resolveRehberHref("/koc/tur/yonetici")).toBeNull();
   });
 
   it("uygulama dışı rotalarda bağlantı üretmez", () => {

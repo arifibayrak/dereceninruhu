@@ -96,9 +96,9 @@ export default async function KocPanelPage() {
           <h1 className="font-heading text-title">Koç paneli</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" render={<Link href="/koc/rehber/akis" />}>
+          <Button variant="outline" render={<Link href="/koc/tur" />}>
             <RouteIcon data-icon="inline-start" />
-            Nasıl işler
+            Paneli tanı
           </Button>
           <Button render={<Link href="/koc/ogrenciler/yeni" />}>
             <PlusIcon data-icon="inline-start" />

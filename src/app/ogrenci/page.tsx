@@ -249,16 +249,16 @@ export default async function OgrenciBugunPage() {
       </Link>
 
       <Link
-        href="/ogrenci/rehber/akis"
+        href="/ogrenci/tur"
         className="flex items-center gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10 hover:ring-foreground/20"
       >
         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gold/15">
           <RouteIcon className="size-4 text-gold" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-sm font-medium">Baştan sona nasıl işler</span>
+          <span className="text-sm font-medium">Uygulamayı tanı</span>
           <span className="text-xs text-muted-foreground">
-            Koçluk döngüsü adım adım — hangi butona basınca ne oluyor.
+            Ekran ekran kısa bir tur — hangi sayfa ne işe yarıyor.
           </span>
         </div>
         <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />

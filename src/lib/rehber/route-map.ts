@@ -173,8 +173,11 @@ const ENTRIES: Entry[] = [
  * Rehberin kendi sayfalarında `null` döner (kendine bağlantı vermez).
  */
 export function resolveRehberHref(pathname: string): string | null {
+  // Rehber ve tur yüzeylerinde kendine bağlantı verme.
   if (pathname.startsWith("/ogrenci/rehber")) return null;
   if (pathname.startsWith("/koc/rehber")) return null;
+  if (pathname.startsWith("/ogrenci/tur")) return null;
+  if (pathname.startsWith("/koc/tur")) return null;
 
   const hit = ENTRIES.find((e) => e.test.test(pathname));
   if (hit) return `${BASE_PATH[hit.guide]}#bolum-${hit.section}`;
