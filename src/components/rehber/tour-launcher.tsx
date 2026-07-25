@@ -33,6 +33,24 @@ export function TourLauncher({
   );
 }
 
+/**
+ * Başlıkta duran ikon düğmesi — tur her ekrandan başlatılabilsin diye.
+ * Kartlar sayfanın altında kalabiliyor; buraya bakan herkes bulur.
+ */
+export function TourLauncherIcon({ tourId }: { tourId: TourId }) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label="Tanıtım turunu başlat"
+      title="Tanıtım turunu başlat"
+      onClick={() => startTour(tourId)}
+    >
+      <RouteIcon />
+    </Button>
+  );
+}
+
 /** Kart görünümlü başlatıcı — öğrenci Bugün ekranındaki liste kartlarına uyar. */
 export function TourLauncherCard({
   tourId,

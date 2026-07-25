@@ -125,6 +125,12 @@ export default async function OgrenciBugunPage() {
         </div>
       </div>
 
+      <TourLauncherCard
+        tourId="ogrenci"
+        title="Uygulamayı tanı"
+        description="Ekranların üstünde kısa bir tur — hangi sayfa ne işe yarıyor."
+      />
+
       {enrollment.coachCalBookingUrl != null &&
         enrollment.callsScheduledAt == null && (
           <Link
@@ -243,12 +249,6 @@ export default async function OgrenciBugunPage() {
         </div>
         <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
       </Link>
-
-      <TourLauncherCard
-        tourId="ogrenci"
-        title="Uygulamayı tanı"
-        description="Ekranların üstünde kısa bir tur — hangi sayfa ne işe yarıyor."
-      />
 
       <div data-tour="bugun-soru" className="flex flex-col gap-3">
         <h2 className="font-heading text-base font-semibold">

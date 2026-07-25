@@ -7,6 +7,7 @@ import { FloatingAssistant } from "@/components/app/floating-assistant";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { StudentBottomNav } from "@/components/app/student-nav";
 import { RehberLink } from "@/components/rehber/rehber-link";
+import { TourLauncherIcon } from "@/components/rehber/tour-launcher";
 import { ProductTour } from "@/components/rehber/product-tour";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -41,6 +42,7 @@ export default async function OgrenciLayout({
             {isCoachPreview && (
               <Badge variant="secondary">Koç önizlemesi</Badge>
             )}
+            <TourLauncherIcon tourId="ogrenci" />
             <RehberLink />
             <Button
               variant="ghost"
