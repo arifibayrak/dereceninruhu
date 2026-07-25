@@ -165,7 +165,7 @@ export const kocTuru: Tour = {
       id: "kokpit",
       nav: "Öğrenci kokpiti",
       title: "Öğrenci kokpiti: her şey tek çatı altında",
-      route: "/koc/ogrenciler",
+      route: "/koc/tur/ornek",
       purpose:
         "Bir öğrenciyle ilgili her iş burada döner. Başlıkta kimlik ve hızlı eylemler, altında 10 sekmelik ikincil gezinme.",
       highlights: [
@@ -203,7 +203,7 @@ export const kocTuru: Tour = {
       id: "kokpit-takip",
       nav: "Öğrenci kokpiti",
       title: "Genel Bakış ve Soru Takibi",
-      route: "/koc/ogrenciler",
+      route: "/koc/tur/ornek/soru-takibi",
       purpose:
         "Genel Bakış öğrencinin fotoğrafını çeker; Soru Takibi haftalık soru girişinin işlendiği ızgaradır — ikisi kokpitin kalbidir.",
       highlights: [
@@ -238,7 +238,7 @@ export const kocTuru: Tour = {
       id: "kokpit-program",
       nav: "Öğrenci kokpiti",
       title: "Program: haftalık planı kur ve yayınla",
-      route: "/koc/ogrenciler",
+      route: "/koc/tur/ornek/program",
       purpose:
         "Haftalık programı ders × konu görevleriyle burada kurarsın. Taslak sende kalır; öğrenci ancak Yayınla'ya bastığında görür.",
       highlights: [
@@ -281,7 +281,7 @@ export const kocTuru: Tour = {
       id: "kokpit-deneme",
       nav: "Öğrenci kokpiti",
       title: "Denemeler ve deneme analizi",
-      route: "/koc/ogrenciler",
+      route: "/koc/tur/ornek/denemeler",
       purpose:
         "Deneme sonuçlarını D/Y/B olarak girersin, net otomatik hesaplanır; ardından analizle yanlışları konu konu işlersin.",
       highlights: [
@@ -315,7 +315,7 @@ export const kocTuru: Tour = {
       id: "kokpit-konu",
       nav: "Öğrenci kokpiti",
       title: "Konular, Kaynaklar ve İçerik",
-      route: "/koc/ogrenciler",
+      route: "/koc/tur/ornek/konular",
       purpose:
         "Bu üç sekme öğrencinin ne bildiğini, neyle çalıştığını ve ona ne verdiğini izler — müfredat, kitaplık ve atanan materyal.",
       highlights: [

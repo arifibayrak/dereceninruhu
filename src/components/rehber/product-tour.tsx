@@ -276,19 +276,31 @@ export function ProductTour() {
 
   return (
     <>
-      {/* Hedef sekmenin çevresindeki halka — tıklamayı engellemez. */}
-      {spotlight && (
-        <span
-          aria-hidden
-          className="pointer-events-none fixed z-50 rounded-lg ring-2 ring-gold ring-offset-2 ring-offset-background transition-all duration-200"
-          style={{
-            top: spotlight.top - 2,
-            left: spotlight.left - 2,
-            width: spotlight.width + 4,
-            height: spotlight.height + 4,
-          }}
-        />
-      )}
+      {/*
+        Karartma + delik. Dev bir `box-shadow` ekranın tamamını karartır,
+        elemanın kendi alanı delik olarak kalır — böylece yalnız ilgili yer
+        aydınlık görünür. Hedef bulunamazsa (ör. sekmesi olmayan ekran)
+        ekranın tamamı eşit karartılır.
+      */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-[45] transition-opacity duration-200"
+      >
+        {spotlight ? (
+          <span
+            className="absolute rounded-lg ring-2 ring-gold transition-all duration-200"
+            style={{
+              top: spotlight.top - 4,
+              left: spotlight.left - 4,
+              width: spotlight.width + 8,
+              height: spotlight.height + 8,
+              boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
+            }}
+          />
+        ) : (
+          <span className="absolute inset-0 bg-black/45" />
+        )}
+      </div>
 
       {/* Kart ekranın altında durur; arkadaki panel kullanılabilir kalır. */}
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+4.75rem)] sm:justify-end sm:px-4 sm:pr-4 sm:pb-4">
