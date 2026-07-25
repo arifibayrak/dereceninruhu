@@ -1,3 +1,5 @@
+import * as React from "react"
+import Link from "next/link"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -40,16 +42,46 @@ const buttonVariants = cva(
   }
 )
 
+/**
+ * `render` yuvasına bir bağlantı (`<a>` ya da next/link `<Link>`) verilmiş mi?
+ *
+ * base-ui'nin düğme makinesi `nativeButton` öntanımıyla gerçek bir `<button>`
+ * bekler. Bağlantı basıldığında iki kötü seçenek kalır: öntanımı bırakırsan
+ * konsola uyarı yazar; `nativeButton={false}` dersen elemana `role="button"`
+ * ekler — yani gezinen bir bağlantı ekran okuyucuda "düğme" diye anons edilir.
+ * İkisi de yanlış: bunlar bağlantı, düğme değil.
+ */
+function isLinkSlot(render: unknown): render is React.ReactElement<{
+  className?: string
+}> {
+  if (!React.isValidElement(render)) return false
+  return render.type === "a" || render.type === Link
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  render,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  const classes = cn(buttonVariants({ variant, size, className }))
+
+  // Bağlantı yuvasında base-ui'yi hiç devreye sokma: gerçek `<a>` semantiği
+  // korunur (role eklenmez), düğme görünümü aynı kalır.
+  if (isLinkSlot(render)) {
+    return React.cloneElement(render, {
+      ...props,
+      "data-slot": "button",
+      className: cn(classes, render.props.className),
+    } as React.Attributes)
+  }
+
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={classes}
+      render={render}
       {...props}
     />
   )
