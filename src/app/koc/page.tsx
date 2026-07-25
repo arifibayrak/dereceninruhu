@@ -106,6 +106,7 @@ export default async function KocPanelPage() {
 
       {newLeadCount > 0 && (
         <Link
+          data-tour="panel-uyarilar"
           href="/koc/leadler?durum=yeni"
           className="flex items-center gap-3 rounded-xl bg-gold/10 p-4 ring-1 ring-gold/30 transition-colors hover:bg-gold/15"
         >
