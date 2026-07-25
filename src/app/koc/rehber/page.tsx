@@ -30,6 +30,7 @@ export default async function KocRehberPage() {
       guide={kocRehberi}
       variant="koc"
       storageKey="dr:rehber:koc:v1"
+      flowHref="/koc/rehber/akis"
       intro={
         viewer.role === "admin" ? (
           <Card className="max-w-3xl">

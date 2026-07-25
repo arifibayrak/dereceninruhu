@@ -11,6 +11,7 @@ export default function OgrenciRehberPage() {
       guide={ogrenciRehberi}
       variant="ogrenci"
       storageKey="dr:rehber:ogrenci:v1"
+      flowHref="/ogrenci/rehber/akis"
     />
   );
 }

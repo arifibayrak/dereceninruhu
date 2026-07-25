@@ -1,6 +1,10 @@
+import Link from "next/link";
+import { RouteIcon } from "lucide-react";
+
 import { buildIndex } from "@/lib/rehber/search";
 import type { Guide } from "@/lib/rehber/types";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { GuideControls } from "@/components/rehber/guide-controls";
 import { GuideSection } from "@/components/rehber/guide-section";
 import { RehberProgressProvider } from "@/components/rehber/progress-context";
@@ -38,7 +42,10 @@ export function GuidePage({
   variant,
   storageKey,
   intro,
+  flowHref,
 }: {
+  /** Akış (baştan sona sıra) sayfasının adresi. */
+  flowHref?: string;
   guide: Guide;
   variant: Variant;
   /** localStorage anahtarı — rehberler ayrı ilerleme tutar. */
@@ -63,6 +70,17 @@ export function GuidePage({
           <p className="max-w-prose text-sm text-pretty text-muted-foreground md:text-base">
             {guide.description}
           </p>
+          {flowHref && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-1 w-fit"
+              render={<Link href={flowHref} />}
+            >
+              <RouteIcon data-icon="inline-start" />
+              Baştan sona nasıl işler
+            </Button>
+          )}
         </header>
 
         {intro}
