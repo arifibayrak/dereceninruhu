@@ -30,7 +30,7 @@ export default async function KocDuyuruPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
+      <div data-tour="duyuru-baslik" className="flex flex-col gap-1">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] text-primary uppercase">
           <span aria-hidden className="size-1.5 rounded-full bg-gold" />
           Toplu mesaj

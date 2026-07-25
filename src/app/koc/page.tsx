@@ -149,7 +149,7 @@ export default async function KocPanelPage() {
         </Link>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div data-tour="panel-kutular" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
 
         <StatTile
           label="Aktif öğrenci"
@@ -183,7 +183,7 @@ export default async function KocPanelPage() {
         </Link>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div data-tour="panel-kartlar" className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Bugün hatırlat</CardTitle>

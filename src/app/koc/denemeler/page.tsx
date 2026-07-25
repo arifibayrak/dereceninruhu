@@ -78,7 +78,7 @@ export default async function KocDenemelerPage({
 
   return (
     <>
-      <div className="flex flex-col gap-1">
+      <div data-tour="denemeler-hafta" className="flex flex-col gap-1">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] text-primary uppercase">
           <span aria-hidden className="size-1.5 rounded-full bg-gold" />
           Haftalık deneme panosu

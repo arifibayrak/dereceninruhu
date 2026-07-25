@@ -178,7 +178,7 @@ export default async function KocGorusmelerPage() {
         )
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div data-tour="gorusmeler-listeler" className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Yaklaşan · {formatInt(upcoming.length)}</CardTitle>

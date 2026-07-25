@@ -14,6 +14,12 @@ export type TourStep = {
   title: string;
   /** Ekranın rotası — "Ekranı aç" düğmesini üretir. */
   route?: string;
+  /**
+   * Ekranda ışık tutulacak bölge: sayfadaki `data-tour="<target>"` öğesi.
+   * Verilmezse gezinme sekmesine ışık tutulur. Bölüm içi adımlar (ör. Panel'in
+   * "Bugün hatırlat" kartı) bu alanla anlatılır.
+   */
+  target?: string;
   /** Bu ekran ne işe yarar (1-2 cümle). */
   purpose: string;
   /** Ekrandaki önemli alanlar — turun asıl içeriği. */

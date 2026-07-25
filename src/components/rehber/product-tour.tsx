@@ -34,7 +34,13 @@ async function loadTour(id: TourId): Promise<Tour> {
  * "Öğrenciler" sekmesi) → açılır grup tetikleyicisi (Talepler, İçerik,
  * Ayarlar altındaki sayfaların kendi sekmesi yok).
  */
-function findNavTarget(route: string): Element | null {
+function findNavTarget(route: string, target?: string): Element | null {
+  // Adım sayfa içinde bir bölge gösteriyorsa önce ona ışık tut.
+  if (target) {
+    const region = document.querySelector(`[data-tour="${target}"]`);
+    if (region) return region;
+  }
+
   const exact = document.querySelector(`[data-tour-nav="${route}"]`);
   if (exact) return exact;
 
@@ -56,7 +62,11 @@ function findNavTarget(route: string): Element | null {
 }
 
 /** Adımın hedef sekmesini ekranda bulup çevresine halka çizer. */
-function useSpotlight(route: string | undefined, enabled: boolean) {
+function useSpotlight(
+  route: string | undefined,
+  target: string | undefined,
+  enabled: boolean,
+) {
   const [rect, setRect] = React.useState<DOMRect | null>(null);
 
   React.useEffect(() => {
@@ -64,7 +74,7 @@ function useSpotlight(route: string | undefined, enabled: boolean) {
 
     let frame = 0;
     const measure = () =>
-      setRect(findNavTarget(route)?.getBoundingClientRect() ?? null);
+      setRect(findNavTarget(route, target)?.getBoundingClientRect() ?? null);
     // Gezinme sonrası hedef biraz geç boyanabiliyor; birkaç kare dene.
     // İlk ölçüm de kare içinde: efekt gövdesinde doğrudan setState yapmayalım.
     const tick = (n: number) => {
@@ -80,7 +90,7 @@ function useSpotlight(route: string | undefined, enabled: boolean) {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [route, enabled]);
+  }, [route, target, enabled]);
 
   // Kapalıyken eski ölçüm ekranda kalmasın — durum temizlemek yerine türet.
   return enabled && route ? rect : null;
@@ -243,7 +253,7 @@ export function ProductTour() {
     router.push(step.route);
   }, [step?.route, pathname, router]);
 
-  const spotlight = useSpotlight(step?.route, Boolean(step));
+  const spotlight = useSpotlight(step?.route, step?.target, Boolean(step));
 
   const next = React.useCallback(() => {
     if (!active || !tour) return;

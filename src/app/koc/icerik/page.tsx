@@ -47,7 +47,7 @@ export default async function KocIcerikPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div data-tour="icerik-baslik" className="flex flex-wrap items-end justify-between gap-4">
         <SectionHeading
           eyebrow="İçerik"
           title="İçerik kütüphanesi"

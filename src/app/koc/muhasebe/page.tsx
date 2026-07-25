@@ -103,7 +103,7 @@ export default async function MuhasebePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div data-tour="muhasebe-kutular" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           label="Bu ay gelir"
           value={formatKurus(dash.monthRevenueKurus)}

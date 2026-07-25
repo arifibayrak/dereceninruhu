@@ -71,6 +71,11 @@ function appSource(): string {
     .replace(/\s+/g, " ");
 }
 
+/** Kodda gerçekten basılan `data-tour="..."` çapaları. */
+const TOUR_ANCHORS = new Set(
+  [...appSource().matchAll(/data-tour="([a-z-]+)"/g)].map((m) => m[1]),
+);
+
 describe.each(TOURS)("tur: %s", (name, tour) => {
   it("adım id'leri benzersiz", () => {
     const ids = tour.steps.map((s) => s.id);
@@ -105,6 +110,18 @@ describe.each(TOURS)("tur: %s", (name, tour) => {
     expect(missing).toEqual([]);
   });
 
+  /**
+   * `target`, sayfadaki `data-tour="..."` öğesini gösterir. Kodda böyle bir
+   * çapa yoksa ışık sessizce gezinme sekmesine düşer — adım "yanlış yeri
+   * gösteriyor" olur ve kimse fark etmez.
+   */
+  it("her target kodda var olan bir data-tour çapasına karşılık geliyor", () => {
+    const unknown = tour.steps
+      .filter((s) => s.target && !TOUR_ANCHORS.has(s.target))
+      .map((s) => `${s.id} → ${s.target}`);
+    expect(unknown).toEqual([]);
+  });
+
   it("her rota gerçekten var olan bir sayfaya karşılık geliyor", () => {
     const unknown = tour.steps
       .filter((s) => s.route && !isRealRoute(s.route))
@@ -120,7 +137,9 @@ describe.each(TOURS)("tur: %s", (name, tour) => {
       if (s.route && s.route === prev) run++;
       else run = 1;
       prev = s.route ?? prev;
-      expect(run, `${s.id} — aynı ekranda çok fazla adım`).toBeLessThanOrEqual(5);
+      expect(run, `${s.id} — aynı ekranda çok fazla adım`).toBeLessThanOrEqual(
+        5,
+      );
     }
   });
 

@@ -22,7 +22,7 @@ export default async function CanliTranskriptPage() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <div data-tour="canli-alan" className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <SectionHeading
         eyebrow="Transkript"
         title="Canlı transkript"

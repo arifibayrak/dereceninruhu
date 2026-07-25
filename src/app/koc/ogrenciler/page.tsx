@@ -83,7 +83,7 @@ export default async function OgrencilerPage({
       </div>
 
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+        <div data-tour="ogrenciler-filtre" className="flex flex-wrap items-center gap-2">
           <FilterChip
             href={rosterHref({ koc: activeKoc })}
             active={activeFilter === null}

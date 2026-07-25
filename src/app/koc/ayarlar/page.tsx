@@ -42,7 +42,7 @@ export default async function AyarlarPage() {
         description="Hesap bilgilerin, herkese açık profilin ve (yöneticiyseniz) ekip yönetimi."
       />
 
-      <div className="grid max-w-3xl gap-4">
+      <div data-tour="ayarlar-kartlar" className="grid max-w-3xl gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Hesabın</CardTitle>
