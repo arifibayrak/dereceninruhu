@@ -56,7 +56,11 @@ export default async function OgrenciAnalizPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TopicDeficitList deficits={deficits} limit={10} />
+          <TopicDeficitList
+            data-tour="analiz-siralama"
+            deficits={deficits}
+            limit={10}
+          />
         </CardContent>
       </Card>
 

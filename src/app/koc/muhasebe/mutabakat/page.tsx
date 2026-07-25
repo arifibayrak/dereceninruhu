@@ -35,7 +35,7 @@ export default async function MutabakatPage() {
           eşleşmeyi onaylamadan hiçbir şey yazılmaz.
         </p>
       </div>
-      <ReconcileForm />
+      <ReconcileForm data-tour="mutabakat-form" />
     </div>
   );
 }

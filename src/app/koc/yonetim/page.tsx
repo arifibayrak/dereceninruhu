@@ -118,7 +118,7 @@ export default async function YonetimPage({
                     {dateFmt.format(s.createdAt)}
                   </TableCell>
                   <TableCell className="pr-4">
-                    <StaffRoleSelect
+                    <StaffRoleSelect data-tour="yonetim-ekip"
                       key={`${s.id}:${s.role}`}
                       userId={s.id}
                       role={s.role}

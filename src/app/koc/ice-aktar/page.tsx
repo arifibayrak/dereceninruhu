@@ -46,7 +46,7 @@ export default async function IceAktarPage() {
         </ul>
       </div>
 
-      <RosterImportForm />
+      <RosterImportForm data-tour="iceaktar-form" />
     </div>
   );
 }

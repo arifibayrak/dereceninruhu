@@ -51,6 +51,7 @@ export const yoneticiTuru: Tour = {
       nav: "Yönetim",
       title: "Ekip: koç ve yönetici hesapları",
       route: "/koc/yonetim",
+      target: "yonetim-ekip",
       purpose:
         "Ekibin tek ekranı: herkesin rolü, öğrenci sayısı ve katılım tarihi tabloda; yeni hesaplar alttaki iki karttan açılır.",
       highlights: [
@@ -99,6 +100,7 @@ export const yoneticiTuru: Tour = {
       nav: "Öğrenciler",
       title: "Öğrenciyi koça atama",
       route: "/koc/ogrenciler",
+      target: "ogrenciler-filtre",
       purpose:
         "Kadro tablosundaki Koç sütunu yalnız sana görünür; tekil atama satırdan, toplu atama seçim şeridinden yapılır.",
       highlights: [
@@ -143,6 +145,7 @@ export const yoneticiTuru: Tour = {
       nav: "Öğrenciler",
       title: "Kadro bakımı: birleştirme ve gizleme",
       route: "/koc/ogrenciler",
+      target: "ogrenciler-filtre",
       purpose:
         "Aynı ekranın bakım tarafı: yinelenen kayıtları birleştirir, ayrılan öğrencileri gizler ve gerekirse geri getirirsin. Buradaki birleştirme işlemi geri alınamaz.",
       highlights: [
@@ -195,6 +198,7 @@ export const yoneticiTuru: Tour = {
       nav: "İçe aktar",
       title: "Kadroyu CSV ile eşitleme",
       route: "/koc/ice-aktar",
+      target: "iceaktar-form",
       purpose:
         "Güncel öğrenci listesini yapıştır ya da yükle; telefon numarasına göre eşleştirilir ve kadro tek hamlede eşitlenir. Önizleme olmadan hiçbir şey yazılmaz.",
       highlights: [
@@ -243,6 +247,7 @@ export const yoneticiTuru: Tour = {
       nav: "Muhasebe",
       title: "Otomatik faturaları çalıştırma",
       route: "/koc/muhasebe",
+      target: "muhasebe-kutular",
       purpose:
         "Muhasebe ekranını koçlar da kullanır; üst şeritteki “Otomatik faturalar” ve “Ekstre mutabakatı” düğmeleri ise yalnız sana görünür. Vadesi gelen faturaları tek dokunuşla kesersin.",
       highlights: [
@@ -283,6 +288,7 @@ export const yoneticiTuru: Tour = {
       nav: "Muhasebe",
       title: "Banka ekstresi mutabakatı",
       route: "/koc/muhasebe/mutabakat",
+      target: "mutabakat-form",
       purpose:
         "Havaleyle ödeyenleri tek tek işlemek yerine ekstreyi topluca okutursun: gelen havaleler gönderen adına göre öğrencilerle eşleştirilir. Sen onaylamadan hiçbir ödeme yazılmaz.",
       highlights: [
@@ -331,6 +337,7 @@ export const yoneticiTuru: Tour = {
       nav: "Başvurular",
       title: "Koç başvurularını inceleme",
       route: "/koc/basvurular",
+      target: "basvurular-filtre",
       purpose:
         "Sitedeki /koc-basvuru formundan gelen başvurular burada birikir — koçlar bu sayfayı göremez. Durum akışıyla ilerletir, uygun adayı koça çevirirsin.",
       highlights: [
@@ -375,6 +382,7 @@ export const yoneticiTuru: Tour = {
       nav: "Site",
       title: "Dönem sekmesi: kontenjan ve kayıt durumu",
       route: "/koc/site",
+      target: "site-sekmeler",
       purpose:
         "İşletmenin tamamı için tek bir aktif dönem vardır ve sitedeki “sınırlı kontenjan” konumlandırmasının tek kaynağı burasıdır. Kaydettiğin anda yayına yansır — ayrı yayımlama adımı yoktur.",
       highlights: [
@@ -419,6 +427,7 @@ export const yoneticiTuru: Tour = {
       nav: "Site",
       title: "Site içeriği: iletişim, yorumlar, paketler, kaynaklar, SSS",
       route: "/koc/site",
+      target: "site-sekmeler",
       purpose:
         "Aynı ekranın diğer sekmeleri sitenin tüm içeriğini besler: yüzen WhatsApp düğmesi ve sosyal ikonlardan fiyat paketlerine ve SSS'ye kadar. Her kayıt anında yayına yansır.",
       highlights: [

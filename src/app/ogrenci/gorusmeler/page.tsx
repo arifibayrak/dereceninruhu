@@ -89,7 +89,7 @@ export default async function OgrenciGorusmelerPage() {
   const planned = enrollment.callsScheduledAt != null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div data-tour="gorusmeler-alan" className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h1 className="font-heading text-xl font-semibold">Görüşmeler</h1>
         <p className="text-sm text-muted-foreground">

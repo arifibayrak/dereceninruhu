@@ -66,7 +66,9 @@ export default async function OgrenciDenemeAnalizPage({
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {mock.sectionName} · {dateFmt.format(mock.takenOn)}
             {mock.analysisDone ? (
-              <Badge className="bg-success/10 text-success">Analiz yapıldı</Badge>
+              <Badge className="bg-success/10 text-success">
+                Analiz yapıldı
+              </Badge>
             ) : (
               <Badge className="bg-warning/10 text-warning">
                 Analiz bekliyor

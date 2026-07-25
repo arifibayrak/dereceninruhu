@@ -21,11 +21,7 @@ import { getCurrentUser, type Role } from "@/lib/session";
 import { formatTrDate, trDayKey, trWeekday } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
 import { formatMinutes } from "@/lib/study";
-import {
-  buildStudentInsights,
-  computeStreak,
-  netTrend,
-} from "@/lib/insights";
+import { buildStudentInsights, computeStreak, netTrend } from "@/lib/insights";
 import { InsightList } from "@/components/app/insight-list";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { TourLauncherCard } from "@/components/rehber/tour-launcher";
@@ -150,7 +146,7 @@ export default async function OgrenciBugunPage() {
           </Link>
         )}
 
-      <div className="grid grid-cols-2 gap-2">
+      <div data-tour="bugun-kutular" className="grid grid-cols-2 gap-2">
         <StatTile label="Seri" value={`${formatInt(streak)}`} hint="gün" />
         <StatTile
           label="Bu hafta"
@@ -188,8 +184,8 @@ export default async function OgrenciBugunPage() {
             </span>
             <span className="text-xs text-muted-foreground">
               {nextSession
-                ? nextSession.studentVisibleNote ??
-                  "Koçunla planlı görüşmen var — hazırlıklı gel."
+                ? (nextSession.studentVisibleNote ??
+                  "Koçunla planlı görüşmen var — hazırlıklı gel.")
                 : enrollment.coachCalBookingUrl
                   ? "Planlanmış görüşme yok — takvimden bir saat seç."
                   : "Planlanmış görüşme yok — koçun seninle iletişime geçecek."}
@@ -254,7 +250,7 @@ export default async function OgrenciBugunPage() {
         description="Ekranların üstünde kısa bir tur — hangi sayfa ne işe yarıyor."
       />
 
-      <div className="flex flex-col gap-3">
+      <div data-tour="bugun-soru" className="flex flex-col gap-3">
         <h2 className="font-heading text-base font-semibold">
           Bugün kaç soru çözdün?
         </h2>

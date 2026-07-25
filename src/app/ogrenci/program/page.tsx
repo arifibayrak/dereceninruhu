@@ -24,9 +24,7 @@ import {
 } from "@/lib/dates";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { type ChecklistDay } from "@/components/app/plan-checklist";
-import {
-  StudentProgram,
-} from "@/components/app/student-program";
+import { StudentProgram } from "@/components/app/student-program";
 import { type GridTask } from "@/components/app/program-grid";
 import { Button } from "@/components/ui/button";
 
@@ -157,6 +155,7 @@ export default async function OgrenciProgramPage({
       </div>
 
       <StudentProgram
+        data-tour="program-alan"
         enrollmentId={enrollment.id}
         weekKey={trDayKey(monday)}
         status={status}

@@ -67,12 +67,13 @@ export default async function OgrenciKaynaklarPage() {
       <div className="flex flex-col gap-1">
         <h1 className="font-heading text-title">Kaynaklar</h1>
         <p className="text-sm text-muted-foreground">
-          Kaynaklarını ekle, her kaynaktan kaç soru çözdüğünü gir, biten konuları
-          işaretle.
+          Kaynaklarını ekle, her kaynaktan kaç soru çözdüğünü gir, biten
+          konuları işaretle.
         </p>
       </div>
 
       <ResourceManager
+        data-tour="kaynaklar-yonetim"
         enrollmentId={enrollment.id}
         resources={resourceStats}
         subjects={subjectOptions}

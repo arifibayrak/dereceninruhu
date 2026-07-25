@@ -65,10 +65,7 @@ function InvoiceStatusBadge({
   return <Badge variant="secondary">{label}</Badge>;
 }
 
-const NOTICE_BADGE: Record<
-  PaymentNoticeStatus,
-  { className: string }
-> = {
+const NOTICE_BADGE: Record<PaymentNoticeStatus, { className: string }> = {
   bekliyor: { className: "border-gold/50 text-gold" },
   onaylandı: { className: "border-success/40 text-success" },
   reddedildi: { className: "text-muted-foreground" },
@@ -110,7 +107,7 @@ export default async function OgrenciOdemelerPage() {
   const { activePlan } = finance;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div data-tour="odemeler-bakiye" className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-xl font-semibold">Ödemelerim</h1>

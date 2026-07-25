@@ -32,14 +32,20 @@ export default async function DenemelerPage() {
 
   return (
     <>
-      <div className="flex items-end justify-between gap-3">
+      <div
+        data-tour="denemeler-liste"
+        className="flex items-end justify-between gap-3"
+      >
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-title">Denemeler</h1>
           <p className="text-sm text-muted-foreground">
             {formatInt(mocks.length)} deneme kayıtlı
           </p>
         </div>
-        <Button render={<Link href="/ogrenci/denemeler/yeni" />} className="h-11">
+        <Button
+          render={<Link href="/ogrenci/denemeler/yeni" />}
+          className="h-11"
+        >
           <PlusIcon data-icon="inline-start" />
           Deneme ekle
         </Button>

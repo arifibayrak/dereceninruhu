@@ -36,7 +36,7 @@ export default async function OgrenciIcerikPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
+      <div data-tour="icerik-liste" className="flex flex-col gap-1">
         <h1 className="font-heading text-title">İçerik</h1>
         <p className="text-sm text-muted-foreground">
           {formatInt(items.length)} içerik · {formatInt(viewedCount)} izlendi
@@ -60,7 +60,8 @@ export default async function OgrenciIcerikPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((item) => {
-            const ytId = item.type === "video" ? youtubeVideoId(item.url) : null;
+            const ytId =
+              item.type === "video" ? youtubeVideoId(item.url) : null;
             return (
               <li
                 key={item.id}
@@ -85,7 +86,10 @@ export default async function OgrenciIcerikPage() {
                 <div className="flex flex-col gap-2 p-3.5">
                   <span className="text-sm font-medium">{item.title}</span>
                   <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                    <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                    <Badge
+                      variant="secondary"
+                      className="h-4 px-1.5 text-[10px]"
+                    >
                       {CONTENT_TYPE_LABELS[item.type]}
                     </Badge>
                     {item.isAssigned && (

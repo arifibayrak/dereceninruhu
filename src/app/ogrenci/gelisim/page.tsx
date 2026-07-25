@@ -106,7 +106,7 @@ export default async function GelisimPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div data-tour="gelisim-kutular" className="grid grid-cols-2 gap-2">
         <StatTile
           label="Son net"
           value={trend.latest !== null ? formatNet(trend.latest) : "—"}
@@ -145,7 +145,9 @@ export default async function GelisimPage() {
           <CrosshairIcon className="size-4 text-primary" />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="text-sm font-medium">Eksik konular ve kaynak takibi</span>
+          <span className="text-sm font-medium">
+            Eksik konular ve kaynak takibi
+          </span>
           <span className="truncate text-xs text-muted-foreground">
             Deneme analizlerinden toplam eksik sıralaman + ısı haritan
           </span>
@@ -223,8 +225,8 @@ export default async function GelisimPage() {
             />
           ) : (
             <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
-              Kronometreyle ya da manuel çalışma kaydettikçe süre analizin burada
-              görünecek.
+              Kronometreyle ya da manuel çalışma kaydettikçe süre analizin
+              burada görünecek.
             </p>
           )}
           {studyBySubject.length > 0 && (

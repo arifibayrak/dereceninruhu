@@ -22,10 +22,7 @@ import { getCurrentUser, type Role } from "@/lib/session";
 import { formatMinutes, STUDY_SOURCE_LABELS } from "@/lib/study";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { StudySubjectBars } from "@/components/app/study-subject-bars";
-import {
-  StudyLogger,
-  type StudySubject,
-} from "@/components/app/study-logger";
+import { StudyLogger, type StudySubject } from "@/components/app/study-logger";
 import { StudyLogDelete } from "@/components/app/study-log-delete";
 import { WeeklyStudyChart } from "@/components/charts/weekly-study-chart";
 import { StatTile } from "@/components/brand/stat-tile";
@@ -98,7 +95,11 @@ export default async function KronometrePage() {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <StatTile label="Bugün" value={formatMinutes(dayTotal)} hint="çalışma" />
+        <StatTile
+          label="Bugün"
+          value={formatMinutes(dayTotal)}
+          hint="çalışma"
+        />
         <StatTile
           label="Bu hafta"
           value={formatMinutes(weekTotal)}
@@ -109,10 +110,15 @@ export default async function KronometrePage() {
           value={formatMinutes(totalMinutes)}
           hint="tüm zamanlar"
         />
-        <StatTile label="Seri" value={formatInt(studyStreak)} hint="çalışma günü" />
+        <StatTile
+          label="Seri"
+          value={formatInt(studyStreak)}
+          hint="çalışma günü"
+        />
       </div>
 
       <StudyLogger
+        data-tour="sure-kayit"
         enrollmentId={enrollment.id}
         subjects={subjects}
         todayKey={todayKey}

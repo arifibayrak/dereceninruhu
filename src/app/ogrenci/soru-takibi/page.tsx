@@ -17,7 +17,10 @@ import {
   weekDays,
 } from "@/lib/dates";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
-import { WeekGridForm, type GridSection } from "@/components/app/week-grid-form";
+import {
+  WeekGridForm,
+  type GridSection,
+} from "@/components/app/week-grid-form";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Soru Takibi" };
@@ -114,6 +117,7 @@ export default async function SoruTakibiPage({
       </div>
 
       <WeekGridForm
+        data-tour="sorular-izgara"
         enrollmentId={enrollment.id}
         dayKeys={dayKeys}
         todayKey={isCurrentWeek ? trDayKey(now) : null}

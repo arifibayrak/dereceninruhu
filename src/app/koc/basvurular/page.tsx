@@ -96,7 +96,7 @@ export default async function BasvurularPage({
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div data-tour="basvurular-filtre" className="flex flex-wrap items-end justify-between gap-4">
         <SectionHeading
           eyebrow="Yönetim"
           title="Koç başvuruları"

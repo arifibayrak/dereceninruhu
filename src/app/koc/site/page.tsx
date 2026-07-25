@@ -95,7 +95,7 @@ export default async function IcerikPage() {
         description="Ana sayfa, fiyatlar, başarılar ve SSS sayfalarını besleyen içerikler — değişiklikler anında yayına yansır."
       />
 
-      <Tabs defaultValue="yorumlar" className="gap-6">
+      <Tabs data-tour="site-sekmeler" defaultValue="yorumlar" className="gap-6">
         <TabsList className="w-full max-w-full justify-start overflow-x-auto sm:w-fit">
           <TabsTrigger value="donem">Dönem</TabsTrigger>
           <TabsTrigger value="iletisim">İletişim &amp; Sosyal</TabsTrigger>
