@@ -97,15 +97,15 @@ export const teamCoachSeeds: TeamCoachSeed[] = [
     displayName: "Ömer Burkay Kaplıca",
     title: "Eğitim Koçu",
     location: "İstanbul",
-    headline: "Sözelde Türkiye 83.'sü. Boğaziçi Hukuk'ta okuyor.",
+    headline: "Sözelde Türkiye 83.'sü. Boğaziçi Tarih'te okuyor.",
     bio:
-      "Ben Ömer Burkay Kaplıca. Boğaziçi Üniversitesi Hukuk Fakültesi 2. sınıf öğrencisiyim. " +
+      "Ben Ömer Burkay Kaplıca. Boğaziçi Üniversitesi Tarih Bölümü 2. sınıf öğrencisiyim. " +
       "YKS Sözel'de Türkiye 83.'sü oldum. Sözel derslerin ezberle değil, doğru okuma ve " +
       "düzenli tekrarla kazanıldığını sınav sürecimde öğrendim. Öğrencilerimle de bu iki " +
       "şeyin üstünde duruyorum: anladığını sanmakla anlamak arasındaki farkı görmek ve " +
       "tekrarı takvime bağlamak.",
     credentials: [
-      "Boğaziçi Üniversitesi Hukuk Fakültesi — 2. sınıf",
+      "Boğaziçi Üniversitesi Tarih Bölümü — 2. sınıf",
       "YKS Sözel Türkiye 83.'sü",
       "YKS · KPSS koçluğu",
     ],

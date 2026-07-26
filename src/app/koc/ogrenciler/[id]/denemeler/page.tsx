@@ -7,6 +7,7 @@ import { getMockList } from "@/db/queries/tracking";
 import { combinedMockLabel } from "@/lib/exam";
 import { formatInt, formatNet } from "@/lib/format";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
+import { MockActions } from "@/components/app/mock-actions";
 import { MockCreateDialog } from "@/components/app/mock-create-dialog";
 import type { MockSection } from "@/components/app/mock-form";
 import { Badge } from "@/components/ui/badge";
@@ -125,6 +126,14 @@ export default async function DenemelerPage({
                           Analiz
                         </Button>
                         <AnalysisToggle mockExamId={m.id} done={m.analysisDone} />
+                        <MockActions
+                          mockExamId={m.id}
+                          label={
+                            m.name?.trim() ||
+                            m.publisher?.trim() ||
+                            m.sectionName
+                          }
+                        />
                       </span>
                     </TableCell>
                   </TableRow>

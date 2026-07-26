@@ -14,6 +14,7 @@ import { addDays, mondayOf, trDayKey, weekRange } from "@/lib/dates";
 import { combinedMockLabel } from "@/lib/exam";
 import type { StudentInsightInput } from "@/lib/insights";
 import type { SessionViewer } from "@/lib/session";
+import { getSectionsForEnrollment } from "@/db/queries/enrollment";
 import { getStudyWeekTotal } from "@/db/queries/study";
 
 /* -------------------------------------------------------------------------- */
@@ -346,6 +347,113 @@ function mockSectionLabels(row: {
   return combined
     ? { sectionName: combined, sectionCode: row.templateCode }
     : { sectionName: row.sectionName, sectionCode: row.sectionCode };
+}
+
+/**
+ * Düzenleme formunun beklediği şekil. Sonuçlar veritabanında zaten PUANLANAN
+ * derse toplanmış tutulur; form da onları ebeveyn satırında gösterir (alt ders
+ * kırılımı girişte toplandığı için geri getirilemez — bu bilinçli).
+ */
+export type MockEditData = {
+  mockExamId: number;
+  enrollmentId: number;
+  examSectionId: number;
+  combined: boolean;
+  scope: "full" | "branch";
+  publisher: string;
+  name: string;
+  /** `YYYY-MM-DD` (TRT) — `<input type="date">` için. */
+  takenOn: string;
+  results: {
+    subjectId: number;
+    correctCount: number;
+    wrongCount: number;
+    blankCount: number;
+  }[];
+};
+
+/**
+ * Düzenleme formunun ÇALIŞMASI için gereken her şey tek pakette: kaydın
+ * kendisi + o kaydın sınavına ait bölüm/ders ızgarası. Böylece düğme hangi
+ * listede olursa olsun (öğrenci listesi, kokpit, haftalık pano) aynı bileşen
+ * yeter — sayfaların ders listesini peşin taşımasına gerek kalmaz.
+ */
+export type MockEditPayload = {
+  mock: MockEditData;
+  sections: {
+    id: number;
+    name: string;
+    wrongPenaltyDivisor: number;
+    subjects: {
+      id: number;
+      name: string;
+      isScored: boolean;
+      parentSubjectId: number | null;
+      officialQuestionCount: number | null;
+    }[];
+  }[];
+  /** Şablon tek oturumda çözülüyorsa birleşik seçeneğin adı, yoksa null. */
+  combinedLabel: string | null;
+};
+
+/** Tek denemenin düzenlenebilir alanları + D/Y/B satırları + ders ızgarası. */
+export async function getMockForEdit(
+  mockExamId: number,
+): Promise<MockEditPayload | null> {
+  const db = getDb();
+  const exam = await db.query.mockExams.findFirst({
+    where: eq(mockExams.id, mockExamId),
+  });
+  if (!exam) return null;
+
+  const enrollment = await db.query.enrollments.findFirst({
+    where: eq(enrollments.id, exam.enrollmentId),
+    with: { examTemplate: true, track: true },
+  });
+  if (!enrollment) return null;
+
+  const [results, sections] = await Promise.all([
+    db
+      .select({
+        subjectId: mockExamResults.subjectId,
+        correctCount: mockExamResults.correctCount,
+        wrongCount: mockExamResults.wrongCount,
+        blankCount: mockExamResults.blankCount,
+      })
+      .from(mockExamResults)
+      .where(eq(mockExamResults.mockExamId, mockExamId)),
+    getSectionsForEnrollment(
+      enrollment.examTemplateId,
+      enrollment.track?.code ?? null,
+    ),
+  ]);
+
+  return {
+    mock: {
+      mockExamId: exam.id,
+      enrollmentId: exam.enrollmentId,
+      examSectionId: exam.examSectionId,
+      combined: exam.isCombined,
+      scope: exam.scope,
+      publisher: exam.publisher ?? "",
+      name: exam.name ?? "",
+      takenOn: trDayKey(exam.takenOn),
+      results,
+    },
+    sections: sections.map((s) => ({
+      id: s.id,
+      name: s.name,
+      wrongPenaltyDivisor: s.wrongPenaltyDivisor,
+      subjects: s.loggable.map((sub) => ({
+        id: sub.id,
+        name: sub.name,
+        isScored: sub.isScored,
+        parentSubjectId: sub.parentSubjectId,
+        officialQuestionCount: sub.officialQuestionCount,
+      })),
+    })),
+    combinedLabel: combinedMockLabel(enrollment.examTemplate.code),
+  };
 }
 
 export type NetSeriesPoint = {

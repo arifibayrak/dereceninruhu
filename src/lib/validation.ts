@@ -655,3 +655,12 @@ export const createMockSchema = z.object({
     .min(1),
 });
 export type CreateMockInput = z.infer<typeof createMockSchema>;
+
+/**
+ * Deneme düzenleme — girişle aynı alanlar, üstüne düzenlenen kaydın id'si.
+ * Sonuç satırları toptan değiştirilir; netler yeniden hesaplanır.
+ */
+export const updateMockSchema = createMockSchema.extend({
+  mockExamId: z.coerce.number().int().positive(),
+});
+export type UpdateMockInput = z.infer<typeof updateMockSchema>;

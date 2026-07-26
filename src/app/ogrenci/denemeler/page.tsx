@@ -7,6 +7,7 @@ import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { getMockList } from "@/db/queries/tracking";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { formatInt, formatNet } from "@/lib/format";
+import { MockActions } from "@/components/app/mock-actions";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,7 +76,7 @@ export default async function DenemelerPage() {
           {mocks.map((m) => (
             <li
               key={m.id}
-              className="flex items-center gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10"
+              className="flex items-center gap-2 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10"
             >
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate text-sm font-medium">
@@ -113,6 +114,10 @@ export default async function DenemelerPage() {
                 </span>
                 <span className="text-[10px] text-muted-foreground">net</span>
               </Link>
+              <MockActions
+                mockExamId={m.id}
+                label={m.name?.trim() || m.publisher?.trim() || m.sectionName}
+              />
             </li>
           ))}
         </ul>

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { TargetIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { createMock } from "@/actions/tracking";
+import { createMock, updateMock } from "@/actions/tracking";
+import type { MockEditData } from "@/db/queries/tracking";
 import { trDayKey } from "@/lib/dates";
 import { formatNet } from "@/lib/format";
 import {
@@ -55,6 +56,11 @@ type Props = {
   redirectTo?: string;
   /** Koç diyaloğunda kapatma vb. için (istemci-istemci callback). */
   onSuccess?: () => void;
+  /**
+   * Doluysa form DÜZENLEME modundadır: alanlar bu kayıttan doldurulur ve
+   * kaydetme `updateMock`'a gider (yeni satır açmaz).
+   */
+  initial?: MockEditData;
 };
 
 const SCOPES = [
@@ -65,25 +71,49 @@ const SCOPES = [
 const COMBINED = "combined";
 
 /** Deneme girişi — D/Y/B gir, net canlı hesaplanır (D − Y ÷ bölen). */
+/** Kayıtlı sonuç satırları → ızgaranın metin durumuna. */
+function countsOf(initial: MockEditData | undefined): Record<number, Counts> {
+  if (!initial) return {};
+  const out: Record<number, Counts> = {};
+  for (const r of initial.results) {
+    out[r.subjectId] = {
+      d: String(r.correctCount),
+      y: String(r.wrongCount),
+      b: String(r.blankCount),
+    };
+  }
+  return out;
+}
+
 export function MockForm({
   enrollmentId,
   sections,
   combinedLabel,
   redirectTo,
   onSuccess,
+  initial,
 }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   /** Birleşik giriş mümkünse varsayılan odur — asıl kullanım tek oturumdur. */
   const canCombine = Boolean(combinedLabel) && sections.length > 1;
-  const [selection, setSelection] = useState<string>(() =>
-    canCombine ? COMBINED : String(sections[0]?.id ?? 0),
+  const [selection, setSelection] = useState<string>(() => {
+    if (initial) {
+      return initial.combined && canCombine
+        ? COMBINED
+        : String(initial.examSectionId);
+    }
+    return canCombine ? COMBINED : String(sections[0]?.id ?? 0);
+  });
+  const [scope, setScope] = useState<"full" | "branch">(initial?.scope ?? "full");
+  const [takenOn, setTakenOn] = useState(
+    () => initial?.takenOn ?? trDayKey(new Date()),
   );
-  const [scope, setScope] = useState<"full" | "branch">("full");
-  const [takenOn, setTakenOn] = useState(() => trDayKey(new Date()));
-  const [publisher, setPublisher] = useState("");
-  const [name, setName] = useState("");
-  const [counts, setCounts] = useState<Record<number, Counts>>({});
+  const [publisher, setPublisher] = useState(initial?.publisher ?? "");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [counts, setCounts] = useState<Record<number, Counts>>(() =>
+    countsOf(initial),
+  );
 
   const isCombined = canCombine && selection === COMBINED;
   /** Girişe dahil bölümler — birleşikte hepsi, değilse yalnız seçilen. */
@@ -172,7 +202,7 @@ export function MockForm({
       return;
     }
     setSaving(true);
-    const res = await createMock({
+    const payload = {
       enrollmentId,
       examSectionId: section.id,
       combined: isCombined,
@@ -181,18 +211,24 @@ export function MockForm({
       name,
       takenOn,
       results,
-    });
+    };
+    const res = initial
+      ? await updateMock({ ...payload, mockExamId: initial.mockExamId })
+      : await createMock(payload);
     setSaving(false);
     if (!res.ok) {
       toast.error(res.error);
       return;
     }
-    toast.success("Deneme kaydedildi", {
+    toast.success(initial ? "Deneme güncellendi" : "Deneme kaydedildi", {
       description: `Toplam ${formatNet(totalNet)} net`,
     });
-    setCounts({});
-    setPublisher("");
-    setName("");
+    // Düzenlemede alanlar kayıtlı haliyle kalmalı — yalnız yeni girişte temizle.
+    if (!initial) {
+      setCounts({});
+      setPublisher("");
+      setName("");
+    }
     onSuccess?.();
     if (redirectTo) {
       router.push(redirectTo);
@@ -376,7 +412,11 @@ export function MockForm({
 
       <Button size="lg" onClick={submit} disabled={saving || !hasAny} className="self-end">
         <TargetIcon data-icon="inline-start" />
-        {saving ? "Kaydediliyor…" : "Denemeyi kaydet"}
+        {saving
+          ? "Kaydediliyor…"
+          : initial
+            ? "Değişiklikleri kaydet"
+            : "Denemeyi kaydet"}
       </Button>
     </div>
   );

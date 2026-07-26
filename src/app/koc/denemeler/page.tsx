@@ -17,6 +17,7 @@ import {
 import { formatNet } from "@/lib/format";
 import { getViewer } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { MockActions } from "@/components/app/mock-actions";
 import { StatTile } from "@/components/brand/stat-tile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -202,16 +203,24 @@ export default async function KocDenemelerPage({
                       {dateFmt.format(r.takenOn)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {r.analysisDone ? (
-                        <Badge
-                          variant="outline"
-                          className="border-success/40 text-success"
-                        >
-                          Edildi
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Bekliyor</Badge>
-                      )}
+                      <span className="inline-flex items-center gap-1.5">
+                        {r.analysisDone ? (
+                          <Badge
+                            variant="outline"
+                            className="border-success/40 text-success"
+                          >
+                            Edildi
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Bekliyor</Badge>
+                        )}
+                        <MockActions
+                          mockExamId={r.mockId}
+                          label={`${r.studentName} · ${
+                            r.name?.trim() || r.publisher?.trim() || "Deneme"
+                          }`}
+                        />
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}

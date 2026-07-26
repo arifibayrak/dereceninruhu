@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   ImageIcon,
@@ -12,7 +18,13 @@ import {
 import { toast } from "sonner";
 
 import { createStudyLog, uploadStudyProof } from "@/actions/study";
-import { formatStopwatch } from "@/lib/study";
+import {
+  elapsedOf,
+  formatStopwatch,
+  MAX_TIMER_MIN,
+  parseTimerState,
+  type TimerState,
+} from "@/lib/study";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -33,6 +45,87 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export type StudySubject = { id: number; name: string; sectionName: string };
 
 const GENEL = "genel";
+
+/* --------------------------- Kronometre kalıcılığı -------------------------- */
+
+/**
+ * Kronometrenin GERÇEK durumu cihazda (localStorage) durur, React state'inde
+ * değil. Telefonda uygulamadan çıkınca sayfa bellekten atılabiliyor; dönünce
+ * React state'i sıfır olduğu için sayaç durmuş görünüyordu. Geçen süre artık
+ * `startedAt` duvar saatinden türetilir (bkz. `elapsedOf`) — sekme uyusa,
+ * sayfa atılsa da doğru.
+ */
+type TimerStore = {
+  subscribe: (onChange: () => void) => () => void;
+  getSnapshot: () => TimerState | null;
+  getServerSnapshot: () => null;
+  set: (next: TimerState | null) => void;
+};
+
+/**
+ * Kayıt başına tek depo. `useSyncExternalStore` ile okunur: sunucuda null
+ * döner, hydration sonrası cihazdaki gerçek duruma geçer — böylece ne
+ * uyuşmazlık ne de efekt içinde setState olur (bkz. rehber/progress-context).
+ */
+const timerStores = new Map<string, TimerStore>();
+
+function getTimerStore(enrollmentId: number): TimerStore {
+  const key = `dr:kronometre:v1:${enrollmentId}`;
+  const existing = timerStores.get(key);
+  if (existing) return existing;
+
+  const listeners = new Set<() => void>();
+  // getSnapshot referans olarak kararlı olmalı: ham metin değişmediyse aynı
+  // nesneyi döndürürüz, yoksa React sonsuz döngüye girer.
+  let cachedRaw: string | null | undefined;
+  let cached: TimerState | null = null;
+
+  const store: TimerStore = {
+    subscribe(onChange) {
+      listeners.add(onChange);
+      const onStorage = (e: StorageEvent) => {
+        // Başka sekmede değiştiyse önbelleği geçersiz kıl.
+        if (e.key === key) {
+          cachedRaw = undefined;
+          onChange();
+        }
+      };
+      window.addEventListener("storage", onStorage);
+      return () => {
+        listeners.delete(onChange);
+        window.removeEventListener("storage", onStorage);
+      };
+    },
+    getSnapshot() {
+      let raw: string | null = null;
+      try {
+        raw = window.localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+      if (raw !== cachedRaw) {
+        cachedRaw = raw;
+        cached = parseTimerState(raw, GENEL);
+      }
+      return cached;
+    },
+    getServerSnapshot: () => null,
+    set(next) {
+      const raw = next === null ? null : JSON.stringify(next);
+      try {
+        if (raw === null) window.localStorage.removeItem(key);
+        else window.localStorage.setItem(key, raw);
+      } catch {
+        // Kota dolu ya da gizli mod — sayaç oturum içinde yine de çalışır.
+      }
+      cachedRaw = raw;
+      cached = next;
+      listeners.forEach((l) => l());
+    },
+  };
+  timerStores.set(key, store);
+  return store;
+}
 
 function subjectItems(subjects: StudySubject[]) {
   return [
@@ -122,44 +215,60 @@ function TimerPane({
 }) {
   const router = useRouter();
   const items = subjectItems(subjects);
-  const [subject, setSubject] = useState<string>(GENEL);
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const [running, setRunning] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Süre ölçümü ref'te tutulur; render Date.now() çağırmaz (saf kalır).
-  const accumulatedRef = useRef(0);
-  const startMsRef = useRef(0);
+
+  const store = useMemo(() => getTimerStore(enrollmentId), [enrollmentId]);
+  const timer = useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot,
+    store.getServerSnapshot,
+  );
+  const running = timer?.startedAt != null;
+  const subject = timer?.subject ?? GENEL;
+
+  /*
+   * Ekrandaki süre `timer` + `now`dan TÜRETİLİR; ayrı bir sayaç state'i yok.
+   * `now` yalnız çalışırken ilerler (duraklatıldığında elapsedOf zaten `now`u
+   * kullanmaz), böylece boşta render tetiklenmez.
+   */
+  const [now, setNow] = useState(() => Date.now());
+  const elapsedSec = elapsedOf(timer, now);
 
   useEffect(() => {
     if (!running) return;
-    const tick = () =>
-      setElapsedSec(
-        accumulatedRef.current + (Date.now() - startMsRef.current) / 1000,
-      );
+    const tick = () => setNow(Date.now());
     const t = setInterval(tick, 250);
-    return () => clearInterval(t);
+    // Arka planda interval kısılır/durur; öne dönünce hemen gerçek değeri yaz.
+    document.addEventListener("visibilitychange", tick);
+    window.addEventListener("pageshow", tick);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", tick);
+      window.removeEventListener("pageshow", tick);
+    };
   }, [running]);
 
   const start = () => {
-    startMsRef.current = Date.now();
-    setRunning(true);
+    const startedAt = Date.now();
+    setNow(startedAt);
+    store.set({ subject, accumulated: timer?.accumulated ?? 0, startedAt });
   };
-  const pause = () => {
-    accumulatedRef.current += (Date.now() - startMsRef.current) / 1000;
-    setRunning(false);
-    setElapsedSec(accumulatedRef.current);
-  };
-  const reset = () => {
-    accumulatedRef.current = 0;
-    setRunning(false);
-    setElapsedSec(0);
-  };
+  const pause = () =>
+    store.set({ subject, accumulated: elapsedOf(timer, Date.now()), startedAt: null });
+  /** Süreyi sıfırlar ama seçili dersi korur (cihazda da kalır). */
+  const reset = () => store.set({ subject, accumulated: 0, startedAt: null });
+  const pickSubject = (value: string) =>
+    store.set({
+      subject: value,
+      accumulated: timer?.accumulated ?? 0,
+      startedAt: timer?.startedAt ?? null,
+    });
 
   const finish = async () => {
-    const total =
-      accumulatedRef.current +
-      (running ? (Date.now() - startMsRef.current) / 1000 : 0);
-    const minutes = Math.round(total / 60);
+    const minutes = Math.min(
+      MAX_TIMER_MIN,
+      Math.round(elapsedOf(timer, Date.now()) / 60),
+    );
     if (minutes < 1) {
       toast.error("En az 1 dakika çalışmalısın.");
       return;
@@ -190,7 +299,7 @@ function TimerPane({
           id="timer-ders"
           items={items}
           value={subject}
-          onChange={setSubject}
+          onChange={pickSubject}
         />
       </Field>
 
@@ -229,7 +338,8 @@ function TimerPane({
         </Button>
       </div>
       <p className="text-center text-xs text-muted-foreground">
-        Kaydetmek için en az 1 dakika. Koçun da toplam süreni görür.
+        Uygulamadan çıksan da sayaç durmaz — döndüğünde kaldığın yerden devam
+        eder. Kaydetmek için en az 1 dakika; koçun da toplam süreni görür.
       </p>
     </div>
   );
