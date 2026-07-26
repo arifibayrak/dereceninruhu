@@ -15,6 +15,7 @@ import {
   parseSubjectIds,
   type DayLayoutEntry,
 } from "@/lib/plan-layout";
+import { resourceNamesOf, taskResourceIds } from "@/lib/plan-resources";
 import type { SessionViewer } from "@/lib/session";
 
 /* -------------------------------------------------------------------------- */
@@ -30,8 +31,9 @@ export type PlanTaskView = {
   slot: number;
   subjectId: number | null;
   subjectName: string | null;
-  resourceId: number | null;
-  resourceName: string | null;
+  /** Göreve bağlı kaynaklar — koçun seçim sırasında (bkz. @/lib/plan-resources). */
+  resourceIds: number[];
+  resourceNames: string[];
   description: string | null;
   targetQuestions: number | null;
   isDone: boolean;
@@ -109,11 +111,13 @@ export async function getWeeklyPlan(
           asc(planTasks.slot),
           asc(planTasks.id),
         ],
-        with: { subject: true, resource: true },
+        with: { subject: true },
       },
     },
   });
   if (!plan) return null;
+  // Kaynak adları tek seferde: görev başına join yok, kaydın kaynak listesi zaten kısa.
+  const resourceNames = await resourceNameMap(db, plan.enrollmentId);
   return {
     id: plan.id,
     enrollmentId: plan.enrollmentId,
@@ -123,19 +127,34 @@ export async function getWeeklyPlan(
     status: plan.status,
     proposedByStudent: plan.proposedByStudent,
     studentSubmittedAt: plan.studentSubmittedAt,
-    tasks: plan.tasks.map((t) => ({
-      id: t.id,
-      day: t.day,
-      slot: t.slot,
-      subjectId: t.subjectId,
-      subjectName: t.subject?.name ?? null,
-      resourceId: t.resourceId,
-      resourceName: t.resource?.name ?? null,
-      description: t.description,
-      targetQuestions: t.targetQuestions,
-      isDone: t.isDone,
-    })),
+    tasks: plan.tasks.map((t) => {
+      const resourceIds = taskResourceIds(t);
+      return {
+        id: t.id,
+        day: t.day,
+        slot: t.slot,
+        subjectId: t.subjectId,
+        subjectName: t.subject?.name ?? null,
+        resourceIds,
+        resourceNames: resourceNamesOf(resourceIds, resourceNames),
+        description: t.description,
+        targetQuestions: t.targetQuestions,
+        isDone: t.isDone,
+      };
+    }),
   };
+}
+
+/** Kaydın kaynak adları (id → ad) — görev kaynaklarını isimlendirmek için. */
+async function resourceNameMap(
+  db: DB,
+  enrollmentId: number,
+): Promise<Map<number, string>> {
+  const rows = await db
+    .select({ id: resources.id, name: resources.name })
+    .from(resources)
+    .where(eq(resources.enrollmentId, enrollmentId));
+  return new Map(rows.map((r) => [r.id, r.name]));
 }
 
 /**
@@ -247,7 +266,7 @@ export async function getPlansAwaitingPublish(
 export type ReusableTask = {
   day: number | null;
   subjectId: number | null;
-  resourceId: number | null;
+  resourceIds: number[];
   description: string | null;
   targetQuestions: number | null;
 };
@@ -282,7 +301,7 @@ export async function getPlanForReuse(
   return plan.tasks.map((t) => ({
     day: t.day,
     subjectId: t.subjectId,
-    resourceId: t.resourceId,
+    resourceIds: taskResourceIds(t),
     description: t.description,
     targetQuestions: t.targetQuestions,
   }));

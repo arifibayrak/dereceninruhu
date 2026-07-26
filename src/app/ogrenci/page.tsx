@@ -78,7 +78,7 @@ export default async function OgrenciBugunPage() {
       id: t.id,
       description: t.description,
       subjectName: t.subjectName,
-      resourceName: t.resourceName,
+      resourceNames: t.resourceNames,
       targetQuestions: t.targetQuestions,
       isDone: t.isDone,
     }));

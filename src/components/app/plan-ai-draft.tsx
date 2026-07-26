@@ -113,7 +113,7 @@ export function PlanAiDraft({
         weekStart: weekKey,
         day: t.day,
         subjectId: t.subjectId,
-        resourceId: null,
+        resourceIds: [],
         description: t.description,
         targetQuestions: t.targetQuestions,
       });

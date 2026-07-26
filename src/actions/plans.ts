@@ -1,17 +1,19 @@
 "use server";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb, type DB } from "@/db";
 import {
   enrollments,
   examSections,
   planDayLayouts,
   planTasks,
+  resources,
   subjects,
   weeklyPlans,
 } from "@/db/schema";
 import { addDays, mondayOf, trDayKey } from "@/lib/dates";
 import { isDayColorKey, serializeSubjectIds } from "@/lib/plan-layout";
+import { serializeResourceIds } from "@/lib/plan-resources";
 import {
   getOrCreateWeeklyPlan,
   getPlanDayLayout,
@@ -48,6 +50,37 @@ const clean = (v?: string | null) => {
 
 const isStudentRole = (user: SessionUser) =>
   user.role !== "coach" && user.role !== "admin";
+
+/**
+ * Görevin kaynak listesi — çok seçimli `resourceIds` ile eski tek seçimli
+ * `resourceId` girdisini birleştirir, sonra KAYDIN kendi kaynaklarına indirger.
+ * Başka bir öğrencinin kaynağı sessizce düşer (JSON kolonda FK yok, doğrulama
+ * burada yapılır). Seçim sırası korunur — gösterim sırası odur.
+ */
+async function taskResourceIdsFor(
+  db: DB,
+  enrollmentId: number,
+  input: { resourceIds?: number[]; resourceId?: number | null },
+): Promise<number[]> {
+  const wanted = [
+    ...new Set([
+      ...(input.resourceIds ?? []),
+      ...(input.resourceId != null ? [input.resourceId] : []),
+    ]),
+  ];
+  if (wanted.length === 0) return [];
+  const rows = await db
+    .select({ id: resources.id })
+    .from(resources)
+    .where(
+      and(
+        eq(resources.enrollmentId, enrollmentId),
+        inArray(resources.id, wanted),
+      ),
+    );
+  const owned = new Set(rows.map((r) => r.id));
+  return wanted.filter((id) => owned.has(id));
+}
 
 /**
  * Program YAZMA yetkisi. Koç/admin her zaman yazar. Öğrenci yalnız KENDİ
@@ -184,6 +217,7 @@ export async function addPlanTask(
         ),
       );
     const slot = Number(maxRow?.max ?? -1) + 1;
+    const resourceIds = await taskResourceIdsFor(db, v.enrollmentId, v);
 
     const [task] = await db
       .insert(planTasks)
@@ -192,7 +226,9 @@ export async function addPlanTask(
         day,
         slot,
         subjectId: v.subjectId ?? null,
-        resourceId: v.resourceId ?? null,
+        // Tekil kolon listenin ilk öğesini yansıtır (tarihsel; bkz. schema).
+        resourceId: resourceIds[0] ?? null,
+        resourceIds: serializeResourceIds(resourceIds),
         description: clean(v.description),
         targetQuestions: v.targetQuestions ?? null,
       })
@@ -230,12 +266,19 @@ export async function updatePlanTask(
       task.weeklyPlan,
     );
 
+    const resourceIds = await taskResourceIdsFor(
+      db,
+      task.weeklyPlan.enrollmentId,
+      v,
+    );
+
     await db
       .update(planTasks)
       .set({
         day: v.day ?? null,
         subjectId: v.subjectId ?? null,
-        resourceId: v.resourceId ?? null,
+        resourceId: resourceIds[0] ?? null,
+        resourceIds: serializeResourceIds(resourceIds),
         description: clean(v.description),
         targetQuestions: v.targetQuestions ?? null,
       })
@@ -336,7 +379,7 @@ export async function copyPreviousWeekPlan(
         weekStart: weekKey,
         day: t.day,
         subjectId: t.subjectId,
-        resourceId: t.resourceId,
+        resourceIds: t.resourceIds,
         description: t.description,
         targetQuestions: t.targetQuestions,
       });

@@ -415,7 +415,18 @@ export const planTasks = sqliteTable(
     slot: integer("slot").notNull().default(0),
     subjectId: integer("subject_id").references(() => subjects.id),
     topicId: integer("topic_id").references(() => topics.id),
+    /**
+     * TEKİL kaynak — tarihsel kolon. Listenin ilk öğesinin yansımasıdır:
+     * yeni kayıtlarda `resourceIds` esastır, bu kolon eski istemciler ve
+     * göç öncesi satırlar için tutulur (bkz. @/lib/plan-resources).
+     */
     resourceId: integer("resource_id").references(() => resources.id),
+    /**
+     * Göreve bağlı kaynaklar — JSON-encoded number[], seçim sırasında
+     * (`plan_day_layouts.subject_ids` ile aynı desen). Bir konu birden çok
+     * kaynaktan çalışılabilir; okurken `@/lib/plan-resources` kullan.
+     */
+    resourceIds: text("resource_ids").notNull().default("[]"),
     description: text("description"),
     targetQuestions: integer("target_questions"),
     isDone: integer("is_done", { mode: "boolean" }).notNull().default(false),

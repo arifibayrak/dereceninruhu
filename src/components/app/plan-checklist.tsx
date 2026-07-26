@@ -15,7 +15,8 @@ export type ChecklistTask = {
   id: number;
   description: string | null;
   subjectName: string | null;
-  resourceName: string | null;
+  /** Göreve bağlı kaynaklar — birden çok olabilir. */
+  resourceNames: string[];
   targetQuestions: number | null;
   isDone: boolean;
 };
@@ -84,7 +85,8 @@ function TaskRow({
   const meta = [
     hideSubject ? null : task.subjectName,
     task.targetQuestions != null ? `${task.targetQuestions} soru` : null,
-    task.resourceName,
+    // Kaynaklar kendi aralarında virgülle — meta ayracı "·" kalabalıklaşmasın.
+    task.resourceNames.length > 0 ? task.resourceNames.join(", ") : null,
   ]
     .filter(Boolean)
     .join(" · ");

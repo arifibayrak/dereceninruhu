@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ResourcePicker } from "@/components/app/resource-picker";
 
 /* -------------------------------------------------------------------------- */
 /*  Tipler                                                                     */
@@ -51,8 +52,9 @@ export type GridTask = {
   day: number | null;
   subjectId: number | null;
   subjectName: string | null;
-  resourceId: number | null;
-  resourceName: string | null;
+  /** Konuya bağlı kaynaklar — birden çok olabilir, seçim sırasında. */
+  resourceIds: number[];
+  resourceNames: string[];
   description: string | null;
   targetQuestions: number | null;
   isDone: boolean;
@@ -240,7 +242,8 @@ function TopicMeta({ task }: { task: GridTask }) {
   const meta = [
     task.day != null ? SHORT_DAYS[task.day - 1] : null,
     task.targetQuestions != null ? `${task.targetQuestions} soru` : null,
-    task.resourceName,
+    // Kaynaklar kendi aralarında virgülle — meta ayracı "·" kalabalıklaşmasın.
+    task.resourceNames.length > 0 ? task.resourceNames.join(", ") : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -455,8 +458,8 @@ function TopicForm({
   const [target, setTarget] = useState(
     editTask?.targetQuestions != null ? String(editTask.targetQuestions) : "",
   );
-  const [resourceId, setResourceId] = useState<number>(
-    editTask?.resourceId ?? 0,
+  const [resourceIds, setResourceIds] = useState<number[]>(
+    editTask?.resourceIds ?? [],
   );
   // 0 = güne atanmamış (haftalık konu).
   const [day, setDay] = useState<number>(editTask?.day ?? 0);
@@ -472,10 +475,6 @@ function TopicForm({
     { value: 0, label: "Bu hafta (gün yok)" },
     ...days.map((d) => ({ value: d.day, label: d.name })),
   ];
-  const resourceItems = [
-    { value: 0, label: "Kaynak yok" },
-    ...resources.map((r) => ({ value: r.id, label: r.name })),
-  ];
 
   const submit = async () => {
     if (description.trim() === "") {
@@ -484,7 +483,7 @@ function TopicForm({
     }
     const shared = {
       subjectId: subjectId === 0 ? null : subjectId,
-      resourceId: resourceId === 0 ? null : resourceId,
+      resourceIds,
       description,
       targetQuestions: target === "" ? null : Math.min(2000, Number(target)),
       day: day === 0 ? null : day,
@@ -576,30 +575,14 @@ function TopicForm({
             }
           />
         </Field>
-        {resources.length > 0 && (
-          <Field>
-            <FieldLabel htmlFor="konu-kaynak">Kaynak</FieldLabel>
-            <Select
-              items={resourceItems}
-              value={resourceId}
-              onValueChange={(v) => {
-                if (typeof v === "number") setResourceId(v);
-              }}
-            >
-              <SelectTrigger id="konu-kaynak" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {resourceItems.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        )}
       </div>
+
+      <ResourcePicker
+        idPrefix="konu-kaynak"
+        resources={resources}
+        value={resourceIds}
+        onChange={setResourceIds}
+      />
 
       <Button
         onClick={submit}

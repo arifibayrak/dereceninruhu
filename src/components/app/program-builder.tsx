@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ProgramGrid } from "@/components/app/program-grid";
+import { ResourcePicker } from "@/components/app/resource-picker";
 import {
   DayLayoutDialog,
   type LayoutSource,
@@ -70,8 +71,9 @@ export type BuilderTask = {
   day: number | null;
   subjectId: number | null;
   subjectName: string | null;
-  resourceId: number | null;
-  resourceName: string | null;
+  /** Göreve bağlı kaynaklar — birden çok olabilir, seçim sırasında. */
+  resourceIds: number[];
+  resourceNames: string[];
   description: string | null;
   targetQuestions: number | null;
   isDone: boolean;
@@ -708,13 +710,16 @@ function TaskRow({
           >
             {task.description}
           </p>
-          {(task.targetQuestions != null || task.resourceName) && (
+          {(task.targetQuestions != null || task.resourceNames.length > 0) && (
             <span className="text-[11px] text-muted-foreground">
               {[
                 task.targetQuestions != null
                   ? `${task.targetQuestions} soru`
                   : null,
-                task.resourceName,
+                // Kaynaklar kendi aralarında virgülle ayrılır.
+                task.resourceNames.length > 0
+                  ? task.resourceNames.join(", ")
+                  : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -793,7 +798,7 @@ function NoteConverter({
         weekStart: weekKey,
         day: row.day,
         subjectId: null,
-        resourceId: null,
+        resourceIds: [],
         description: row.description,
         targetQuestions: null,
       });
@@ -906,8 +911,8 @@ function TaskForm({
     editTask?.subjectId ??
       (initial.mode === "add" ? (initial.subjectId ?? 0) : 0),
   );
-  const [resourceId, setResourceId] = useState<number>(
-    editTask?.resourceId ?? 0,
+  const [resourceIds, setResourceIds] = useState<number[]>(
+    editTask?.resourceIds ?? [],
   );
   const [description, setDescription] = useState(editTask?.description ?? "");
   const [target, setTarget] = useState(
@@ -925,10 +930,6 @@ function TaskForm({
       label: `${s.name} · ${s.sectionName}`,
     })),
   ];
-  const resourceItems = [
-    { value: 0, label: "Kaynak yok" },
-    ...resources.map((r) => ({ value: r.id, label: r.name })),
-  ];
 
   const submit = async () => {
     if (description.trim() === "") {
@@ -938,7 +939,7 @@ function TaskForm({
     const shared = {
       day: day === 0 ? null : day,
       subjectId: subjectId === 0 ? null : subjectId,
-      resourceId: resourceId === 0 ? null : resourceId,
+      resourceIds,
       description,
       targetQuestions: target === "" ? null : Math.min(2000, Number(target)),
     };
@@ -1029,30 +1030,14 @@ function TaskForm({
             }
           />
         </Field>
-        {resources.length > 0 && (
-          <Field>
-            <FieldLabel htmlFor="gorev-kaynak">Kaynak</FieldLabel>
-            <Select
-              items={resourceItems}
-              value={resourceId}
-              onValueChange={(v) => {
-                if (typeof v === "number") setResourceId(v);
-              }}
-            >
-              <SelectTrigger id="gorev-kaynak" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {resourceItems.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        )}
       </div>
+
+      <ResourcePicker
+        idPrefix="gorev-kaynak"
+        resources={resources}
+        value={resourceIds}
+        onChange={setResourceIds}
+      />
 
       <Button
         onClick={submit}

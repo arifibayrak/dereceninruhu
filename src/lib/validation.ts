@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { normalizePhone } from "@/lib/phone";
+import { MAX_TASK_RESOURCES } from "@/lib/plan-resources";
 
 /** TR mobile: 10 digits after normalization, starts with 5. */
 export const phoneSchema = z
@@ -220,6 +221,19 @@ export const upsertWeeklyPlanSchema = z.object({
 export type UpsertWeeklyPlanInput = z.infer<typeof upsertWeeklyPlanSchema>;
 
 /**
+ * Görevin kaynakları. `resourceIds` esas alan (bir konu birden çok kaynaktan
+ * çalışılır); `resourceId` tek seçimli eski istemciler için kabul edilir —
+ * aksiyon katmanı ikisini birleştirir (bkz. actions/plans.ts).
+ */
+const planTaskResourceFields = {
+  resourceIds: z
+    .array(z.coerce.number().int().positive())
+    .max(MAX_TASK_RESOURCES)
+    .optional(),
+  resourceId: z.coerce.number().int().positive().nullish(),
+};
+
+/**
  * Program görevi — ekleme (plan yoksa taslak olarak oluşturulur).
  * `day` boşsa haftalık konu (güne atanmamış); doluysa 1..7.
  */
@@ -228,7 +242,7 @@ export const planTaskCreateSchema = z.object({
   weekStart: z.coerce.date(),
   day: z.coerce.number().int().min(1).max(7).nullish(),
   subjectId: z.coerce.number().int().positive().nullish(),
-  resourceId: z.coerce.number().int().positive().nullish(),
+  ...planTaskResourceFields,
   description: z.string().trim().min(1, "Görev açıklaması gerekli.").max(300),
   targetQuestions: z.coerce.number().int().min(0).max(2000).nullish(),
 });
@@ -239,7 +253,7 @@ export const planTaskUpdateSchema = z.object({
   taskId: z.coerce.number().int().positive(),
   day: z.coerce.number().int().min(1).max(7).nullish(),
   subjectId: z.coerce.number().int().positive().nullish(),
-  resourceId: z.coerce.number().int().positive().nullish(),
+  ...planTaskResourceFields,
   description: z.string().trim().min(1, "Görev açıklaması gerekli.").max(300),
   targetQuestions: z.coerce.number().int().min(0).max(2000).nullish(),
 });
