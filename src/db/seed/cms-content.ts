@@ -77,8 +77,7 @@ export const teamCoachSeeds: TeamCoachSeed[] = [
     displayName: "Muhammet Salih Özdemir",
     title: "Eğitim Koçu",
     location: "İstanbul",
-    headline:
-      "DGS'de Türkiye 4.'sü. Yeniden başlamanın nasıl bir şey olduğunu bilir.",
+    headline: "DGS'de Türkiye 4.'sü. İstanbul Hukuk'ta okuyor.",
     bio:
       "Ben Muhammet Salih Özdemir. İstanbul Üniversitesi Hukuk Fakültesi 3. sınıf öğrencisiyim; " +
       "buraya DGS'de Türkiye 4.'sü olarak geldim. Bir yerden yeniden başlamanın, planı " +
