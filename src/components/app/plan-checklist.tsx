@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { togglePlanTaskDone } from "@/actions/plans";
 import { formatInt } from "@/lib/format";
+import { DAY_COLORS, type DayColorKey } from "@/lib/plan-layout";
 import { cn } from "@/lib/utils";
 
 export type ChecklistTask = {
@@ -24,6 +25,8 @@ export type ChecklistDay = {
   name: string;
   dateLabel: string;
   tasks: ChecklistTask[];
+  /** Koçun kurduğu ders düzeninden gelen gün rengi (yoksa varsayılan). */
+  color?: DayColorKey;
 };
 
 /** İyimser tamam/geri-al: yerel override + server action + refresh. */
@@ -200,6 +203,8 @@ function DaySection({
   // Tek ders varsa blok başlığı gereksiz — ders adı satır metasında kalır.
   const showSubjectHeaders =
     groups.length > 1 && groups.some((g) => g.subjectName);
+  // Gün rengi koçun ders düzeninden gelir; günleri bir bakışta ayırır.
+  const tone = day.color ? DAY_COLORS[day.color] : null;
 
   return (
     <section className="flex flex-col gap-2">
@@ -212,10 +217,13 @@ function DaySection({
       >
         <h2
           className={cn(
-            "font-heading text-sm font-semibold",
+            "flex items-center gap-1.5 font-heading text-sm font-semibold",
             isToday && "text-primary",
           )}
         >
+          {tone && (
+            <span className={cn("size-2 shrink-0 rounded-full", tone.dot)} />
+          )}
           {day.name}
           {isToday && " · Bugün"}
         </h2>

@@ -8,6 +8,7 @@ import {
   getSectionsForEnrollment,
 } from "@/db/queries/enrollment";
 import {
+  getPlanDayLayout,
   getResourcesForEnrollment,
   getWeeklyPlan,
   groupTasksByDay,
@@ -69,10 +70,17 @@ export default async function OgrenciProgramPage({
   const visible = isPublished || isOwnDraft ? raw : null;
   const status = isPublished ? "published" : isOwnDraft ? "draft-own" : "none";
 
-  const [sections, resources] = await Promise.all([
+  const [sections, resources, layout] = await Promise.all([
     getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
     getResourcesForEnrollment(enrollment.id),
+    getPlanDayLayout(enrollment.id),
   ]);
+  // Gün rengi yalnız koç o güne ders atadıysa gösterilir — boş günde renk yok.
+  const colorByDay = new Map(
+    layout
+      .filter((d) => d.subjectIds.length > 0)
+      .map((d) => [d.day, d.color] as const),
+  );
   const subjects = sections.flatMap((s) =>
     s.loggable.map((sub) => ({
       id: sub.id,
@@ -101,6 +109,7 @@ export default async function OgrenciProgramPage({
     day: i + 1,
     name: DAY_NAMES_TR[i],
     dateLabel: dayMonthFmt.format(d),
+    color: colorByDay.get(i + 1),
     tasks: (byDay.get(i + 1) ?? []).map((t) => ({
       id: t.id,
       description: t.description,

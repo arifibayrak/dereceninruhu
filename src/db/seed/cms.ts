@@ -21,6 +21,7 @@ import {
   blogPostSeeds,
   coachContent,
   coachStats,
+  teamCoachSeeds,
   faqSeeds,
   packageSeeds,
   testimonialSeeds,
@@ -108,6 +109,38 @@ function seedCms(db: SeedDb): Record<string, Counts> {
         .run();
       counts.coach_profiles.inserted++;
     }
+  }
+
+  // -- Ekip koçları (doğal anahtar: slug; hesapsız — user_id NULL) ----------
+  // Hesabı olmayan koç sitede görünür ama giriş yapamaz/öğrenci atanamaz.
+  // Hesap açılınca user_id doldurulur ve koç profilini kendisi yönetir.
+  for (const c of teamCoachSeeds) {
+    const existing = db
+      .select({ id: coachProfiles.id })
+      .from(coachProfiles)
+      .where(eq(coachProfiles.slug, c.slug))
+      .get();
+    if (existing) {
+      counts.coach_profiles.skipped++;
+      continue;
+    }
+    db.insert(coachProfiles)
+      .values({
+        userId: null,
+        slug: c.slug,
+        displayName: c.displayName,
+        title: c.title,
+        location: c.location,
+        headline: c.headline,
+        bio: c.bio,
+        photoUrl: c.photoUrl,
+        subjects: JSON.stringify(c.subjects),
+        achievements: JSON.stringify(c.credentials),
+        sortOrder: c.sortOrder,
+        isActive: true,
+      })
+      .run();
+    counts.coach_profiles.inserted++;
   }
 
   // -- Yorumlar (doğal anahtar: student_name) -------------------------------

@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { getRosterPayments, type RosterPayment } from "@/db/queries/muhasebe";
 import { addDays, daysBetween, startOfTrtDay, weekRange } from "@/lib/dates";
+import { combinedMockLabel } from "@/lib/exam";
 import { trtMonthRange } from "@/lib/muhasebe";
 import type { SessionViewer } from "@/lib/session";
 
@@ -209,6 +210,8 @@ export async function getPendingAnalysisMocks(
       takenOn: mockExams.takenOn,
       name: mockExams.name,
       publisher: mockExams.publisher,
+      isCombined: mockExams.isCombined,
+      templateCode: examTemplates.code,
       sectionName: examSections.name,
       sectionCode: examSections.code,
     })
@@ -216,6 +219,7 @@ export async function getPendingAnalysisMocks(
     .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
     .innerJoin(students, eq(students.id, enrollments.studentId))
     .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
+    .innerJoin(examTemplates, eq(examTemplates.id, examSections.examTemplateId))
     .where(
       and(
         eq(mockExams.analysisDone, false),
@@ -225,14 +229,21 @@ export async function getPendingAnalysisMocks(
     )
     .orderBy(desc(mockExams.takenOn))
     .limit(limit);
-  return rows.map((r) => ({
-    mockExamId: r.mockExamId,
-    studentId: r.studentId,
-    studentName: r.studentName,
-    takenOn: r.takenOn,
-    label: r.name?.trim() || r.publisher?.trim() || r.sectionCode,
-    sectionName: r.sectionName,
-  }));
+  return rows.map((r) => {
+    // Birleşik deneme: anchor bölüm adı yerine şablonun birleşik adı.
+    const combined = r.isCombined ? combinedMockLabel(r.templateCode) : null;
+    return {
+      mockExamId: r.mockExamId,
+      studentId: r.studentId,
+      studentName: r.studentName,
+      takenOn: r.takenOn,
+      label:
+        r.name?.trim() ||
+        r.publisher?.trim() ||
+        (combined ? r.templateCode : r.sectionCode),
+      sectionName: combined ?? r.sectionName,
+    };
+  });
 }
 
 export type CoachDashboard = {

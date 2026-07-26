@@ -52,6 +52,15 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ProgramGrid } from "@/components/app/program-grid";
+import {
+  DayLayoutDialog,
+  type LayoutSource,
+} from "@/components/app/program-day-layout";
+import {
+  DAY_COLORS,
+  defaultDayColor,
+  type DayLayoutEntry,
+} from "@/lib/plan-layout";
 
 export type BuilderSubject = { id: number; name: string; sectionName: string };
 export type BuilderResource = { id: number; name: string };
@@ -89,6 +98,10 @@ type Props = {
   days: BuilderDay[];
   /** Görüntülenen hafta bu haftaysa bugünün günü (1-7), değilse null. */
   todayDay: number | null;
+  /** Haftadan haftaya sabit ders düzeni (7 gün, boş günler dahil). */
+  layout: DayLayoutEntry[];
+  /** Düzeni dolu diğer kayıtlar — "başka öğrenciden kopyala". */
+  layoutSources: LayoutSource[];
 };
 
 const STATUS_META = {
@@ -98,7 +111,8 @@ const STATUS_META = {
 } as const;
 
 type TaskDialogState =
-  | { mode: "add"; day: number }
+  /** subjectId: düzendeki dersin altından eklenirken ön-doldurulur. */
+  | { mode: "add"; day: number; subjectId?: number }
   | { mode: "edit"; task: BuilderTask }
   | null;
 
@@ -114,6 +128,8 @@ export function ProgramBuilder({
   resources,
   days,
   todayDay,
+  layout,
+  layoutSources,
 }: Props) {
   const router = useRouter();
   const [view, setView] = useState<View>("hafta");
@@ -130,6 +146,19 @@ export function ProgramBuilder({
   const noteCandidates = useMemo(
     () => noteTaskCandidates(parseCoachNote(coachNote)),
     [coachNote],
+  );
+
+  const layoutByDay = useMemo(
+    () => new Map(layout.map((d) => [d.day, d])),
+    [layout],
+  );
+  const subjectById = useMemo(
+    () => new Map(subjects.map((s) => [s.id, s])),
+    [subjects],
+  );
+  const dayNames = useMemo(
+    () => Object.fromEntries(days.map((d) => [d.day, d.name])),
+    [days],
   );
 
   const total = tasks.length;
@@ -330,7 +359,19 @@ export function ProgramBuilder({
       {/* Görünüm geçişi + araçlar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <ViewToggle view={view} onChange={setView} />
-        {total === 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <DayLayoutDialog
+            enrollmentId={enrollmentId}
+            layout={layout}
+            subjects={subjects}
+            sources={layoutSources}
+            dayNames={dayNames}
+          />
+          {/*
+            Haftalık program iskeleti çoğu öğrencide sabit — kopyalama her hafta
+            erişilebilir olmalı, yalnız hafta boşken değil. Dolu haftada üzerine
+            EKLER (silmez), o yüzden metin de "ekle" der.
+          */}
           <Button
             variant="outline"
             size="sm"
@@ -338,9 +379,13 @@ export function ProgramBuilder({
             disabled={copying}
           >
             <CopyIcon data-icon="inline-start" />
-            {copying ? "Kopyalanıyor…" : "Geçen haftadan kopyala"}
+            {copying
+              ? "Kopyalanıyor…"
+              : total === 0
+                ? "Geçen haftadan kopyala"
+                : "Geçen haftayı ekle"}
           </Button>
-        )}
+        </div>
       </div>
 
       {view === "hafta" ? (
@@ -380,11 +425,26 @@ export function ProgramBuilder({
               const dayTasks = tasks.filter((t) => t.day === d.day);
               const open = isDayOpen(d.day);
               const isToday = todayDay === d.day;
+              const entry = layoutByDay.get(d.day);
+              const tone = DAY_COLORS[entry?.color ?? defaultDayColor(d.day)];
+              /*
+                Düzendeki dersler o günün iskeleti: her ders kendi bölmesini
+                alır, altına doğrudan konu eklenir (ders + gün önceden dolu).
+                Düzende olmayan derse yazılmış görevler "Diğer"e düşer — düzen
+                değişse bile hiçbir görev gizlenmez.
+              */
+              const layoutSubjectIds = entry?.subjectIds ?? [];
+              const otherTasks = dayTasks.filter(
+                (t) => t.subjectId == null || !layoutSubjectIds.includes(t.subjectId),
+              );
               return (
                 <section
                   key={d.day}
                   className={cn(
-                    "flex flex-col rounded-xl bg-card ring-1 ring-foreground/10",
+                    "flex flex-col rounded-xl bg-card ring-1",
+                    layoutSubjectIds.length > 0
+                      ? tone.card
+                      : "ring-foreground/10",
                     isToday && "ring-primary/40",
                   )}
                 >
@@ -399,10 +459,15 @@ export function ProgramBuilder({
                     <span className="flex min-w-0 flex-col">
                       <span
                         className={cn(
-                          "text-sm font-semibold",
+                          "flex items-center gap-1.5 text-sm font-semibold",
                           isToday && "text-primary",
                         )}
                       >
+                        {layoutSubjectIds.length > 0 && (
+                          <span
+                            className={cn("size-2 shrink-0 rounded-full", tone.dot)}
+                          />
+                        )}
                         {d.name}
                       </span>
                       <span className="text-[11px] text-muted-foreground">
@@ -423,7 +488,49 @@ export function ProgramBuilder({
                       open ? "flex" : "hidden lg:flex",
                     )}
                   >
-                    {dayTasks.map((task) => (
+                    {layoutSubjectIds.map((subjectId) => {
+                      const subject = subjectById.get(subjectId);
+                      if (!subject) return null;
+                      const subjectTasks = dayTasks.filter(
+                        (t) => t.subjectId === subjectId,
+                      );
+                      return (
+                        <div key={subjectId} className="flex flex-col gap-1.5">
+                          <span
+                            className={cn(
+                              "self-start rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                              tone.chip,
+                            )}
+                          >
+                            {subject.name}
+                          </span>
+                          {subjectTasks.map((task) => (
+                            <TaskRow
+                              key={task.id}
+                              task={task}
+                              togglePending={togglePending}
+                              onToggle={() => toggleTask(task)}
+                              onEdit={() =>
+                                setTaskDialog({ mode: "edit", task })
+                              }
+                              onRemove={() => removeTask(task)}
+                            />
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTaskDialog({ mode: "add", day: d.day, subjectId })
+                            }
+                            className="flex items-center gap-1 self-start rounded-md px-1 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary"
+                          >
+                            <PlusIcon className="size-3" />
+                            Konu ekle
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {otherTasks.map((task) => (
                       <TaskRow
                         key={task.id}
                         task={task}
@@ -472,7 +579,7 @@ export function ProgramBuilder({
               key={
                 taskDialog.mode === "edit"
                   ? `edit-${taskDialog.task.id}`
-                  : `add-${taskDialog.day}`
+                  : `add-${taskDialog.day}-${taskDialog.subjectId ?? 0}`
               }
               enrollmentId={enrollmentId}
               weekKey={weekKey}
@@ -794,7 +901,11 @@ function TaskForm({
   const [day, setDay] = useState<number>(
     editTask ? (editTask.day ?? 0) : initial.mode === "add" ? initial.day : 0,
   );
-  const [subjectId, setSubjectId] = useState<number>(editTask?.subjectId ?? 0);
+  // Düzendeki dersin altından "Konu ekle"ye basıldıysa ders hazır gelir.
+  const [subjectId, setSubjectId] = useState<number>(
+    editTask?.subjectId ??
+      (initial.mode === "add" ? (initial.subjectId ?? 0) : 0),
+  );
   const [resourceId, setResourceId] = useState<number>(
     editTask?.resourceId ?? 0,
   );

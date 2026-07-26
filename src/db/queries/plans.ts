@@ -2,12 +2,20 @@ import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb, type DB } from "@/db";
 import {
   enrollments,
+  examTemplates,
+  planDayLayouts,
   planTasks,
   resources,
   students,
   weeklyPlans,
 } from "@/db/schema";
 import { mondayOf } from "@/lib/dates";
+import {
+  fillLayoutDays,
+  parseSubjectIds,
+  type DayLayoutEntry,
+} from "@/lib/plan-layout";
+import type { SessionViewer } from "@/lib/session";
 
 /* -------------------------------------------------------------------------- */
 /*  Görünüm tipleri                                                           */
@@ -278,6 +286,101 @@ export async function getPlanForReuse(
     description: t.description,
     targetQuestions: t.targetQuestions,
   }));
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Ders düzeni (haftadan haftaya sabit iskelet)                              */
+/* -------------------------------------------------------------------------- */
+
+/** Kaydın 7 günlük ders düzeni — kayıtsız günler boş dizi + varsayılan renkle. */
+export async function getPlanDayLayout(
+  enrollmentId: number,
+): Promise<DayLayoutEntry[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      day: planDayLayouts.day,
+      subjectIds: planDayLayouts.subjectIds,
+      color: planDayLayouts.color,
+    })
+    .from(planDayLayouts)
+    .where(eq(planDayLayouts.enrollmentId, enrollmentId));
+
+  return fillLayoutDays(
+    rows.map((r) => ({
+      day: r.day,
+      subjectIds: parseSubjectIds(r.subjectIds),
+      color: r.color,
+    })),
+  );
+}
+
+export type LayoutSourceOption = {
+  enrollmentId: number;
+  studentName: string;
+  examCode: string;
+  dayCount: number;
+};
+
+/**
+ * "Başka öğrenciden kopyala" seçenekleri — düzeni DOLU olan diğer kayıtlar.
+ * Koç yalnız kendi kadrosunu görür; yönetici tümünü (kadro görünürlük kuralı).
+ * Aynı sınav şablonundakiler önce gelir: ders id'leri ancak aynı şablonda
+ * anlamlıdır, farklı şablondan kopyalanan dersler düşer.
+ */
+export async function listLayoutSources(opts: {
+  viewer: SessionViewer;
+  excludeEnrollmentId: number;
+  examTemplateId: number;
+}): Promise<LayoutSourceOption[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      enrollmentId: planDayLayouts.enrollmentId,
+      subjectIds: planDayLayouts.subjectIds,
+      studentName: students.fullName,
+      examCode: examTemplates.code,
+      examTemplateId: enrollments.examTemplateId,
+    })
+    .from(planDayLayouts)
+    .innerJoin(enrollments, eq(enrollments.id, planDayLayouts.enrollmentId))
+    .innerJoin(students, eq(students.id, enrollments.studentId))
+    .innerJoin(examTemplates, eq(examTemplates.id, enrollments.examTemplateId))
+    .where(
+      and(
+        isNull(students.deletedAt),
+        eq(enrollments.status, "active"),
+        opts.viewer.role === "coach"
+          ? eq(enrollments.coachUserId, opts.viewer.id)
+          : undefined,
+      ),
+    );
+
+  const byEnrollment = new Map<number, LayoutSourceOption>();
+  const sameExam = new Set<number>();
+  for (const r of rows) {
+    if (r.enrollmentId === opts.excludeEnrollmentId) continue;
+    if (parseSubjectIds(r.subjectIds).length === 0) continue;
+    const existing = byEnrollment.get(r.enrollmentId);
+    if (existing) {
+      existing.dayCount += 1;
+      continue;
+    }
+    if (r.examTemplateId === opts.examTemplateId) sameExam.add(r.enrollmentId);
+    byEnrollment.set(r.enrollmentId, {
+      enrollmentId: r.enrollmentId,
+      studentName: r.studentName,
+      examCode: r.examCode,
+      dayCount: 1,
+    });
+  }
+
+  return [...byEnrollment.values()].sort(
+    (a, b) =>
+      Number(sameExam.has(b.enrollmentId)) -
+        Number(sameExam.has(a.enrollmentId)) ||
+      a.studentName.localeCompare(b.studentName, "tr"),
+  );
 }
 
 export type ResourceOption = { id: number; name: string };

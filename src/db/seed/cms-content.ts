@@ -42,6 +42,80 @@ export const coachStats = {
   proofUrl: "https://www.gigbi.com/p/ahmet-hakan-almak1723581674",
 } as const;
 
+/* ---------------------------------- Ekip --------------------------------- */
+
+export type TeamCoachSeed = {
+  slug: string;
+  displayName: string;
+  title: string;
+  location: string;
+  /** Kartta ve profil üstünde görünen kısa, vurucu tanıtım. */
+  headline: string;
+  bio: string;
+  /** İlk madde üniversite; sonrakiler derece/deneyim (ana sayfa slice(1,4)). */
+  credentials: string[];
+  subjects: string[];
+  photoUrl: string;
+  /**
+   * Vitrindeki sıra. Ahmet Hakan kurucu koçtur ve sortOrder 0'dadır —
+   * `getPublicCoach()` en düşük sort_order'ı kahraman kabul eder, bu yüzden
+   * ekip 1'den başlar ve kurucuyu asla geçemez.
+   */
+  sortOrder: number;
+};
+
+/**
+ * Kurucu koç dışındaki koçlar — /koclar "Ekip" şeridi + /koclar/[slug].
+ *
+ * Yalnız DOĞRULANABİLİR bilgi yazılır (üniversite, sınıf, derece). Hesabı
+ * açıldığında her koç kendi metnini /koc/profil'den günceller ve bu tohum
+ * yalnız ilk kurulum/yedek olarak kalır.
+ */
+export const teamCoachSeeds: TeamCoachSeed[] = [
+  {
+    slug: "muhammet-salih-ozdemir",
+    displayName: "Muhammet Salih Özdemir",
+    title: "Eğitim Koçu",
+    location: "İstanbul",
+    headline:
+      "DGS'de Türkiye 4.'sü. Yeniden başlamanın nasıl bir şey olduğunu bilir.",
+    bio:
+      "Ben Muhammet Salih Özdemir. İstanbul Üniversitesi Hukuk Fakültesi 3. sınıf öğrencisiyim; " +
+      "buraya DGS'de Türkiye 4.'sü olarak geldim. Bir yerden yeniden başlamanın, planı " +
+      "sıfırdan kurmanın ne demek olduğunu bizzat yaşadım. Çalıştığım öğrencilerde de aynı " +
+      "şeye bakıyorum: kaç saat oturduğuna değil, oturduğun saatin neye dönüştüğüne.",
+    credentials: [
+      "İstanbul Üniversitesi Hukuk Fakültesi — 3. sınıf",
+      "DGS Türkiye 4.'sü",
+      "DGS · KPSS · YKS koçluğu",
+    ],
+    subjects: ["DGS", "KPSS", "YKS"],
+    photoUrl: "/muhammet-salih-ozdemir.jpg",
+    sortOrder: 1,
+  },
+  {
+    slug: "omer-burkay-kaplica",
+    displayName: "Ömer Burkay Kaplıca",
+    title: "Eğitim Koçu",
+    location: "İstanbul",
+    headline: "Sözelde Türkiye 83.'sü. Boğaziçi Hukuk'ta okuyor.",
+    bio:
+      "Ben Ömer Burkay Kaplıca. Boğaziçi Üniversitesi Hukuk Fakültesi 2. sınıf öğrencisiyim. " +
+      "YKS Sözel'de Türkiye 83.'sü oldum. Sözel derslerin ezberle değil, doğru okuma ve " +
+      "düzenli tekrarla kazanıldığını sınav sürecimde öğrendim. Öğrencilerimle de bu iki " +
+      "şeyin üstünde duruyorum: anladığını sanmakla anlamak arasındaki farkı görmek ve " +
+      "tekrarı takvime bağlamak.",
+    credentials: [
+      "Boğaziçi Üniversitesi Hukuk Fakültesi — 2. sınıf",
+      "YKS Sözel Türkiye 83.'sü",
+      "YKS · KPSS koçluğu",
+    ],
+    subjects: ["YKS", "KPSS"],
+    photoUrl: "/omer-burkay-kaplica.jpg",
+    sortOrder: 2,
+  },
+];
+
 /* -------------------------------- Yorumlar -------------------------------- */
 
 export type TestimonialSeed = {

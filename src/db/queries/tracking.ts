@@ -11,6 +11,7 @@ import {
   subjects,
 } from "@/db/schema";
 import { addDays, mondayOf, trDayKey, weekRange } from "@/lib/dates";
+import { combinedMockLabel } from "@/lib/exam";
 import type { StudentInsightInput } from "@/lib/insights";
 import type { SessionViewer } from "@/lib/session";
 import { getStudyWeekTotal } from "@/db/queries/study";
@@ -306,17 +307,45 @@ export async function getMockList(enrollmentId: number): Promise<MockRow[]> {
       publisher: mockExams.publisher,
       name: mockExams.name,
       analysisDone: mockExams.analysisDone,
+      isCombined: mockExams.isCombined,
+      templateCode: examTemplates.code,
       sectionName: examSections.name,
       sectionCode: examSections.code,
       totalNet: sql<number>`coalesce(sum(${mockExamResults.net}), 0)`,
     })
     .from(mockExams)
     .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
+    .innerJoin(
+      examTemplates,
+      eq(examTemplates.id, examSections.examTemplateId),
+    )
     .leftJoin(mockExamResults, eq(mockExamResults.mockExamId, mockExams.id))
     .where(eq(mockExams.enrollmentId, enrollmentId))
     .groupBy(mockExams.id)
     .orderBy(desc(mockExams.takenOn), desc(mockExams.id));
-  return rows.map((r) => ({ ...r, totalNet: Number(r.totalNet) }));
+  return rows.map((r) => ({
+    ...r,
+    ...mockSectionLabels(r),
+    totalNet: Number(r.totalNet),
+  }));
+}
+
+/**
+ * Birleşik denemede (KPSS GY + GK) anchor bölümün adı yanıltıcıdır — etiketi
+ * şablonun birleşik adıyla değiştirir. Tek bölümlü denemede aynen bırakır.
+ */
+function mockSectionLabels(row: {
+  isCombined: boolean;
+  templateCode: string;
+  sectionName: string;
+  sectionCode: string;
+}): { sectionName: string; sectionCode: string } {
+  const combined = row.isCombined
+    ? combinedMockLabel(row.templateCode)
+    : null;
+  return combined
+    ? { sectionName: combined, sectionCode: row.templateCode }
+    : { sectionName: row.sectionName, sectionCode: row.sectionCode };
 }
 
 export type NetSeriesPoint = {
@@ -337,11 +366,17 @@ export async function getNetSeries(
       takenOn: mockExams.takenOn,
       name: mockExams.name,
       publisher: mockExams.publisher,
+      isCombined: mockExams.isCombined,
+      templateCode: examTemplates.code,
       sectionCode: examSections.code,
       net: sql<number>`coalesce(sum(${mockExamResults.net}), 0)`,
     })
     .from(mockExams)
     .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
+    .innerJoin(
+      examTemplates,
+      eq(examTemplates.id, examSections.examTemplateId),
+    )
     .leftJoin(mockExamResults, eq(mockExamResults.mockExamId, mockExams.id))
     .where(
       and(eq(mockExams.enrollmentId, enrollmentId), eq(mockExams.scope, "full")),
@@ -351,7 +386,10 @@ export async function getNetSeries(
   return rows.map((r) => ({
     mockExamId: r.mockExamId,
     takenOn: r.takenOn,
-    label: r.name?.trim() || r.publisher?.trim() || r.sectionCode,
+    label:
+      r.name?.trim() ||
+      r.publisher?.trim() ||
+      (r.isCombined ? r.templateCode : r.sectionCode),
     net: Number(r.net),
   }));
 }
@@ -457,6 +495,7 @@ export async function getWeeklyMockResults(opts: {
       studentName: students.fullName,
       examCode: examTemplates.code,
       sectionName: examSections.name,
+      isCombined: mockExams.isCombined,
       name: mockExams.name,
       publisher: mockExams.publisher,
       scope: mockExams.scope,
@@ -485,6 +524,9 @@ export async function getWeeklyMockResults(opts: {
 
   const mapped: WeeklyMockRow[] = rows.map((r) => ({
     ...r,
+    // Birleşikte "Genel Yetenek" yerine "KPSS Denemesi" gösterilir.
+    sectionName:
+      (r.isCombined ? combinedMockLabel(r.examCode) : null) ?? r.sectionName,
     totalNet: Number(r.totalNet),
   }));
 

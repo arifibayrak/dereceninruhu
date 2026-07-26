@@ -18,6 +18,17 @@ export type SubjectRow = {
   chartColor: string | null;
 };
 
+/**
+ * Şablonun bölümleri TEK oturumda çözülüyorsa birleşik deneme adı, değilse null.
+ *
+ * KPSS'de Genel Yetenek ve Genel Kültür aynı oturumun iki kitapçığıdır; iki ayrı
+ * deneme kaydı yerine tek "KPSS Denemesi" olarak girilir (toplam net = GY + GK).
+ * YKS'de TYT ve AYT ayrı oturumlardır — birleştirilmez.
+ */
+export function combinedMockLabel(templateCode: string): string | null {
+  return templateCode === "KPSS" ? "KPSS Denemesi" : null;
+}
+
 export function parseTrackCodes(raw: string | null): string[] | null {
   if (!raw) return null;
   try {

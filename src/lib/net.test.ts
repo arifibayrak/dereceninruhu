@@ -99,4 +99,48 @@ describe("rollUpChildren", () => {
     // 28 doğru, 8 yanlış → 28 − 8/4 = 26
     expect(computeNet(mat.correct, mat.wrong, 4)).toBe(26);
   });
+
+  /*
+   * Birleşik KPSS denemesi (GY + GK tek oturum): roll-up her bölüm İÇİNDE
+   * ayrı yapılır — alt ders asla bölüm sınırını aşmaz — ve toplam net iki
+   * bölümün netlerinin toplamıdır.
+   */
+  it("birleşik denemede bölümler ayrı toplanır, net toplamı birleşir", () => {
+    const TAR = 5; // KPSS_GK
+    const COG = 6; // KPSS_GK
+    const gyTree = tree;
+    const gkTree: SubjectNode[] = [
+      { id: TAR, parentSubjectId: null, isScored: true },
+      { id: COG, parentSubjectId: null, isScored: true },
+    ];
+
+    const gy = rollUpChildren(
+      new Map<number, SubjectCounts>([
+        [TUR, { correct: 24, wrong: 4 }],
+        [MAT, { correct: 15, wrong: 3 }],
+        [GEO, { correct: 5, wrong: 1 }],
+      ]),
+      gyTree,
+    );
+    const gk = rollUpChildren(
+      new Map<number, SubjectCounts>([
+        [TAR, { correct: 20, wrong: 4 }],
+        [COG, { correct: 14, wrong: 2 }],
+      ]),
+      gkTree,
+    );
+
+    // GY: TUR 24−1=23, MAT (20 doğru 4 yanlış) 20−1=19 → 42
+    expect(computeNet(gy.get(TUR)!.correct, gy.get(TUR)!.wrong, 4)).toBe(23);
+    expect(computeNet(gy.get(MAT)!.correct, gy.get(MAT)!.wrong, 4)).toBe(19);
+    // GK: TAR 20−1=19, COG 14−0.5=13.5 → 32.5
+    expect(computeNet(gk.get(TAR)!.correct, gk.get(TAR)!.wrong, 4)).toBe(19);
+    expect(computeNet(gk.get(COG)!.correct, gk.get(COG)!.wrong, 4)).toBe(13.5);
+
+    const total = [...gy, ...gk].reduce(
+      (sum, [, c]) => sum + computeNet(c.correct, c.wrong, 4),
+      0,
+    );
+    expect(Math.round(total * 100) / 100).toBe(74.5);
+  });
 });

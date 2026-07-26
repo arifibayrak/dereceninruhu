@@ -233,7 +233,7 @@ export default async function HomePage() {
         <SectionHeading
           eyebrow="Koçun"
           title="Bu yoldan geçmiş biriyle çalış"
-          description="Teoriden değil, kendi derecesinden konuşan bir koç."
+          description="Teoriden değil, kendi derecesinden konuşan koçlar."
         />
         <div className="grid items-center gap-6 rounded-3xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8 lg:grid-cols-[auto_1fr_auto]">
           <div className="flex items-center gap-4 lg:flex-col lg:items-start">
@@ -250,7 +250,8 @@ export default async function HomePage() {
                 {coach.displayName}
               </span>
               <span className="text-sm text-muted-foreground">
-                {coachContent.title} · {coachContent.location}
+                {coach.title ?? coachContent.title} ·{" "}
+                {coach.location ?? coachContent.location}
               </span>
             </div>
           </div>
@@ -282,7 +283,7 @@ export default async function HomePage() {
             className="self-start lg:self-center"
             render={<Link href="/koclar" />}
           >
-            Profili incele
+            Koçları incele
             <ArrowRightIcon data-icon="inline-end" />
           </Button>
         </div>

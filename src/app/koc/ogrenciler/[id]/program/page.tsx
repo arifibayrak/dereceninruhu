@@ -4,8 +4,10 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 import { getSectionsForEnrollment } from "@/db/queries/enrollment";
 import {
+  getPlanDayLayout,
   getResourcesForEnrollment,
   getWeeklyPlan,
+  listLayoutSources,
   listWeeklyPlans,
 } from "@/db/queries/plans";
 import {
@@ -45,7 +47,7 @@ export default async function ProgramPage({
   const { id } = await params;
   const { hafta } = await searchParams;
   const studentId = Number(id);
-  const { enrollment } = await resolveCockpit(studentId);
+  const { enrollment, viewer } = await resolveCockpit(studentId);
 
   const now = new Date();
   const anchor =
@@ -58,10 +60,18 @@ export default async function ProgramPage({
     enrollment.examTemplateId,
     enrollment.trackCode,
   );
-  const [plan, planWeeks, resources] = await Promise.all([
+  const [plan, planWeeks, resources, layout, layoutSources] = await Promise.all([
     getWeeklyPlan(enrollment.id, planMonday),
     listWeeklyPlans(enrollment.id, 8),
     getResourcesForEnrollment(enrollment.id),
+    getPlanDayLayout(enrollment.id),
+    viewer
+      ? listLayoutSources({
+          viewer,
+          excludeEnrollmentId: enrollment.id,
+          examTemplateId: enrollment.examTemplateId,
+        })
+      : [],
   ]);
 
   const builderSubjects: BuilderSubject[] = sections.flatMap((s) =>
@@ -190,6 +200,8 @@ export default async function ProgramPage({
           resources={resources}
           days={builderDays}
           todayDay={isPlanCurrentWeek ? trWeekday(now) : null}
+          layout={layout}
+          layoutSources={layoutSources}
         />
       </div>
     </>

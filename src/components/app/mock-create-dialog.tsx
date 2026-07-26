@@ -18,9 +18,11 @@ import {
 export function MockCreateDialog({
   enrollmentId,
   sections,
+  combinedLabel,
 }: {
   enrollmentId: number;
   sections: MockSection[];
+  combinedLabel?: string | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -40,6 +42,7 @@ export function MockCreateDialog({
         <MockForm
           enrollmentId={enrollmentId}
           sections={sections}
+          combinedLabel={combinedLabel}
           onSuccess={() => setOpen(false)}
         />
       </DialogContent>

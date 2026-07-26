@@ -27,6 +27,7 @@ import {
 import {
   coachContent,
   coachStats,
+  teamCoachSeeds,
   faqSeeds,
   packageSeeds,
   testimonialSeeds,
@@ -495,7 +496,7 @@ export async function listOtherPublicCoaches(): Promise<PublicCoachCard[]> {
     orderBy: [asc(coachProfiles.sortOrder), asc(coachProfiles.id)],
   });
   // İlk satır = öne çıkan koç (/koclar kahramanı) → şeritte gösterme.
-  return rows
+  const cards = rows
     .slice(1)
     .filter((r): r is typeof r & { slug: string } => !!r.slug)
     .map((r) => ({
@@ -506,6 +507,16 @@ export async function listOtherPublicCoaches(): Promise<PublicCoachCard[]> {
       photoUrl: r.photoUrl,
       subjects: parseJsonArray(r.subjects),
     }));
+  // Ekip hiç seed'lenmemişse tohuma düş — site seed'siz de eksiksiz görünür.
+  if (cards.length > 0) return cards;
+  return teamCoachSeeds.map((c) => ({
+    slug: c.slug,
+    displayName: c.displayName,
+    title: c.title,
+    headline: c.headline,
+    photoUrl: c.photoUrl,
+    subjects: [...c.subjects],
+  }));
 }
 
 /** Tek koç profili (slug ile) — /koclar/[slug]. Pasif/olmayan → null. */
@@ -516,7 +527,24 @@ export async function getPublicCoachBySlug(
   const row = await db.query.coachProfiles.findFirst({
     where: and(eq(coachProfiles.slug, slug), eq(coachProfiles.isActive, true)),
   });
-  return row ? rowToPublicCoach(row) : null;
+  if (row) return rowToPublicCoach(row);
+  // Ekip seed'lenmemişse profil sayfası da tohumdan servis edilir (404 yerine).
+  const seed = teamCoachSeeds.find((c) => c.slug === slug);
+  if (!seed) return null;
+  return {
+    slug: seed.slug,
+    displayName: seed.displayName,
+    title: seed.title,
+    location: seed.location,
+    headline: seed.headline,
+    bio: seed.bio,
+    photoUrl: seed.photoUrl,
+    coverImageUrl: null,
+    subjects: [...seed.subjects],
+    achievements: [...seed.credentials],
+    links: [],
+    proofUrl: null,
+  };
 }
 
 /** Oturumdaki koçun kendi profil satırı (editör için) — yoksa null. */

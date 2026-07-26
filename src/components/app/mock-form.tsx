@@ -46,6 +46,11 @@ type Counts = { d: string; y: string; b: string };
 type Props = {
   enrollmentId: number;
   sections: MockSection[];
+  /**
+   * Şablonun bölümleri tek oturumda çözülüyorsa birleşik seçeneğin adı
+   * ("KPSS Denemesi"); null/undefined ise yalnız tek tek bölüm girilir.
+   */
+  combinedLabel?: string | null;
   /** Başarıda gidilecek yol (öğrenci akışı); yoksa yalnız refresh (koç). */
   redirectTo?: string;
   /** Koç diyaloğunda kapatma vb. için (istemci-istemci callback). */
@@ -57,18 +62,40 @@ const SCOPES = [
   { value: "branch", label: "Branş denemesi" },
 ] as const;
 
+const COMBINED = "combined";
+
 /** Deneme girişi — D/Y/B gir, net canlı hesaplanır (D − Y ÷ bölen). */
-export function MockForm({ enrollmentId, sections, redirectTo, onSuccess }: Props) {
+export function MockForm({
+  enrollmentId,
+  sections,
+  combinedLabel,
+  redirectTo,
+  onSuccess,
+}: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [sectionId, setSectionId] = useState<number>(sections[0]?.id ?? 0);
+  /** Birleşik giriş mümkünse varsayılan odur — asıl kullanım tek oturumdur. */
+  const canCombine = Boolean(combinedLabel) && sections.length > 1;
+  const [selection, setSelection] = useState<string>(() =>
+    canCombine ? COMBINED : String(sections[0]?.id ?? 0),
+  );
   const [scope, setScope] = useState<"full" | "branch">("full");
   const [takenOn, setTakenOn] = useState(() => trDayKey(new Date()));
   const [publisher, setPublisher] = useState("");
   const [name, setName] = useState("");
   const [counts, setCounts] = useState<Record<number, Counts>>({});
 
-  const section = sections.find((s) => s.id === sectionId) ?? sections[0];
+  const isCombined = canCombine && selection === COMBINED;
+  /** Girişe dahil bölümler — birleşikte hepsi, değilse yalnız seçilen. */
+  const activeSections = isCombined
+    ? sections
+    : sections.filter((s) => String(s.id) === selection);
+  const section = activeSections[0] ?? sections[0];
+
+  const options = [
+    ...(canCombine ? [{ value: COMBINED, label: combinedLabel as string }] : []),
+    ...sections.map((s) => ({ value: String(s.id), label: s.name })),
+  ];
 
   const setCount = (subjectId: number, key: keyof Counts, raw: string) => {
     const clean = raw.replace(/\D/g, "").slice(0, 3);
@@ -83,34 +110,47 @@ export function MockForm({ enrollmentId, sections, redirectTo, onSuccess }: Prop
     return Number.isFinite(n) ? n : 0;
   };
 
-  /** Alt dersler puanlanan ebeveyne toplanmış canlı netler. */
-  const { rolledNets, totalNet, hasAny } = useMemo(() => {
-    if (!section) return { rolledNets: new Map<number, number>(), totalNet: 0, hasAny: false };
-    const map = new Map<number, SubjectCounts>();
-    let any = false;
-    for (const s of section.subjects) {
-      const d = numOf(s.id, "d");
-      const y = numOf(s.id, "y");
-      const b = numOf(s.id, "b");
-      if (d + y + b > 0) any = true;
-      map.set(s.id, { correct: d, wrong: y, blank: b });
-    }
-    const tree: SubjectNode[] = section.subjects.map((s) => ({
-      id: s.id,
-      parentSubjectId: s.parentSubjectId,
-      isScored: s.isScored,
-    }));
-    const rolled = rollUpChildren(map, tree);
+  /**
+   * Alt dersler puanlanan ebeveyne toplanmış canlı netler. Roll-up her bölüm
+   * içinde ayrı yapılır — alt ders hiçbir zaman bölüm sınırını aşmaz ve her
+   * bölüm kendi yanlış bölenini kullanır.
+   */
+  const { rolledNets, sectionNets, totalNet, hasAny } = useMemo(() => {
     const nets = new Map<number, number>();
+    const perSection = new Map<number, number>();
     let total = 0;
-    for (const [id, c] of rolled) {
-      const net = computeNet(c.correct, c.wrong, section.wrongPenaltyDivisor);
-      nets.set(id, net);
-      total += net;
+    let any = false;
+    for (const sec of activeSections) {
+      const map = new Map<number, SubjectCounts>();
+      for (const s of sec.subjects) {
+        const d = numOf(s.id, "d");
+        const y = numOf(s.id, "y");
+        const b = numOf(s.id, "b");
+        if (d + y + b > 0) any = true;
+        map.set(s.id, { correct: d, wrong: y, blank: b });
+      }
+      const tree: SubjectNode[] = sec.subjects.map((s) => ({
+        id: s.id,
+        parentSubjectId: s.parentSubjectId,
+        isScored: s.isScored,
+      }));
+      let sectionTotal = 0;
+      for (const [id, c] of rollUpChildren(map, tree)) {
+        const net = computeNet(c.correct, c.wrong, sec.wrongPenaltyDivisor);
+        nets.set(id, net);
+        sectionTotal += net;
+      }
+      perSection.set(sec.id, Math.round(sectionTotal * 100) / 100);
+      total += sectionTotal;
     }
-    return { rolledNets: nets, totalNet: Math.round(total * 100) / 100, hasAny: any };
+    return {
+      rolledNets: nets,
+      sectionNets: perSection,
+      totalNet: Math.round(total * 100) / 100,
+      hasAny: any,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [counts, section]);
+  }, [counts, activeSections]);
 
   const submit = async () => {
     if (!section) return;
@@ -118,7 +158,8 @@ export function MockForm({ enrollmentId, sections, redirectTo, onSuccess }: Prop
       toast.error("Deneme tarihini seç.");
       return;
     }
-    const results = section.subjects
+    const results = activeSections
+      .flatMap((s) => s.subjects)
       .filter((s) => numOf(s.id, "d") + numOf(s.id, "y") + numOf(s.id, "b") > 0)
       .map((s) => ({
         subjectId: s.id,
@@ -134,6 +175,7 @@ export function MockForm({ enrollmentId, sections, redirectTo, onSuccess }: Prop
     const res = await createMock({
       enrollmentId,
       examSectionId: section.id,
+      combined: isCombined,
       scope,
       publisher,
       name,
@@ -174,23 +216,29 @@ export function MockForm({ enrollmentId, sections, redirectTo, onSuccess }: Prop
         <Field>
           <FieldLabel htmlFor="deneme-bolum">Bölüm</FieldLabel>
           <Select
-            items={sections.map((s) => ({ value: s.id, label: s.name }))}
-            value={section.id}
+            items={options}
+            value={selection}
             onValueChange={(v) => {
-              if (typeof v === "number") setSectionId(v);
+              if (typeof v === "string") setSelection(v);
             }}
           >
             <SelectTrigger id="deneme-bolum" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {sections.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
+              {options.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {isCombined && (
+            <p className="text-xs text-muted-foreground">
+              {sections.map((s) => s.name).join(" + ")} tek deneme olarak
+              kaydedilir.
+            </p>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="deneme-kapsam">Kapsam</FieldLabel>
@@ -254,11 +302,25 @@ export function MockForm({ enrollmentId, sections, redirectTo, onSuccess }: Prop
               <th className="px-3 py-2 text-right font-medium">Net</th>
             </tr>
           </thead>
-          <tbody>
-            {section.subjects.map((subject) => {
-              const isChild = subject.parentSubjectId != null;
-              const net = rolledNets.get(subject.id);
-              return (
+          {activeSections.map((sec) => (
+            <tbody key={sec.id}>
+              {isCombined && (
+                <tr className="border-b bg-muted/30">
+                  <td
+                    colSpan={4}
+                    className="px-3 py-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                  >
+                    {sec.name}
+                  </td>
+                  <td className="px-3 py-1.5 text-right text-xs font-medium tabular-nums text-muted-foreground">
+                    {hasAny ? formatNet(sectionNets.get(sec.id) ?? 0) : ""}
+                  </td>
+                </tr>
+              )}
+              {sec.subjects.map((subject) => {
+                const isChild = subject.parentSubjectId != null;
+                const net = rolledNets.get(subject.id);
+                return (
                 <tr key={subject.id} className="border-b last:border-0">
                   <td
                     className={cn(
@@ -295,9 +357,10 @@ export function MockForm({ enrollmentId, sections, redirectTo, onSuccess }: Prop
                       : ""}
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
+                );
+              })}
+            </tbody>
+          ))}
           <tfoot>
             <tr className="border-t bg-muted/40 font-medium">
               <td colSpan={4} className="px-3 py-2">

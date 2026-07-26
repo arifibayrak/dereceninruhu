@@ -7,6 +7,7 @@ import {
   getEnrollmentDetailByUserId,
   getSectionsForEnrollment,
 } from "@/db/queries/enrollment";
+import { combinedMockLabel } from "@/lib/exam";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { MockForm, type MockSection } from "@/components/app/mock-form";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
@@ -61,6 +62,7 @@ export default async function YeniDenemePage() {
       <MockForm
         enrollmentId={enrollment.id}
         sections={mockSections}
+        combinedLabel={combinedMockLabel(enrollment.examCode)}
         redirectTo="/ogrenci/denemeler"
       />
     </>

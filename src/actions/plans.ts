@@ -2,19 +2,30 @@
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { getDb, type DB } from "@/db";
-import { enrollments, planTasks, weeklyPlans } from "@/db/schema";
+import {
+  enrollments,
+  examSections,
+  planDayLayouts,
+  planTasks,
+  subjects,
+  weeklyPlans,
+} from "@/db/schema";
 import { addDays, mondayOf, trDayKey } from "@/lib/dates";
+import { isDayColorKey, serializeSubjectIds } from "@/lib/plan-layout";
 import {
   getOrCreateWeeklyPlan,
+  getPlanDayLayout,
   getPlanForReuse,
   type PlanStatus,
 } from "@/db/queries/plans";
 import {
+  copyPlanDayLayoutSchema,
   copyPreviousWeekSchema,
   planTaskCreateSchema,
   planTaskIdSchema,
   planTaskUpdateSchema,
   publishPlanSchema,
+  savePlanDayLayoutSchema,
   submitPlanForReviewSchema,
   togglePlanTaskSchema,
   upsertWeeklyPlanSchema,
@@ -334,6 +345,109 @@ export async function copyPreviousWeekPlan(
     if (added === 0) return actionError("Kopyalama başarısız.");
     return { ok: true, data: { added } };
   });
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Ders düzeni — haftadan haftaya sabit iskelet                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Haftalık ders düzenini yazar (7 gün tek seferde upsert).
+ *
+ * Yalnız KOÇ değiştirir: düzen tüm haftaları etkiler, öğrencinin kendi taslağı
+ * üzerinden yapısal karar vermesi istenmez. Dersler kaydın kendi şablonundan
+ * doğrulanır — başka sınavın ders id'si sessizce düşer.
+ */
+export async function savePlanDayLayout(
+  input: unknown,
+): Promise<ActionResult<{ days: number }>> {
+  return guarded(async () => {
+    const user = await requireCoach();
+    const parsed = savePlanDayLayoutSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
+    }
+    const { enrollmentId, days } = parsed.data;
+    const db = getDb();
+    await assertEnrollmentAccess(db, enrollmentId, user);
+
+    const allowed = await allowedSubjectIds(db, enrollmentId);
+    const now = new Date();
+
+    for (const d of days) {
+      const ids = d.subjectIds.filter((id) => allowed.has(id));
+      const color = isDayColorKey(d.color ?? null) ? d.color! : null;
+      await db
+        .insert(planDayLayouts)
+        .values({
+          enrollmentId,
+          day: d.day,
+          subjectIds: serializeSubjectIds(ids),
+          color,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [planDayLayouts.enrollmentId, planDayLayouts.day],
+          set: {
+            subjectIds: sql`excluded.subject_ids`,
+            color: sql`excluded.color`,
+            updatedAt: now,
+          },
+        });
+    }
+    return { ok: true, data: { days: days.length } };
+  });
+}
+
+/**
+ * Ders düzenini başka bir öğrenciden kopyalar. Kaynak farklı sınav şablonundaysa
+ * o şablona ait ders id'leri hedefte geçersizdir ve düşer — bu durumda hiç ders
+ * kalmazsa kopyalama hata döner (sessizce boş düzen yazmaktansa uyarmak yeğdir).
+ */
+export async function copyPlanDayLayout(
+  input: unknown,
+): Promise<ActionResult<{ days: number }>> {
+  return guarded(async () => {
+    const user = await requireCoach();
+    const parsed = copyPlanDayLayoutSchema.safeParse(input);
+    if (!parsed.success) return actionError("Geçersiz giriş.");
+    const { enrollmentId, sourceEnrollmentId } = parsed.data;
+    const db = getDb();
+    // Hem hedefe hem kaynağa erişim şart — koç başkasının kadrosunu okuyamaz.
+    await assertEnrollmentAccess(db, enrollmentId, user);
+    await assertEnrollmentAccess(db, sourceEnrollmentId, user);
+
+    const source = await getPlanDayLayout(sourceEnrollmentId);
+    const allowed = await allowedSubjectIds(db, enrollmentId);
+    const days = source.map((d) => ({
+      day: d.day,
+      subjectIds: d.subjectIds.filter((id) => allowed.has(id)),
+      color: d.color,
+    }));
+    if (days.every((d) => d.subjectIds.length === 0)) {
+      return actionError(
+        "Kaynak düzendeki dersler bu öğrencinin sınavında yok — kopyalanamadı.",
+      );
+    }
+    return savePlanDayLayout({ enrollmentId, days });
+  });
+}
+
+/** Kaydın sınav şablonundaki geçerli ders id'leri (düzen doğrulaması). */
+async function allowedSubjectIds(
+  db: DB,
+  enrollmentId: number,
+): Promise<Set<number>> {
+  const rows = await db
+    .select({ id: subjects.id })
+    .from(subjects)
+    .innerJoin(examSections, eq(examSections.id, subjects.examSectionId))
+    .innerJoin(
+      enrollments,
+      eq(enrollments.examTemplateId, examSections.examTemplateId),
+    )
+    .where(eq(enrollments.id, enrollmentId));
+  return new Set(rows.map((r) => r.id));
 }
 
 /**

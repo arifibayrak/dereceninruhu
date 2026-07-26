@@ -4,6 +4,7 @@ import { ClipboardListIcon } from "lucide-react";
 
 import { getSectionsForEnrollment } from "@/db/queries/enrollment";
 import { getMockList } from "@/db/queries/tracking";
+import { combinedMockLabel } from "@/lib/exam";
 import { formatInt, formatNet } from "@/lib/format";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
 import { MockCreateDialog } from "@/components/app/mock-create-dialog";
@@ -69,6 +70,7 @@ export default async function DenemelerPage({
           <MockCreateDialog
             enrollmentId={enrollment.id}
             sections={mockSections}
+            combinedLabel={combinedMockLabel(enrollment.examCode)}
           />
         </div>
         {mocks.length === 0 ? (

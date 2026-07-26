@@ -107,8 +107,26 @@ export function websiteSchema() {
 }
 
 /**
- * Person — öne çıkan koç (Ahmet Hakan). `withRating` yalnız yorumların
- * sayfada göründüğü rotalarda (/koclar, /hakkinda) true verilir.
+ * Özgeçmişteki okul satırından alumniOf üretir. Konvansiyon: `achievements`
+ * dizisinin İLK maddesi üniversite/fakülte satırıdır (tohumlar böyle yazılır,
+ * ana sayfa da `slice(1)` ile bu maddeyi atlar). Okul bulunamazsa alan hiç
+ * yazılmaz — yanlış bilgi basmaktansa eksik bırakmak yeğdir.
+ */
+function alumniOf(achievements: string[]) {
+  const school = achievements.find((a) =>
+    /üniversite|fakülte|university/i.test(a),
+  );
+  if (!school) return undefined;
+  return {
+    "@type": "CollegeOrUniversity",
+    // "… — 3. sınıf" gibi sınıf ekini kurum adından ayıkla.
+    name: school.split("—")[0].trim(),
+  };
+}
+
+/**
+ * Person — bir koç profili. `withRating` yalnız yorumların sayfada göründüğü
+ * rotalarda (/koclar, /hakkinda) true verilir.
  */
 export function personSchema(
   coach: PublicCoach,
@@ -130,10 +148,9 @@ export function personSchema(
       ...coach.subjects.map((s) => `${s} koçluğu`),
       ...coach.achievements,
     ],
-    alumniOf: {
-      "@type": "CollegeOrUniversity",
-      name: "Marmara Üniversitesi Hukuk Fakültesi",
-    },
+    // Üniversite koçun kendi özgeçmişinden okunur — ilk madde okul satırıdır.
+    // Ekipte birden çok koç var; sabit bir okul her profile yanlış bilgi basar.
+    alumniOf: alumniOf(coach.achievements),
     sameAs: sameAsLinks([coach.proofUrl ?? "", ...extraSame]),
     ...(opts.withRating ? { aggregateRating: aggregateRating() } : {}),
   };

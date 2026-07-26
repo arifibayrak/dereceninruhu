@@ -84,6 +84,16 @@ export default async function KoclarPage() {
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col gap-2">
+              {/*
+                Ekip büyüdükçe kahramanın kim olduğu belirsizleşmesin: kurucu
+                koç rozeti, altındaki "Ekip" şeridiyle arasındaki hiyerarşiyi
+                metne dökmeden kurar.
+              */}
+              {team.length > 0 && (
+                <Badge className="self-start bg-gold/15 text-gold-foreground dark:text-gold">
+                  Kurucu koç
+                </Badge>
+              )}
               <h1 className="font-heading text-headline text-balance">
                 {coach.displayName}
               </h1>
@@ -164,8 +174,8 @@ export default async function KoclarPage() {
         <section className="flex flex-col gap-8">
           <SectionHeading
             eyebrow="Ekip"
-            title="Koçlarımız"
-            description="Her koçun kendi alanı ve yaklaşımı var; profillerinde ayrıntıya ulaşabilirsin."
+            title="Ekipteki diğer koçlar"
+            description="Kadroya yalnız kendi sınavında derece yapmış isimler katılıyor. Her koçun alanı ve yaklaşımı farklı; profilinde ayrıntısını görebilirsin."
           />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {team.map((member) => (

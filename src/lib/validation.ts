@@ -273,6 +273,30 @@ export const copyPreviousWeekSchema = z.object({
 });
 
 /**
+ * Haftalık ders düzeni — 7 gün tek seferde yazılır (kısmi kayıt yok, böylece
+ * "günü boşalt" da tek yolla ifade edilir: subjectIds = []).
+ */
+export const savePlanDayLayoutSchema = z.object({
+  enrollmentId: z.coerce.number().int().positive(),
+  days: z
+    .array(
+      z.object({
+        day: z.coerce.number().int().min(1).max(7),
+        subjectIds: z.array(z.coerce.number().int().positive()).max(12),
+        color: z.string().trim().max(24).optional().or(z.literal("")),
+      }),
+    )
+    .max(7),
+});
+export type SavePlanDayLayoutInput = z.infer<typeof savePlanDayLayoutSchema>;
+
+/** Ders düzenini başka bir kayıttan (öğrenciden) kopyalama. */
+export const copyPlanDayLayoutSchema = z.object({
+  enrollmentId: z.coerce.number().int().positive(),
+  sourceEnrollmentId: z.coerce.number().int().positive(),
+});
+
+/**
  * AI ile haftalık program taslağı üretme isteği. `studentId` yalnız koç
  * tarafında kullanılır (öğrenci kendi kaydı için çağırır, id enjekte edilir).
  */
@@ -592,7 +616,14 @@ export type SaveMyProfileInput = z.infer<typeof saveMyProfileSchema>;
 /** Deneme girişi — net server-side hesaplanır (D − Y/divisor). */
 export const createMockSchema = z.object({
   enrollmentId: z.coerce.number().int().positive(),
+  /** Birleşik denemede anchor bölüm (şablonun ilk bölümü). */
   examSectionId: z.coerce.number().int().positive(),
+  /**
+   * Tek oturumda çözülen çok bölümlü deneme (KPSS GY + GK). true ise sonuçlar
+   * şablonun tüm bölümlerindeki derslere yayılabilir; net her dersin KENDİ
+   * bölümünün bölenine göre hesaplanır.
+   */
+  combined: z.coerce.boolean().default(false),
   scope: z.enum(["full", "branch"]).default("full"),
   publisher: z.string().trim().max(80).optional().or(z.literal("")),
   name: z.string().trim().max(120).optional().or(z.literal("")),

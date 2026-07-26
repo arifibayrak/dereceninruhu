@@ -3,12 +3,13 @@ import { getDb } from "@/db";
 import {
   enrollments,
   examSections,
+  examTemplates,
   mockExams,
   mockTopicErrors,
   subjects,
   topics,
 } from "@/db/schema";
-import { subjectAppliesToTrack } from "@/lib/exam";
+import { combinedMockLabel, subjectAppliesToTrack } from "@/lib/exam";
 
 /* -------------------------------------------------------------------------- */
 /*  Deneme + konu listeleri (analiz giriş ekranı)                             */
@@ -38,20 +39,28 @@ export async function getMockDetail(
       name: mockExams.name,
       publisher: mockExams.publisher,
       analysisDone: mockExams.analysisDone,
+      isCombined: mockExams.isCombined,
+      templateCode: examTemplates.code,
       sectionName: examSections.name,
       sectionCode: examSections.code,
     })
     .from(mockExams)
     .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
+    .innerJoin(examTemplates, eq(examTemplates.id, examSections.examTemplateId))
     .where(eq(mockExams.id, mockExamId));
   if (!row) return null;
+  // Birleşik denemede anchor bölümün adı yanıltıcı — şablon adını göster.
+  const combined = row.isCombined ? combinedMockLabel(row.templateCode) : null;
   return {
     id: row.id,
     enrollmentId: row.enrollmentId,
     takenOn: row.takenOn,
     scope: row.scope,
-    label: row.name?.trim() || row.publisher?.trim() || row.sectionCode,
-    sectionName: row.sectionName,
+    label:
+      row.name?.trim() ||
+      row.publisher?.trim() ||
+      (combined ? row.templateCode : row.sectionCode),
+    sectionName: combined ?? row.sectionName,
     analysisDone: row.analysisDone,
   };
 }
@@ -200,11 +209,14 @@ export async function getTopicHeatmap(
       takenOn: mockExams.takenOn,
       name: mockExams.name,
       publisher: mockExams.publisher,
+      isCombined: mockExams.isCombined,
+      templateCode: examTemplates.code,
       sectionCode: examSections.code,
     })
     .from(mockTopicErrors)
     .innerJoin(mockExams, eq(mockExams.id, mockTopicErrors.mockExamId))
     .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
+    .innerJoin(examTemplates, eq(examTemplates.id, examSections.examTemplateId))
     .where(eq(mockExams.enrollmentId, enrollmentId))
     .orderBy(asc(mockExams.takenOn), asc(mockExams.id));
 
@@ -214,7 +226,10 @@ export async function getTopicHeatmap(
       mockById.set(r.mockExamId, {
         id: r.mockExamId,
         takenOn: r.takenOn,
-        label: r.name?.trim() || r.publisher?.trim() || r.sectionCode,
+        label:
+          r.name?.trim() ||
+          r.publisher?.trim() ||
+          (r.isCombined ? r.templateCode : r.sectionCode),
       });
     }
   }

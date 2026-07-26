@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   examSections,
@@ -95,17 +95,57 @@ export async function createMock(
       where: eq(examSections.id, v.examSectionId),
     });
     if (!section) return actionError("Deneme bölümü bulunamadı.");
-    const divisor = section.wrongPenaltyDivisor;
+
+    /*
+     * Birleşik deneme (KPSS GY + GK) tek oturumdur: dersler şablonun BÜTÜN
+     * bölümlerinden gelebilir. Anchor satır şablonun ilk bölümüdür; her dersin
+     * neti kendi bölümünün böleniyle hesaplanır (bölenler bölümden bölüme
+     * değişebilir, örn. LGS 3 / YKS 4).
+     */
+    const scopeSections = v.combined
+      ? await db
+          .select({
+            id: examSections.id,
+            sortOrder: examSections.sortOrder,
+            wrongPenaltyDivisor: examSections.wrongPenaltyDivisor,
+          })
+          .from(examSections)
+          .where(eq(examSections.examTemplateId, section.examTemplateId))
+      : [section];
 
     // Roll child subjects (GEO/MANTIK…) up into their scored parent before net.
     const sectionSubjects = await db
       .select({
         id: subjects.id,
+        examSectionId: subjects.examSectionId,
         parentSubjectId: subjects.parentSubjectId,
         isScored: subjects.isScored,
       })
       .from(subjects)
-      .where(eq(subjects.examSectionId, section.id));
+      .where(
+        scopeSections.length === 1
+          ? eq(subjects.examSectionId, scopeSections[0].id)
+          : inArray(
+              subjects.examSectionId,
+              scopeSections.map((s) => s.id),
+            ),
+      );
+
+    const divisorOfSection = new Map(
+      scopeSections.map((s) => [s.id, s.wrongPenaltyDivisor]),
+    );
+    const sectionOfSubject = new Map(
+      sectionSubjects.map((s) => [s.id, s.examSectionId]),
+    );
+    /** Puanlanan dersin neti, kendi bölümünün böleniyle. */
+    const divisorOfSubject = (subjectId: number) =>
+      divisorOfSection.get(sectionOfSubject.get(subjectId) ?? -1) ??
+      section.wrongPenaltyDivisor;
+
+    // Anchor = şablonun ilk bölümü, böylece etiket/sıralama deterministik olur.
+    const anchorSectionId = v.combined
+      ? [...scopeSections].sort((a, b) => a.sortOrder - b.sortOrder)[0].id
+      : section.id;
 
     const counts = new Map<number, SubjectCounts>();
     for (const r of v.results) {
@@ -124,7 +164,8 @@ export async function createMock(
       .insert(mockExams)
       .values({
         enrollmentId: v.enrollmentId,
-        examSectionId: v.examSectionId,
+        examSectionId: anchorSectionId,
+        isCombined: v.combined,
         scope: v.scope,
         publisher: v.publisher?.trim() || null,
         name: v.name?.trim() || null,
@@ -139,7 +180,7 @@ export async function createMock(
       correctCount: c.correct,
       wrongCount: c.wrong,
       blankCount: c.blank ?? 0,
-      net: computeNet(c.correct, c.wrong, divisor),
+      net: computeNet(c.correct, c.wrong, divisorOfSubject(subjectId)),
     }));
     await db.insert(mockExamResults).values(resultRows);
 

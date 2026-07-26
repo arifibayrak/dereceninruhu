@@ -424,6 +424,35 @@ export const planTasks = sqliteTable(
   (t) => [index("plan_tasks_plan_idx").on(t.weeklyPlanId)],
 );
 
+/**
+ * Haftalık ders düzeni — "Pazartesi = Türkçe + Matematik, Salı = Coğrafya…".
+ * Haftadan haftaya DEĞİŞMEZ; program kurucusunda iskelet olarak render edilir,
+ * koç yalnız konuları yazar. Bir kayıt (enrollment) için gün başına tek satır.
+ *
+ * `subjectIds` JSON-encoded number[] — `subjects.trackCodes` ile aynı desen.
+ * Boş dizi = o gün ders yok (tatil/tekrar günü).
+ */
+export const planDayLayouts = sqliteTable(
+  "plan_day_layouts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    enrollmentId: integer("enrollment_id")
+      .notNull()
+      .references(() => enrollments.id),
+    /** 1 = Pazartesi … 7 = Pazar. */
+    day: integer("day").notNull(),
+    /** JSON-encoded number[] — subjects.id listesi, gösterim sırasında. */
+    subjectIds: text("subject_ids").notNull().default("[]"),
+    /** Gün rengi anahtarı (@/lib/plan-layout DAY_COLORS); null = varsayılan. */
+    color: text("color"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("plan_day_layouts_enrollment_day_uq").on(t.enrollmentId, t.day),
+  ],
+);
+
 export const questionLogs = sqliteTable(
   "question_logs",
   {
@@ -502,9 +531,20 @@ export const mockExams = sqliteTable(
     enrollmentId: integer("enrollment_id")
       .notNull()
       .references(() => enrollments.id),
+    /**
+     * Anchor bölüm. Birleşik denemelerde (isCombined) şablonun ilk bölümüdür;
+     * sonuçlar şablonun TÜM bölümlerindeki derslere yayılabilir.
+     */
     examSectionId: integer("exam_section_id")
       .notNull()
       .references(() => examSections.id),
+    /**
+     * Tek oturumda girilen çok bölümlü deneme (KPSS GY + GK gibi).
+     * Etiket bölüm adı yerine şablonun birleşik adıyla gösterilir.
+     */
+    isCombined: integer("is_combined", { mode: "boolean" })
+      .notNull()
+      .default(false),
     /** full = tam deneme, branch = branş denemesi. */
     scope: text("scope", { enum: ["full", "branch"] })
       .notNull()
@@ -1172,8 +1212,12 @@ export const messageTemplates = sqliteTable(
 
 export const coachProfiles = sqliteTable("coach_profiles", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  /**
+   * Bağlı koç hesabı. NULL = henüz hesabı olmayan koç: profili sitede görünür
+   * ama uygulamaya giriş yapamaz, öğrenci atanamaz. Hesap açılınca doldurulur
+   * ve koç profilini /koc/profil'den kendisi yönetmeye başlar.
+   */
   userId: text("user_id")
-    .notNull()
     .unique()
     .references(() => users.id),
   /** Public URL slug (/koclar/[slug]); türetilir, benzersizdir. Null → linklenmez. */
@@ -1488,6 +1532,7 @@ export const enrollmentsRelations = relations(
     subjectAssignments: many(subjectAssignments),
     resources: many(resources),
     weeklyPlans: many(weeklyPlans),
+    planDayLayouts: many(planDayLayouts),
     questionLogs: many(questionLogs),
     mockExams: many(mockExams),
     topicResourceProgress: many(topicResourceProgress),
@@ -1554,6 +1599,13 @@ export const weeklyPlansRelations = relations(weeklyPlans, ({ one, many }) => ({
     references: [enrollments.id],
   }),
   tasks: many(planTasks),
+}));
+
+export const planDayLayoutsRelations = relations(planDayLayouts, ({ one }) => ({
+  enrollment: one(enrollments, {
+    fields: [planDayLayouts.enrollmentId],
+    references: [enrollments.id],
+  }),
 }));
 
 export const planTasksRelations = relations(planTasks, ({ one }) => ({
@@ -1887,6 +1939,7 @@ export type Resource = typeof resources.$inferSelect;
 export type ResourceQuestionLog = typeof resourceQuestionLogs.$inferSelect;
 export type WeeklyPlan = typeof weeklyPlans.$inferSelect;
 export type PlanTask = typeof planTasks.$inferSelect;
+export type PlanDayLayout = typeof planDayLayouts.$inferSelect;
 export type QuestionLog = typeof questionLogs.$inferSelect;
 export type NewQuestionLog = typeof questionLogs.$inferInsert;
 export type MockExam = typeof mockExams.$inferSelect;
