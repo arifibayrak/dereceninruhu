@@ -9,7 +9,12 @@ import {
   subjects,
   topics,
 } from "@/db/schema";
-import { combinedMockLabel, subjectAppliesToTrack } from "@/lib/exam";
+import {
+  combinedMockLabel,
+  examScopesOf,
+  subjectAppliesToTrack,
+} from "@/lib/exam";
+import type { ExamScopeSource } from "@/db/queries/enrollment";
 
 /* -------------------------------------------------------------------------- */
 /*  Deneme + konu listeleri (analiz giriş ekranı)                             */
@@ -74,16 +79,22 @@ export type SubjectTopicGroup = {
 };
 
 /**
- * Kayıt sınavının tüm konuları, ders bazında gruplu (alan filtreli).
+ * Kaydın sınav(lar)ındaki tüm konular, ders bazında gruplu (alan filtreli).
  * Alt dersler (GEO/MANTIK…) kendi konularıyla ayrı grup olarak gelir.
+ * Çift sınavlı kayıtta iki şablonun konuları da döner.
  */
 export async function getTopicGroupsForExam(
-  examTemplateId: number,
-  trackCode: string | null,
+  source: ExamScopeSource,
 ): Promise<SubjectTopicGroup[]> {
   const db = getDb();
+  const scopes = examScopesOf(source);
+  const trackOf = new Map(scopes.map((s) => [s.examTemplateId, s.trackCode]));
+  const rank = new Map(scopes.map((s, i) => [s.examTemplateId, i]));
   const sections = await db.query.examSections.findMany({
-    where: eq(examSections.examTemplateId, examTemplateId),
+    where: inArray(
+      examSections.examTemplateId,
+      scopes.map((s) => s.examTemplateId),
+    ),
     orderBy: asc(examSections.sortOrder),
     with: {
       subjects: {
@@ -100,7 +111,14 @@ export async function getTopicGroupsForExam(
   });
 
   const groups: SubjectTopicGroup[] = [];
-  for (const section of sections) {
+  // Birincil sınavın bölümleri önce, ikincil sonra — her biri kendi sırasında.
+  const ordered = [...sections].sort(
+    (a, b) =>
+      (rank.get(a.examTemplateId) ?? 0) - (rank.get(b.examTemplateId) ?? 0) ||
+      a.sortOrder - b.sortOrder,
+  );
+  for (const section of ordered) {
+    const trackCode = trackOf.get(section.examTemplateId) ?? null;
     for (const subject of section.subjects) {
       if (!subjectAppliesToTrack({ trackCodes: subject.trackCodes }, trackCode))
         continue;

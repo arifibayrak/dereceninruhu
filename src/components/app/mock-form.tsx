@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { combinedMockLabel } from "@/lib/exam";
 import { cn } from "@/lib/utils";
 
 export type MockSubject = {
@@ -39,6 +40,10 @@ export type MockSection = {
   id: number;
   name: string;
   wrongPenaltyDivisor: number;
+  /** Bölümün sınavı — çift sınavlı kayıtta seçenekler sınava göre gruplanır. */
+  examTemplateId: number;
+  examCode: string;
+  examName: string;
   subjects: MockSubject[];
 };
 
@@ -47,11 +52,6 @@ type Counts = { d: string; y: string; b: string };
 type Props = {
   enrollmentId: number;
   sections: MockSection[];
-  /**
-   * Şablonun bölümleri tek oturumda çözülüyorsa birleşik seçeneğin adı
-   * ("KPSS Denemesi"); null/undefined ise yalnız tek tek bölüm girilir.
-   */
-  combinedLabel?: string | null;
   /** Başarıda gidilecek yol (öğrenci akışı); yoksa yalnız refresh (koç). */
   redirectTo?: string;
   /** Koç diyaloğunda kapatma vb. için (istemci-istemci callback). */
@@ -68,7 +68,10 @@ const SCOPES = [
   { value: "branch", label: "Branş denemesi" },
 ] as const;
 
-const COMBINED = "combined";
+/** Birleşik seçenek değeri — hangi SINAVIN birleşik denemesi olduğunu taşır. */
+const combinedValue = (examTemplateId: number) => `combined:${examTemplateId}`;
+const combinedTemplateId = (value: string): number | null =>
+  value.startsWith("combined:") ? Number(value.slice("combined:".length)) : null;
 
 /** Deneme girişi — D/Y/B gir, net canlı hesaplanır (D − Y ÷ bölen). */
 /** Kayıtlı sonuç satırları → ızgaranın metin durumuna. */
@@ -88,22 +91,56 @@ function countsOf(initial: MockEditData | undefined): Record<number, Counts> {
 export function MockForm({
   enrollmentId,
   sections,
-  combinedLabel,
   redirectTo,
   onSuccess,
   initial,
 }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  /** Birleşik giriş mümkünse varsayılan odur — asıl kullanım tek oturumdur. */
-  const canCombine = Boolean(combinedLabel) && sections.length > 1;
+
+  /*
+   * Seçenekler SINAV SINAV kurulur: bir şablonun bölümleri tek oturumda
+   * çözülüyorsa (KPSS GY + GK) önce onun birleşik seçeneği, ardından tek tek
+   * bölümleri gelir. Çift sınavlı kayıtta liste iki sınavı da kapsar.
+   */
+  const examGroups = useMemo(() => {
+    const byTemplate = new Map<number, MockSection[]>();
+    for (const s of sections) {
+      const list = byTemplate.get(s.examTemplateId) ?? [];
+      list.push(s);
+      byTemplate.set(s.examTemplateId, list);
+    }
+    return [...byTemplate.entries()].map(([examTemplateId, secs]) => {
+      const label = combinedMockLabel(secs[0].examCode);
+      return {
+        examTemplateId,
+        examName: secs[0].examName,
+        sections: secs,
+        /** Birleşik giriş yalnız çok bölümlü tek-oturum sınavlarında anlamlı. */
+        combinedLabel: label && secs.length > 1 ? label : null,
+      };
+    });
+  }, [sections]);
+
+  const multiExam = examGroups.length > 1;
+  const sectionById = useMemo(
+    () => new Map(sections.map((s) => [s.id, s])),
+    [sections],
+  );
+
   const [selection, setSelection] = useState<string>(() => {
     if (initial) {
-      return initial.combined && canCombine
-        ? COMBINED
+      const tid = sectionById.get(initial.examSectionId)?.examTemplateId;
+      const group = examGroups.find((g) => g.examTemplateId === tid);
+      return initial.combined && group?.combinedLabel
+        ? combinedValue(group.examTemplateId)
         : String(initial.examSectionId);
     }
-    return canCombine ? COMBINED : String(sections[0]?.id ?? 0);
+    // Varsayılan: birincil sınavın birleşiği varsa o, yoksa ilk bölüm.
+    const first = examGroups[0];
+    return first?.combinedLabel
+      ? combinedValue(first.examTemplateId)
+      : String(sections[0]?.id ?? 0);
   });
   const [scope, setScope] = useState<"full" | "branch">(initial?.scope ?? "full");
   const [takenOn, setTakenOn] = useState(
@@ -115,17 +152,30 @@ export function MockForm({
     countsOf(initial),
   );
 
-  const isCombined = canCombine && selection === COMBINED;
-  /** Girişe dahil bölümler — birleşikte hepsi, değilse yalnız seçilen. */
-  const activeSections = isCombined
-    ? sections
+  const combinedOf = combinedTemplateId(selection);
+  const combinedGroup = examGroups.find(
+    (g) => g.examTemplateId === combinedOf && g.combinedLabel,
+  );
+  const isCombined = Boolean(combinedGroup);
+  /**
+   * Girişe dahil bölümler — birleşikte O SINAVIN tüm bölümleri, değilse yalnız
+   * seçilen bölüm. Diğer sınavın bölümleri asla aynı denemeye karışmaz.
+   */
+  const activeSections = combinedGroup
+    ? combinedGroup.sections
     : sections.filter((s) => String(s.id) === selection);
   const section = activeSections[0] ?? sections[0];
 
-  const options = [
-    ...(canCombine ? [{ value: COMBINED, label: combinedLabel as string }] : []),
-    ...sections.map((s) => ({ value: String(s.id), label: s.name })),
-  ];
+  /** Çift sınavda etiketlere sınav adı eklenir (iki sınavda da "Türkçe" var). */
+  const options = examGroups.flatMap((g) => [
+    ...(g.combinedLabel
+      ? [{ value: combinedValue(g.examTemplateId), label: g.combinedLabel }]
+      : []),
+    ...g.sections.map((s) => ({
+      value: String(s.id),
+      label: multiExam ? `${g.examName} · ${s.name}` : s.name,
+    })),
+  ]);
 
   const setCount = (subjectId: number, key: keyof Counts, raw: string) => {
     const clean = raw.replace(/\D/g, "").slice(0, 3);
@@ -269,10 +319,10 @@ export function MockForm({
               ))}
             </SelectContent>
           </Select>
-          {isCombined && (
+          {combinedGroup && (
             <p className="text-xs text-muted-foreground">
-              {sections.map((s) => s.name).join(" + ")} tek deneme olarak
-              kaydedilir.
+              {combinedGroup.sections.map((s) => s.name).join(" + ")} tek deneme
+              olarak kaydedilir.
             </p>
           )}
         </Field>

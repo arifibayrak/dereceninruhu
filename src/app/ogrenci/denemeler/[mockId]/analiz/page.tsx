@@ -42,10 +42,7 @@ export default async function OgrenciDenemeAnalizPage({
   if (!mock || mock.enrollmentId !== detail.enrollment.id) notFound();
 
   const [groups, initial] = await Promise.all([
-    getTopicGroupsForExam(
-      detail.enrollment.examTemplateId,
-      detail.enrollment.trackCode,
-    ),
+    getTopicGroupsForExam(detail.enrollment),
     getMockTopicErrors(mockExamId),
   ]);
 

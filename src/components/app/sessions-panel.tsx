@@ -113,7 +113,7 @@ export function SessionsPanel({
       const res = await createPlanFromSession({ sessionId: s.id, weekStart });
       if (res.ok) {
         toast.success("Haftalık program oluşturuldu", {
-          description: "Şimdi görevleri ekleyip yayınlayabilirsin.",
+          description: "Görev ekler eklemez program öğrenciye açılır.",
         });
         router.push(
           `/koc/ogrenciler/${studentId}/program?hafta=${res.data.weekKey}`,

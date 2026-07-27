@@ -303,17 +303,17 @@ export default async function KocPanelPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Yayınlanmayı bekleyen programlar</CardTitle>
+            <CardTitle>Eli değmesi gereken programlar</CardTitle>
             <CardDescription>
-              Taslak kalan haftalık programlar — öğrenci önerileri en üstte,
-              incele ve yayınla.
+              Onay bekleyen öğrenci önerileri ve konu eklenmemiş boş haftalar.
+              Koçun kurduğu program ilk konuyla kendiliğinden yayına girer.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {pendingPlans.length === 0 ? (
               <div className="flex items-center gap-3 rounded-xl bg-success/10 p-4 text-sm text-success">
                 <SendIcon className="size-4 shrink-0" />
-                Taslak program yok — tüm programlar yayında.
+                Bekleyen program yok — hepsi yayında.
               </div>
             ) : (
               <ul className="flex flex-col divide-y">
@@ -334,12 +334,16 @@ export default async function KocPanelPage() {
                         {formatInt(p.taskCount)} görev
                       </span>
                     </div>
-                    {p.studentSubmittedAt != null ? (
+                    {p.proposedByStudent ? (
                       <Badge className="bg-info/10 text-info">
-                        Öğrenci önerisi
+                        {p.studentSubmittedAt != null
+                          ? "Onay bekliyor"
+                          : "Öğrenci taslağı"}
                       </Badge>
                     ) : (
-                      <Badge className="bg-warning/10 text-warning">Taslak</Badge>
+                      <Badge className="bg-warning/10 text-warning">
+                        Boş hafta
+                      </Badge>
                     )}
                   </li>
                 ))}

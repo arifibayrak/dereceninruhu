@@ -4,7 +4,6 @@ import { ClipboardListIcon } from "lucide-react";
 
 import { getSectionsForEnrollment } from "@/db/queries/enrollment";
 import { getMockList } from "@/db/queries/tracking";
-import { combinedMockLabel } from "@/lib/exam";
 import { formatInt, formatNet } from "@/lib/format";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
 import { MockActions } from "@/components/app/mock-actions";
@@ -41,16 +40,16 @@ export default async function DenemelerPage({
   const studentId = Number(id);
   const { enrollment } = await resolveCockpit(studentId);
 
-  const sections = await getSectionsForEnrollment(
-    enrollment.examTemplateId,
-    enrollment.trackCode,
-  );
+  const sections = await getSectionsForEnrollment(enrollment);
   const mocks = await getMockList(enrollment.id);
 
   const mockSections: MockSection[] = sections.map((s) => ({
     id: s.id,
     name: s.name,
     wrongPenaltyDivisor: s.wrongPenaltyDivisor,
+    examTemplateId: s.examTemplateId,
+    examCode: s.examCode,
+    examName: s.examName,
     subjects: s.loggable.map((sub) => ({
       id: sub.id,
       name: sub.name,
@@ -71,7 +70,6 @@ export default async function DenemelerPage({
           <MockCreateDialog
             enrollmentId={enrollment.id}
             sections={mockSections}
-            combinedLabel={combinedMockLabel(enrollment.examCode)}
           />
         </div>
         {mocks.length === 0 ? (

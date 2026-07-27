@@ -227,13 +227,18 @@ export type PendingPlan = {
   studentName: string;
   weekStart: Date;
   taskCount: number;
-  /** Öğrenci önerisi mi (koça gönderilmiş) — kart rozeti + sıralama. */
+  /** Koça gönderildiği an — kart sıralaması (gönderilenler en üstte). */
   studentSubmittedAt: Date | null;
+  /** Öğrencinin kendi taslağı mı — kart rozeti (onay bekliyor / boş hafta). */
+  proposedByStudent: boolean;
 };
 
 /**
- * Yayınlanmayı bekleyen (taslak) programlar — koç panosu kartı. Öğrenci
- * önerileri (koça gönderilenler) en üstte.
+ * Koçun eli değmesi gereken taslaklar — koç panosu kartı.
+ *
+ * Koçun kendi kurduğu program ilk konuyla otomatik yayınlandığı için burada
+ * yalnız iki şey kalır: onay bekleyen ÖĞRENCİ ÖNERİLERİ (en üstte) ve konu
+ * eklenmemiş BOŞ haftalar (görüşmeden açılıp yarım kalan planlar).
  */
 export async function getPlansAwaitingPublish(
   limit = 10,
@@ -247,6 +252,7 @@ export async function getPlansAwaitingPublish(
       weekStart: weeklyPlans.weekStart,
       taskCount: sql<number>`count(${planTasks.id})`,
       studentSubmittedAt: weeklyPlans.studentSubmittedAt,
+      proposedByStudent: weeklyPlans.proposedByStudent,
     })
     .from(weeklyPlans)
     .innerJoin(enrollments, eq(enrollments.id, weeklyPlans.enrollmentId))

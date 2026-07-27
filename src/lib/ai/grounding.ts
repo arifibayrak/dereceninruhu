@@ -18,16 +18,27 @@ export async function buildGroundingText(enrollmentId: number): Promise<string> 
   const db = getDb();
   const enr = await db.query.enrollments.findFirst({
     where: eq(enrollments.id, enrollmentId),
-    with: { student: true, examTemplate: true, track: true },
+    with: {
+      student: true,
+      examTemplate: true,
+      track: true,
+      secondaryExamTemplate: true,
+      secondaryTrack: true,
+    },
   });
   if (!enr) throw new Error("Enrollment bulunamadı.");
 
-  const examTemplateId = enr.examTemplateId;
-  const trackCode = enr.track?.code ?? null;
+  // Çift sınavlı kayıtta İKİ şablonun ders/konuları da bağlama girer.
+  const exam = {
+    examTemplateId: enr.examTemplateId,
+    trackCode: enr.track?.code ?? null,
+    secondaryExamTemplateId: enr.secondaryExamTemplateId,
+    secondaryTrackCode: enr.secondaryTrack?.code ?? null,
+  };
 
   const [sections, topicGroups, plan, mocks, resources] = await Promise.all([
-    getSectionsForEnrollment(examTemplateId, trackCode),
-    getTopicGroupsForExam(examTemplateId, trackCode),
+    getSectionsForEnrollment(exam),
+    getTopicGroupsForExam(exam),
     getWeeklyPlan(enrollmentId, new Date()),
     getMockList(enrollmentId),
     getResourcesForEnrollment(enrollmentId),
@@ -38,6 +49,10 @@ export async function buildGroundingText(enrollmentId: number): Promise<string> 
   lines.push(
     `Öğrenci: ${enr.student?.fullName ?? "-"} | Sınav: ${enr.examTemplate?.name ?? enr.examTemplate?.code ?? "-"}` +
       (enr.track?.name ? ` | Alan: ${enr.track.name}` : "") +
+      (enr.secondaryExamTemplate
+        ? ` | İkinci sınav: ${enr.secondaryExamTemplate.name ?? enr.secondaryExamTemplate.code}` +
+          (enr.secondaryTrack?.name ? ` (${enr.secondaryTrack.name})` : "")
+        : "") +
       (enr.targetText ? ` | Hedef: ${enr.targetText}` : ""),
   );
 

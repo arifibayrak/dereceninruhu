@@ -17,11 +17,7 @@ export default async function KaynaklarPage({
   return (
     <>
       <CockpitShell studentId={studentId} active="kaynaklar" />
-      <KaynaklarTab
-        enrollmentId={enrollment.id}
-        examTemplateId={enrollment.examTemplateId}
-        trackCode={enrollment.trackCode}
-      />
+      <KaynaklarTab enrollmentId={enrollment.id} exam={enrollment} />
     </>
   );
 }

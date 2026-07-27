@@ -7,7 +7,6 @@ import {
   getEnrollmentDetailByUserId,
   getSectionsForEnrollment,
 } from "@/db/queries/enrollment";
-import { combinedMockLabel } from "@/lib/exam";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { MockForm, type MockSection } from "@/components/app/mock-form";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
@@ -25,14 +24,14 @@ export default async function YeniDenemePage() {
     return <NoEnrollmentCard isCoach={role === "coach" || role === "admin"} />;
   }
   const { enrollment } = detail;
-  const sections = await getSectionsForEnrollment(
-    enrollment.examTemplateId,
-    enrollment.trackCode,
-  );
+  const sections = await getSectionsForEnrollment(enrollment);
   const mockSections: MockSection[] = sections.map((s) => ({
     id: s.id,
     name: s.name,
     wrongPenaltyDivisor: s.wrongPenaltyDivisor,
+    examTemplateId: s.examTemplateId,
+    examCode: s.examCode,
+    examName: s.examName,
     subjects: s.loggable.map((sub) => ({
       id: sub.id,
       name: sub.name,
@@ -62,7 +61,6 @@ export default async function YeniDenemePage() {
       <MockForm
         enrollmentId={enrollment.id}
         sections={mockSections}
-        combinedLabel={combinedMockLabel(enrollment.examCode)}
         redirectTo="/ogrenci/denemeler"
       />
     </>

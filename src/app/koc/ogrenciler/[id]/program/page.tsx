@@ -56,10 +56,7 @@ export default async function ProgramPage({
   const currentMonday = mondayOf(now);
   const isPlanCurrentWeek = planMonday.getTime() === currentMonday.getTime();
 
-  const sections = await getSectionsForEnrollment(
-    enrollment.examTemplateId,
-    enrollment.trackCode,
-  );
+  const sections = await getSectionsForEnrollment(enrollment);
   const [plan, planWeeks, resources, layout, layoutSources] = await Promise.all([
     getWeeklyPlan(enrollment.id, planMonday),
     listWeeklyPlans(enrollment.id, 8),
@@ -79,6 +76,8 @@ export default async function ProgramPage({
       id: sub.id,
       name: sub.name,
       sectionName: s.name,
+      examCode: s.examCode,
+      examName: s.examName,
     })),
   );
   const builderTasks: BuilderTask[] = (plan?.tasks ?? []).map((t) => ({

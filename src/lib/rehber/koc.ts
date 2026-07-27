@@ -132,7 +132,7 @@ export const kocRehberi: Guide = {
           items: [
             "\"Bugün hatırlat\" kartındaki öğrencileri gözden geçir; WhatsApp düğmesiyle hazır mesajla dürt.",
             "\"Analiz bekleyen denemeler\" kartından \"Analiz gir\" ile deneme analizine geç.",
-            "\"Yayınlanmayı bekleyen programlar\" kartındaki taslakları incele — öğrenci önerileri üstte durur.",
+            "\"Eli değmesi gereken programlar\" kartını incele — onay bekleyen öğrenci önerileri üstte durur.",
             "\"Yaklaşan görüşmeler (7 gün)\" kartıyla haftanı planla.",
           ],
         },
@@ -213,16 +213,21 @@ export const kocRehberi: Guide = {
       title: "Yeni öğrenci ekleme",
       lead: "Formu doldur, öğrenciyi oluştur; ekranda çıkan davet linkini WhatsApp'tan gönder. Öğrenci linkten PIN belirleyip hesabını açar.",
       where: "/koc/ogrenciler/yeni",
-      keywords: ["kayıt", "davet linki", "telefon", "alan", "track"],
+      keywords: ["kayıt", "davet linki", "telefon", "alan", "track", "ikinci sınav", "çift sınav"],
       blocks: [
         {
           kind: "para",
           text: "Zorunlu alanlar Ad Soyad ve Sınav; YKS seçersen Alan (Sayısal / Eşit Ağırlık / Sözel) da zorunlu olur. Telefon zorunlu değil ama kritik: WhatsApp daveti ve hatırlatmalar bu numaraya gider ve öğrenci uygulamaya bu numarayla girer. Kalan alanlar (veli telefonu, hedef, okul, şehir…) sonradan kokpitin Profil sekmesinden de doldurulabilir.",
         },
         {
+          kind: "para",
+          text: "Öğrenci aynı dönemde İKİ sınava birden hazırlanıyorsa (ör. Ekim'de ortaöğretim KPSS, ardından 2027 YKS) \"İkinci sınav\"ı da seç. Kayıt yine tektir — ücret, görüşme ve tüm geçmiş ortakta kalır — ama program ızgarası, soru takibi ve deneme girişi iki sınavın derslerini birden gösterir. Sonradan da eklenir: kokpit → Profil → İkinci sınav.",
+        },
+        {
           kind: "steps",
           items: [
             "Ad Soyad, Sınav ve (YKS ise) Alan seç.",
+            "Öğrenci iki sınava birden hazırlanıyorsa \"İkinci sınav\"ı seç.",
             "Telefonu 5XX ile başlayan biçimde gir.",
             "\"Öğrenciyi oluştur\"a bas.",
             "Başarı ekranındaki davet linkini \"WhatsApp'tan gönder\" ile ilet ya da kopyala.",
@@ -597,7 +602,7 @@ export const kocRehberi: Guide = {
             "Boş haftada istersen \"Geçen haftadan kopyala\" ile başla.",
             "\"Hafta · ders\" ızgarasında \"Konu ekle\" ya da \"Gün\" görünümünde \"Görev ekle\" ile görevleri gir.",
             "Strateji panelinde \"Haftanın mottosu\" ve \"Koç notu\"nu yazıp \"Kaydet\"e bas.",
-            "Bittiğinde \"Yayınla\" ile öğrenciye aç (bkz. bir sonraki bölüm).",
+            "Hepsi bu — ilk görevi eklediğin an program öğrenciye açılmıştır (bkz. bir sonraki bölüm).",
           ],
         },
         {
@@ -623,34 +628,38 @@ export const kocRehberi: Guide = {
       id: "program-yayinla",
       no: 15,
       chapter: "Program",
-      title: "Yayınla ve öğrenci önerisini inceleme",
-      lead: "Program taslak kaldığı sürece öğrenci hiçbir şey görmez. Yayınla'ya basınca haftanın programı öğrencinin ekranına düşer.",
-      keywords: ["yayınla", "taslak", "öğrenci önerisi", "durum"],
+      title: "Otomatik yayın ve öğrenci önerisini inceleme",
+      lead: "Ayrı bir \"Yayınla\" adımı yoktur: ilk konuyu eklediğin an haftanın programı öğrencinin ekranına düşer.",
+      keywords: ["yayınla", "otomatik", "onayla", "taslak", "öğrenci önerisi", "durum"],
       blocks: [
         {
           kind: "para",
-          text: "Programın üç durumu vardır: Taslak (yalnız sen görürsün), Yayınlandı (öğrenci görür ve işaretler), Tamamlandı. Öğrenciler de kendilerine taslak önerebilir — bu taslaklar \"Öğrenci önerisi\" rozetiyle gelir ve Panel'deki \"Yayınlanmayı bekleyen programlar\" kartında en üstte durur. Öneriyi düzenleyip yayınlayan yine sensin; öğrenci kendi taslağını yayınlayamaz.",
+          text: "Programın üç durumu vardır: Hazırlanıyor (hafta henüz boş — öğrenci \"Program henüz hazır değil\" görür), Yayınlandı (öğrenci görür ve işaretler), Tamamlandı. Senin kurduğun programda geçiş kendiliğinden olur: ilk görevi ekler eklemez durum Yayınlandı'ya döner, basılacak bir düğme yoktur.",
+        },
+        {
+          kind: "para",
+          text: "Tek istisna öğrencinin KENDİ önerdiği taslaktır. Öğrenci bir hafta için kendi planını kurabilir; bu taslak \"Öğrenci önerisi\" rozetiyle gelir ve Panel'deki \"Eli değmesi gereken programlar\" kartında en üstte durur. Öğrenci kendi taslağını resmileştiremez — sen \"Onayla\"ya basana kadar konuları işaretleyemez.",
         },
         {
           kind: "steps",
           items: [
-            "Panel'deki \"Yayınlanmayı bekleyen programlar\" kartından ya da kokpitten taslağı aç.",
+            "Panel'deki \"Eli değmesi gereken programlar\" kartından ya da kokpitten öneriyi aç.",
             "\"Öğrenci önerisi\" rozetli taslaklarda görevleri gözden geçir; düzenle, sil, ekle.",
             "Motto ve koç notunu tamamla.",
-            "\"Yayınla\"ya bas — öğrenciye anında görünür.",
+            "\"Onayla\"ya bas — öğrenci artık görevleri işaretleyebilir.",
           ],
         },
         {
           kind: "buttons",
           rows: [
-            { label: "Yayınla", where: "Durum panelinde, sağda (yalnız taslakta)", does: "Programı öğrenciye açar; en az bir görev olmadan basılamaz." },
-            { label: "Taslak / Yayınlandı / Tamamlandı", where: "Durum panelinde rozet", does: "Programın mevcut durumunu gösterir." },
+            { label: "Onayla", where: "Durum panelinde, sağda (yalnız öğrenci önerisinde)", does: "Öğrencinin taslağını resmileştirir; boş program onaylanamaz." },
+            { label: "Hazırlanıyor / Yayınlandı / Tamamlandı", where: "Durum panelinde rozet", does: "Programın mevcut durumunu gösterir." },
             { label: "Öğrenci önerisi", where: "Durum panelinde ek rozet", does: "Taslağın öğrenciden geldiğini belirtir." },
           ],
         },
         {
           kind: "warning",
-          text: "\"Program öğrencide görünmüyor\" şikâyetinin sebebi neredeyse her zaman budur: program taslakta kalmış, Yayınla'ya basılmamıştır.",
+          text: "\"Program öğrencide görünmüyor\" diyorsa artık tek sebep kalır: o haftaya hiç görev eklenmemiştir. Doğru haftaya baktığından emin ol — hafta her zaman Pazartesi başlar.",
         },
       ],
     },
@@ -1227,7 +1236,7 @@ export const kocRehberi: Guide = {
             },
             {
               q: "Program öğrencide görünmüyor.",
-              a: "Program taslakta kalmıştır. Kokpit → Program'da durum rozetine bak; \"Taslak\" ise \"Yayınla\"ya bas. Öğrenci, sen yayınlayana kadar hiçbir görev görmez.",
+              a: "O haftaya hiç görev eklenmemiştir. Kokpit → Program'da doğru haftada olduğundan emin ol (hafta Pazartesi başlar) ve bir konu ekle — program o an öğrenciye açılır. Rozet \"Öğrenci önerisi\" diyorsa \"Onayla\"ya basman gerekir.",
             },
             {
               q: "Öğrenci uygulamadan randevu alamıyor.",
@@ -1301,8 +1310,9 @@ export const kocRehberi: Guide = {
             ["Branş denemesi", "Tek derse odaklı deneme; listede \"Branş\" rozetiyle görünür."],
             ["Analiz bekleyen", "Sonucu girilmiş ama konu-eksik analizi yapılmamış deneme; Panel'deki sayaç bunları sayar."],
             ["Eksik", "Deneme analizinde bir konudan kaçan soru sayısı (yanlış + boş toplamı)."],
-            ["Taslak / Yayınlandı", "Haftalık programın durumu: taslak yalnız koça görünür, yayınlanınca öğrenciye açılır."],
-            ["Öğrenci önerisi", "Öğrencinin kendine önerdiği haftalık program taslağı; koç inceleyip yayınlar."],
+            ["Hazırlanıyor / Yayınlandı", "Haftalık programın durumu: hafta boşken \"Hazırlanıyor\", ilk konu eklenince kendiliğinden \"Yayınlandı\" olur ve öğrenciye açılır."],
+            ["Öğrenci önerisi", "Öğrencinin kendine önerdiği haftalık program taslağı; koç \"Onayla\" diyene kadar öğrenci konuları işaretleyemez."],
+            ["İkinci sınav", "Aynı dönemde iki sınava birden hazırlanan öğrencinin ikinci hedefi (ör. KPSS + YKS). Kayıt tektir; ders listeleri iki sınavın birleşimidir. Profil sekmesinden eklenir/kaldırılır."],
             ["Seri", "Öğrencinin kesintisiz günlük veri girişi yaptığı gün sayısı."],
             ["Son giriş", "Öğrencinin en son soru girişinden bu yana geçen süre rozeti; 3+ gün uyarı eşiğidir."],
             ["Davet linki", "Öğrencinin hesabını açıp PIN belirlediği tek kullanımlık bağlantı."],

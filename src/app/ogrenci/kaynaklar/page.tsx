@@ -39,14 +39,10 @@ export default async function OgrenciKaynaklarPage() {
   const now = new Date();
 
   const [sections, resourceStats, todayQ, matrix] = await Promise.all([
-    getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
+    getSectionsForEnrollment(enrollment),
     listResourcesWithStats(enrollment.id, now),
     getResourceDayQuestions(enrollment.id, now),
-    getTopicResourceMatrix(
-      enrollment.id,
-      enrollment.examTemplateId,
-      enrollment.trackCode,
-    ),
+    getTopicResourceMatrix(enrollment.id, enrollment),
   ]);
 
   const subjectOptions = sections.flatMap((s) =>

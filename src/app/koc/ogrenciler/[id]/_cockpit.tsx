@@ -15,6 +15,7 @@ import {
 import { StudentWaButton } from "@/components/app/student-wa-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { examLabels } from "@/lib/exam";
 
 /** Kokpit sekmeleri — ikincil gezinme sırası. */
 const NAV = [
@@ -81,10 +82,11 @@ export async function CockpitShell({
         <div className="flex flex-col gap-2">
           <h1 className="font-heading text-title">{student.fullName}</h1>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">
-              {enrollment.examCode}
-              {enrollment.trackName ? ` · ${enrollment.trackName}` : ""}
-            </Badge>
+            {examLabels(enrollment).map((label) => (
+              <Badge key={label} variant="secondary">
+                {label}
+              </Badge>
+            ))}
             {student.userId ? (
               <Badge className="bg-success/10 text-success">
                 Davet kabul edildi

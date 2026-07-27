@@ -540,13 +540,13 @@ export const ogrenciRehberi: Guide = {
       blocks: [
         {
           kind: "para",
-          text: "Bir haftanın programı üç durumda olabilir: koçun yayınladığı program (görevleri işaretlersin), senin kendi taslağın (düzenleyip koça gönderirsin) ya da henüz program yok. Koçun hazırladığı program o yayınlayana kadar sana görünmez — “Program henüz hazır değil” yazısı bu yüzdendir.",
+          text: "Bir haftanın programı üç durumda olabilir: koçunun kurduğu program (görevleri işaretlersin), senin kendi taslağın (düzenleyip koça gönderirsin) ya da henüz program yok. Koçun o haftaya ilk konuyu ekler eklemez program sana açılır; “Program henüz hazır değil” yazısı o hafta henüz boş demektir.",
         },
         {
           kind: "steps",
           items: [
             "Üstteki oklarla haftalar arasında gez; başlığın altında “Bu hafta / Geçmiş hafta / Gelecek hafta” yazar.",
-            "Yayınlanmış programda “Hafta · ders” ve “Gün” görünümleri arasında geçiş yap.",
+            "Açılmış programda “Hafta · ders” ve “Gün” görünümleri arasında geçiş yap.",
             "Varsa haftanın mottosunu ve koç notunu en üstte oku — koçun sana o haftaki stratejiyi orada anlatır.",
           ],
         },
@@ -586,7 +586,7 @@ export const ogrenciRehberi: Guide = {
       no: 11,
       chapter: "Program",
       title: "Görevleri işaretleme",
-      lead: "Yayınlanmış programda konuya dokunmak yeter: işaret anında kaydolur, tekrar dokununca geri alınır.",
+      lead: "Sana açılmış programda konuya dokunmak yeter: işaret anında kaydolur, tekrar dokununca geri alınır.",
       where: "/ogrenci/program",
       keywords: ["görev", "işaretle", "tamamla", "tik", "ilerleme"],
       blocks: [
@@ -628,13 +628,13 @@ export const ogrenciRehberi: Guide = {
       no: 12,
       chapter: "Program",
       title: "Kendi programını oluştur",
-      lead: "Koçun o hafta için program yayınlamadıysa kendi konu planını kurar, hazır olunca koçuna gönderirsin.",
+      lead: "Koçun o hafta için henüz konu eklemediyse kendi planını kurar, hazır olunca koçuna gönderirsin.",
       where: "/ogrenci/program",
       keywords: ["taslak", "kendi programın", "konu ekle", "koça gönder"],
       blocks: [
         {
           kind: "para",
-          text: "Bu hafta ya da gelecek hafta için program yoksa ekranda “Kendi programını oluştur” kartı belirir. Konu eklemeye başladığın anda taslağın oluşur; “Bu senin taslağın” kutusu durumu gösterir. Taslağın koça gönderilene ve koç yayınlayana kadar yalnız plandır — koç düzenleyip yayınlayınca işaretlenebilir programa dönüşür.",
+          text: "Bu hafta ya da gelecek hafta için program yoksa ekranda “Kendi programını oluştur” kartı belirir. Konu eklemeye başladığın anda taslağın oluşur; “Bu senin taslağın” kutusu durumu gösterir. Taslağın, koçun onayına kadar yalnız plandır — koç düzenleyip onaylayınca işaretlenebilir programa dönüşür.",
         },
         {
           kind: "steps",
@@ -671,7 +671,7 @@ export const ogrenciRehberi: Guide = {
             {
               label: "Koça gönder",
               where: "Izgaranın altında, sağda",
-              does: "Taslağını koçuna iletir; koç inceleyip yayınlar. Sonradan değiştirirsen “Tekrar gönder” olur.",
+              does: "Taslağını koçuna iletir; koç inceleyip onaylar. Sonradan değiştirirsen “Tekrar gönder” olur.",
             },
           ],
         },
@@ -736,7 +736,7 @@ export const ogrenciRehberi: Guide = {
         },
         {
           kind: "note",
-          text: "Öneri sadece başlangıç noktasıdır: eklenen konuları silebilir, düzenleyebilir, kendi konularını ekleyebilirsin. Son söz koçundadır — taslağını o yayınlar.",
+          text: "Öneri sadece başlangıç noktasıdır: eklenen konuları silebilir, düzenleyebilir, kendi konularını ekleyebilirsin. Son söz koçundadır — taslağını o onaylar.",
         },
       ],
     },
@@ -1418,7 +1418,7 @@ export const ogrenciRehberi: Guide = {
             },
             {
               q: "Program ekranı boş, “Program henüz hazır değil” diyor.",
-              a: "Koçun o haftanın programını henüz yayınlamamış — taslağı sana görünmez. İstersen beklerken kendi taslağını oluşturup koçuna gönderebilirsin (bu hafta ya da gelecek hafta için).",
+              a: "Koçun o haftaya henüz konu eklememiş — hafta boş olduğu sürece burada bir şey görünmez. İstersen beklerken kendi taslağını oluşturup koçuna gönderebilirsin (bu hafta ya da gelecek hafta için).",
             },
             {
               q: "PIN'imi unuttum.",
@@ -1514,7 +1514,7 @@ export const ogrenciRehberi: Guide = {
             ],
             [
               "Taslak",
-              "Henüz yayınlanmamış haftalık program; senin taslağın koça gönderilir, koçunki sana görünmez.",
+              "Henüz onaylanmamış haftalık program; senin kurduğun plandır, koça gönderilir.",
             ],
             [
               "Yayınlanmış program",

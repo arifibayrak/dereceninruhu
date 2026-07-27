@@ -43,7 +43,17 @@ import { ResourcePicker } from "@/components/app/resource-picker";
 /*  Tipler                                                                     */
 /* -------------------------------------------------------------------------- */
 
-export type GridSubject = { id: number; name: string; sectionName?: string };
+export type GridSubject = {
+  id: number;
+  name: string;
+  sectionName?: string;
+  /**
+   * Dersin sınavı — öğrenci iki sınava birden hazırlanıyorsa kolonlarda rozet
+   * ve üstte sınav filtresi çıkar. Tek sınavlı kayıtta boştur.
+   */
+  examCode?: string;
+  examName?: string;
+};
 export type GridResource = { id: number; name: string };
 export type GridDay = { day: number; name: string };
 export type GridTask = {
@@ -66,6 +76,8 @@ const SHORT_DAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"] as const;
 type Column = {
   subjectId: number | null;
   subjectName: string | null;
+  examCode: string | null;
+  examName: string | null;
   tasks: GridTask[];
 };
 
@@ -78,10 +90,18 @@ function toColumns(subjects: GridSubject[], tasks: GridTask[]): Column[] {
   const cols: Column[] = subjects.map((s) => ({
     subjectId: s.id,
     subjectName: s.name,
+    examCode: s.examCode ?? null,
+    examName: s.examName ?? null,
     tasks: [],
   }));
   const byId = new Map(cols.map((c) => [c.subjectId, c]));
-  const general: Column = { subjectId: null, subjectName: null, tasks: [] };
+  const general: Column = {
+    subjectId: null,
+    subjectName: null,
+    examCode: null,
+    examName: null,
+    tasks: [],
+  };
   for (const t of tasks) {
     const col = t.subjectId != null ? byId.get(t.subjectId) : undefined;
     (col ?? general).tasks.push(t);
@@ -141,14 +161,60 @@ export function ProgramGrid({
   mode,
 }: Props) {
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [examFilter, setExamFilter] = useState<string | null>(null);
   const { doneOf, toggle } = useDoneToggle();
-  const columns = useMemo(() => toColumns(subjects, tasks), [subjects, tasks]);
+  const allColumns = useMemo(
+    () => toColumns(subjects, tasks),
+    [subjects, tasks],
+  );
   const editable = mode === "edit";
+
+  /*
+   * Çift sınavlı öğrencide (ör. Ekim KPSS + 2027 YKS) ders kolonları iki sınavı
+   * birden kapsar. Filtre sadece görünümü daraltır; "Genel" kolonu (dersi
+   * olmayan görevler) her filtrede kalır — yoksa görev gizlenmiş olurdu.
+   */
+  const exams = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const s of subjects) {
+      if (s.examCode && !seen.has(s.examCode)) {
+        seen.set(s.examCode, s.examName ?? s.examCode);
+      }
+    }
+    return [...seen].map(([code, name]) => ({ code, name }));
+  }, [subjects]);
+  const multiExam = exams.length > 1;
+  const columns =
+    multiExam && examFilter
+      ? allColumns.filter(
+          (c) => c.examCode === examFilter || c.subjectId === null,
+        )
+      : allColumns;
 
   const cellProps = { editable, doneOf, toggle, setDialog };
 
   return (
     <div className="flex flex-col gap-3">
+      {multiExam && (
+        <div
+          className="flex flex-wrap items-center gap-1.5"
+          role="group"
+          aria-label="Sınav filtresi"
+        >
+          {[{ code: null, name: "Tümü" }, ...exams].map((e) => (
+            <Button
+              key={e.code ?? "all"}
+              type="button"
+              size="sm"
+              variant={examFilter === e.code ? "default" : "outline"}
+              aria-pressed={examFilter === e.code}
+              onClick={() => setExamFilter(e.code)}
+            >
+              {e.name}
+            </Button>
+          ))}
+        </div>
+      )}
       {/* Masaüstü — ders kolonları, yatay kaydırma + yapışkan başlıklar yok */}
       <div className="hidden overflow-x-auto rounded-2xl bg-card p-3 ring-1 ring-foreground/10 lg:block">
         <div className="flex gap-3">
@@ -158,8 +224,15 @@ export function ProgramGrid({
               className="flex w-56 shrink-0 flex-col gap-2"
             >
               <div className="flex items-baseline justify-between gap-1 border-b border-foreground/10 pb-1.5">
-                <span className="font-heading text-sm font-semibold text-primary">
-                  {col.subjectName ?? "Genel"}
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate font-heading text-sm font-semibold text-primary">
+                    {col.subjectName ?? "Genel"}
+                  </span>
+                  {multiExam && col.examCode && (
+                    <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                      {col.examCode}
+                    </span>
+                  )}
                 </span>
                 <span className="text-[11px] text-muted-foreground tabular-nums">
                   {col.tasks.length}
@@ -192,6 +265,7 @@ export function ProgramGrid({
           <SubjectCard
             key={col.subjectId ?? "genel"}
             col={col}
+            multiExam={multiExam}
             editable={editable}
             doneOf={doneOf}
             toggle={toggle}
@@ -352,12 +426,15 @@ function DeleteTopicButton({ taskId }: { taskId: number }) {
 
 function SubjectCard({
   col,
+  multiExam,
   editable,
   doneOf,
   toggle,
   setDialog,
 }: {
   col: Column;
+  /** Çift sınavlı kayıtta ders adının altına sınav kodu yazılır. */
+  multiExam: boolean;
   editable: boolean;
   doneOf: (t: GridTask) => boolean;
   toggle: (t: GridTask) => void;
@@ -375,8 +452,15 @@ function SubjectCard({
         onClick={() => setOpen((v) => !v)}
         className="flex items-center justify-between gap-2 p-3 text-left"
       >
-        <span className="font-heading text-sm font-semibold text-primary">
-          {col.subjectName ?? "Genel"}
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate font-heading text-sm font-semibold text-primary">
+            {col.subjectName ?? "Genel"}
+          </span>
+          {multiExam && col.examCode && (
+            <span className="text-[10px] font-medium uppercase text-muted-foreground">
+              {col.examCode}
+            </span>
+          )}
         </span>
         <span className="flex items-center gap-2">
           <span className="text-[11px] text-muted-foreground tabular-nums">
@@ -464,11 +548,17 @@ function TopicForm({
   // 0 = güne atanmamış (haftalık konu).
   const [day, setDay] = useState<number>(editTask?.day ?? 0);
 
+  // Çift sınavda aynı ders adı iki kez geçer (KPSS Türkçesi / TYT Türkçesi) —
+  // seçim listesinde sınav kodu ayırt edici olur.
+  const multiExamForm =
+    new Set(subjects.map((s) => s.examCode).filter(Boolean)).size > 1;
   const subjectItems = [
     { value: 0, label: "Genel (ders yok)" },
     ...subjects.map((s) => ({
       value: s.id,
-      label: s.sectionName ? `${s.name} · ${s.sectionName}` : s.name,
+      label: [s.name, multiExamForm ? s.examCode : null, s.sectionName]
+        .filter(Boolean)
+        .join(" · "),
     })),
   ];
   const dayItems = [

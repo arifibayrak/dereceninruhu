@@ -8,6 +8,7 @@ import {
 } from "@/db/schema";
 import { startOfTrtDay, weekRange } from "@/lib/dates";
 import { getTopicGroupsForExam, type SubjectTopicGroup } from "./analiz";
+import type { ExamScopeSource } from "./enrollment";
 
 /* -------------------------------------------------------------------------- */
 /*  Kaynaklar                                                                 */
@@ -150,12 +151,11 @@ export type TopicResourceMatrix = {
 /** Kokpit "Konular" sekmesi + öğrenci analiz sayfası matris verisi. */
 export async function getTopicResourceMatrix(
   enrollmentId: number,
-  examTemplateId: number,
-  trackCode: string | null,
+  exam: ExamScopeSource,
 ): Promise<TopicResourceMatrix> {
   const db = getDb();
   const [groups, resourceRows, progressRows] = await Promise.all([
-    getTopicGroupsForExam(examTemplateId, trackCode),
+    getTopicGroupsForExam(exam),
     listResources(enrollmentId),
     db
       .select({
@@ -204,12 +204,11 @@ export type KonuProgress = {
  */
 export async function getKonuProgress(
   enrollmentId: number,
-  examTemplateId: number,
-  trackCode: string | null,
+  exam: ExamScopeSource,
 ): Promise<KonuProgress> {
   const db = getDb();
   const [groups, progressRows] = await Promise.all([
-    getTopicGroupsForExam(examTemplateId, trackCode),
+    getTopicGroupsForExam(exam),
     db
       .select({ topicId: topicResourceProgress.topicId })
       .from(topicResourceProgress)

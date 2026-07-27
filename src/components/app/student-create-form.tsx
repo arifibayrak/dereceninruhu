@@ -56,6 +56,8 @@ const FIELD_NAMES: FieldName[] = [
   "phone",
   "examCode",
   "trackCode",
+  "secondaryExamCode",
+  "secondaryTrackCode",
   "targetText",
   "grade",
   "field",
@@ -89,6 +91,8 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
       phone: prefill?.phone ?? "",
       examCode: prefill?.examCode ?? "YKS",
       trackCode: undefined,
+      secondaryExamCode: "",
+      secondaryTrackCode: "",
       targetText: "",
       grade: "",
       field: "",
@@ -103,6 +107,10 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
   });
   const { errors } = form.formState;
   const examCode = useWatch({ control: form.control, name: "examCode" });
+  const secondaryExamCode = useWatch({
+    control: form.control,
+    name: "secondaryExamCode",
+  });
 
   const onSubmit = async (values: CreateStudentInput) => {
     setSubmitting(true);
@@ -262,6 +270,85 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
                 )}
               />
               <FieldError errors={[errors.trackCode]} />
+            </Field>
+          )}
+        </div>
+
+        {/* İkinci sınav — aynı dönemde iki sınava hazırlananlar için. */}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field data-invalid={errors.secondaryExamCode ? true : undefined}>
+            <FieldLabel htmlFor="ogr-sinav-2">İkinci sınav</FieldLabel>
+            <Controller
+              control={form.control}
+              name="secondaryExamCode"
+              render={({ field }) => (
+                <Select
+                  items={[
+                    { value: "", label: "Yok" },
+                    ...EXAMS.filter((e) => e.value !== examCode),
+                  ]}
+                  value={field.value ?? ""}
+                  onValueChange={(value) => {
+                    field.onChange(value ?? "");
+                    if (value !== "YKS") {
+                      form.setValue("secondaryTrackCode", "");
+                      form.clearErrors("secondaryTrackCode");
+                    }
+                  }}
+                >
+                  <SelectTrigger id="ogr-sinav-2" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Yok</SelectItem>
+                    {EXAMS.filter((e) => e.value !== examCode).map((exam) => (
+                      <SelectItem key={exam.value} value={exam.value}>
+                        {exam.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldDescription>
+              Öğrenci iki sınava birden hazırlanıyorsa seç — program ve soru
+              takibi iki sınavın derslerini de gösterir.
+            </FieldDescription>
+            <FieldError errors={[errors.secondaryExamCode]} />
+          </Field>
+
+          {secondaryExamCode === "YKS" && (
+            <Field data-invalid={errors.secondaryTrackCode ? true : undefined}>
+              <FieldLabel htmlFor="ogr-alan-2">İkinci sınavın alanı *</FieldLabel>
+              <Controller
+                control={form.control}
+                name="secondaryTrackCode"
+                render={({ field }) => (
+                  <Select
+                    items={[...TRACKS]}
+                    value={field.value ?? null}
+                    onValueChange={(value) => field.onChange(value ?? "")}
+                  >
+                    <SelectTrigger
+                      id="ogr-alan-2"
+                      className="w-full"
+                      aria-invalid={
+                        errors.secondaryTrackCode ? true : undefined
+                      }
+                    >
+                      <SelectValue placeholder="Alan seç" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TRACKS.map((track) => (
+                        <SelectItem key={track.value} value={track.value}>
+                          {track.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <FieldError errors={[errors.secondaryTrackCode]} />
             </Field>
           )}
         </div>

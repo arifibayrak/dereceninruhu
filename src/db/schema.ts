@@ -288,6 +288,19 @@ export const enrollments = sqliteTable(
       .references(() => examTemplates.id),
     /** NULL for track-less templates (KPSS, LGS). */
     trackId: integer("track_id").references(() => tracks.id),
+    /**
+     * İKİNCİ sınav — bir öğrenci aynı dönemde iki sınava hazırlanabilir
+     * (ör. Ekim'de ortaöğretim KPSS, ardından 2027 YKS). NULL = tek sınav.
+     *
+     * Kayıt tektir: tüm takip satırları (`enrollment_id`) ortakta kalır, ders
+     * listesi iki şablonun BİRLEŞİMİdir. Ders id'leri bölüme özgü olduğundan
+     * (KPSS Türkçesi ile TYT Türkçesi ayrı satırlardır) geçmiş veri bozulmaz.
+     */
+    secondaryExamTemplateId: integer("secondary_exam_template_id").references(
+      () => examTemplates.id,
+    ),
+    /** İkinci sınavın alanı — yalnız YKS ikinci sınavsa dolu. */
+    secondaryTrackId: integer("secondary_track_id").references(() => tracks.id),
     coachUserId: text("coach_user_id").references(() => users.id),
     /** HEDEF row from the sheet (e.g. "İstanbul Adliyesi zabıt katipliği"). */
     targetText: text("target_text"),
@@ -1468,6 +1481,10 @@ export const examTemplatesRelations = relations(examTemplates, ({ many }) => ({
   sections: many(examSections),
   tracks: many(tracks),
   enrollments: many(enrollments),
+  /** İkinci sınavı bu şablon olan kayıtlar (bkz. enrollments.secondaryExamTemplateId). */
+  secondaryEnrollments: many(enrollments, {
+    relationName: "secondaryExamTemplate",
+  }),
 }));
 
 export const examSectionsRelations = relations(
@@ -1488,6 +1505,8 @@ export const tracksRelations = relations(tracks, ({ one, many }) => ({
     references: [examTemplates.id],
   }),
   enrollments: many(enrollments),
+  /** İkinci sınavın alanı olarak seçilmiş kayıtlar. */
+  secondaryEnrollments: many(enrollments, { relationName: "secondaryTrack" }),
 }));
 
 export const subjectsRelations = relations(subjects, ({ one, many }) => ({
@@ -1535,6 +1554,16 @@ export const enrollmentsRelations = relations(
     track: one(tracks, {
       fields: [enrollments.trackId],
       references: [tracks.id],
+    }),
+    secondaryExamTemplate: one(examTemplates, {
+      fields: [enrollments.secondaryExamTemplateId],
+      references: [examTemplates.id],
+      relationName: "secondaryExamTemplate",
+    }),
+    secondaryTrack: one(tracks, {
+      fields: [enrollments.secondaryTrackId],
+      references: [tracks.id],
+      relationName: "secondaryTrack",
     }),
     coach: one(users, {
       fields: [enrollments.coachUserId],

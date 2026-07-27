@@ -384,6 +384,10 @@ export type MockEditPayload = {
     id: number;
     name: string;
     wrongPenaltyDivisor: number;
+    /** Bölümün sınavı — çift sınavlı kayıtta form seçenekleri buna göre gruplanır. */
+    examTemplateId: number;
+    examCode: string;
+    examName: string;
     subjects: {
       id: number;
       name: string;
@@ -392,8 +396,6 @@ export type MockEditPayload = {
       officialQuestionCount: number | null;
     }[];
   }[];
-  /** Şablon tek oturumda çözülüyorsa birleşik seçeneğin adı, yoksa null. */
-  combinedLabel: string | null;
 };
 
 /** Tek denemenin düzenlenebilir alanları + D/Y/B satırları + ders ızgarası. */
@@ -408,7 +410,12 @@ export async function getMockForEdit(
 
   const enrollment = await db.query.enrollments.findFirst({
     where: eq(enrollments.id, exam.enrollmentId),
-    with: { examTemplate: true, track: true },
+    with: {
+      examTemplate: true,
+      track: true,
+      secondaryExamTemplate: true,
+      secondaryTrack: true,
+    },
   });
   if (!enrollment) return null;
 
@@ -422,10 +429,12 @@ export async function getMockForEdit(
       })
       .from(mockExamResults)
       .where(eq(mockExamResults.mockExamId, mockExamId)),
-    getSectionsForEnrollment(
-      enrollment.examTemplateId,
-      enrollment.track?.code ?? null,
-    ),
+    getSectionsForEnrollment({
+      examTemplateId: enrollment.examTemplateId,
+      trackCode: enrollment.track?.code ?? null,
+      secondaryExamTemplateId: enrollment.secondaryExamTemplateId,
+      secondaryTrackCode: enrollment.secondaryTrack?.code ?? null,
+    }),
   ]);
 
   return {
@@ -444,6 +453,9 @@ export async function getMockForEdit(
       id: s.id,
       name: s.name,
       wrongPenaltyDivisor: s.wrongPenaltyDivisor,
+      examTemplateId: s.examTemplateId,
+      examCode: s.examCode,
+      examName: s.examName,
       subjects: s.loggable.map((sub) => ({
         id: sub.id,
         name: sub.name,
@@ -452,7 +464,6 @@ export async function getMockForEdit(
         officialQuestionCount: sub.officialQuestionCount,
       })),
     })),
-    combinedLabel: combinedMockLabel(enrollment.examTemplate.code),
   };
 }
 

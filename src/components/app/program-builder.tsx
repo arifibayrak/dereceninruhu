@@ -63,7 +63,14 @@ import {
   type DayLayoutEntry,
 } from "@/lib/plan-layout";
 
-export type BuilderSubject = { id: number; name: string; sectionName: string };
+export type BuilderSubject = {
+  id: number;
+  name: string;
+  sectionName: string;
+  /** Dersin sınavı — çift sınavlı kayıtta rozet/filtre için. */
+  examCode?: string;
+  examName?: string;
+};
 export type BuilderResource = { id: number; name: string };
 export type BuilderTask = {
   id: number;
@@ -107,7 +114,7 @@ type Props = {
 };
 
 const STATUS_META = {
-  draft: { label: "Taslak", className: "bg-warning/10 text-warning" },
+  draft: { label: "Hazırlanıyor", className: "bg-warning/10 text-warning" },
   published: { label: "Yayınlandı", className: "bg-success/10 text-success" },
   completed: { label: "Tamamlandı", className: "bg-muted text-muted-foreground" },
 } as const;
@@ -158,6 +165,11 @@ export function ProgramBuilder({
     () => new Map(subjects.map((s) => [s.id, s])),
     [subjects],
   );
+  /** İki sınava birden hazırlanan öğrencide ders adlarına sınav kodu eklenir. */
+  const multiExam = useMemo(
+    () => new Set(subjects.map((s) => s.examCode).filter(Boolean)).size > 1,
+    [subjects],
+  );
   const dayNames = useMemo(
     () => Object.fromEntries(days.map((d) => [d.day, d.name])),
     [days],
@@ -169,6 +181,12 @@ export function ProgramBuilder({
   const status = plan?.status ?? "draft";
   const statusMeta = STATUS_META[status];
   const weekTasks = tasks.filter((t) => t.day == null);
+  /*
+   * Koçun kurduğu program ilk konuyla birlikte kendiliğinden yayına girer —
+   * ayrı "Yayınla" adımı yok. Onay yalnız ÖĞRENCİNİN kendi önerdiği taslakta
+   * gerekir; koç onaylayana kadar öğrenci konuları işaretleyemez.
+   */
+  const isStudentProposal = status === "draft" && Boolean(plan?.proposedByStudent);
 
   const metaDirty =
     motto !== (plan?.motto ?? "") || coachNote !== (plan?.coachNote ?? "");
@@ -196,8 +214,8 @@ export function ProgramBuilder({
     const res = await publishPlan({ planId: plan.id });
     setPublishing(false);
     if (res.ok) {
-      toast.success("Program yayınlandı 🎉", {
-        description: "Öğrenci artık bu haftanın programını görüyor.",
+      toast.success("Öğrencinin önerisi onaylandı 🎉", {
+        description: "Program resmileşti — öğrenci artık konuları işaretleyebilir.",
       });
       router.refresh();
     } else {
@@ -250,21 +268,21 @@ export function ProgramBuilder({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={statusMeta.className}>{statusMeta.label}</Badge>
-            {plan?.studentSubmittedAt != null && status === "draft" && (
+            {isStudentProposal && (
               <Badge className="bg-info/10 text-info">Öğrenci önerisi</Badge>
             )}
             <span className="text-sm text-muted-foreground tabular-nums">
               {done}/{total} konu · %{pct}
             </span>
           </div>
-          {status === "draft" && (
+          {isStudentProposal && (
             <Button
               size="sm"
               onClick={publish}
               disabled={publishing || !plan || total === 0}
             >
               <SendIcon data-icon="inline-start" />
-              {publishing ? "Yayınlanıyor…" : "Yayınla"}
+              {publishing ? "Onaylanıyor…" : "Onayla"}
             </Button>
           )}
         </div>
@@ -285,11 +303,18 @@ export function ProgramBuilder({
           </div>
         )}
 
-        {status === "draft" && total > 0 && (
+        {isStudentProposal ? (
           <p className="text-xs text-muted-foreground">
-            Program taslak — öğrenci <span className="font-medium">Yayınla</span>
-            &apos;ya basana kadar görmez.
+            Öğrencinin kendi önerisi — <span className="font-medium">Onayla</span>
+            &apos;ya basana kadar konuları işaretleyemez.
           </p>
+        ) : (
+          status === "draft" && (
+            <p className="text-xs text-muted-foreground">
+              İlk konuyu ekler eklemez program öğrenciye açılır — ayrı bir
+              yayınlama adımı yok.
+            </p>
+          )
         )}
       </div>
 
@@ -505,6 +530,9 @@ export function ProgramBuilder({
                             )}
                           >
                             {subject.name}
+                            {multiExam && subject.examCode
+                              ? ` · ${subject.examCode}`
+                              : ""}
                           </span>
                           {subjectTasks.map((task) => (
                             <TaskRow

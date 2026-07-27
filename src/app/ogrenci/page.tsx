@@ -36,6 +36,7 @@ import {
 } from "@/components/app/today-quick-add";
 import { StatTile } from "@/components/brand/stat-tile";
 import { Badge } from "@/components/ui/badge";
+import { examLabels } from "@/lib/exam";
 
 export const metadata: Metadata = { title: "Bugün" };
 
@@ -63,7 +64,7 @@ export default async function OgrenciBugunPage() {
   const todayKey = trDayKey(now);
   const [sections, grid, insightInput, weekPlan, nextSession, studyWeek] =
     await Promise.all([
-      getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
+      getSectionsForEnrollment(enrollment),
       getWeekGrid(enrollment.id, now),
       getStudentInsightInput(enrollment.id, now),
       getWeeklyPlan(enrollment.id, now, { publishedOnly: true }),
@@ -113,10 +114,11 @@ export default async function OgrenciBugunPage() {
           Merhaba {student.fullName.split(" ")[0]} 👋
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">
-            {enrollment.examCode}
-            {enrollment.trackName ? ` · ${enrollment.trackName}` : ""}
-          </Badge>
+          {examLabels(enrollment).map((label) => (
+            <Badge key={label} variant="secondary">
+              {label}
+            </Badge>
+          ))}
           {enrollment.targetText && (
             <span className="text-sm text-muted-foreground">
               🎯 {enrollment.targetText}

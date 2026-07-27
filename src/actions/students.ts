@@ -16,6 +16,7 @@ import { syncLoginPhone } from "@/lib/auth-identity";
 import { normalizePhone } from "@/lib/phone";
 import {
   createStudentSchema,
+  setSecondaryExamSchema,
   updateStudentProfileSchema,
 } from "@/lib/validation";
 import {
@@ -50,6 +51,34 @@ async function phoneTakenError(phone: string, excludeStudentId?: number) {
 
 function newInviteCode(): string {
   return crypto.randomUUID().replaceAll("-", "");
+}
+
+/**
+ * Sınav kodu + alan kodunu id'lere çözer. Kod boşsa iki id de null döner
+ * (ikinci sınav yok / kaldırıldı). Hata durumunda `{ error }` verir.
+ */
+async function resolveExam(
+  db: ReturnType<typeof getDb>,
+  examCode: string | null,
+  trackCode: string | null,
+): Promise<
+  | { examTemplateId: number | null; trackId: number | null }
+  | { error: ReturnType<typeof actionError> }
+> {
+  if (!examCode) return { examTemplateId: null, trackId: null };
+  const template = await db.query.examTemplates.findFirst({
+    where: eq(examTemplates.code, examCode),
+  });
+  if (!template) return { error: actionError("Sınav şablonu bulunamadı.") };
+  if (!trackCode) return { examTemplateId: template.id, trackId: null };
+  const track = await db.query.tracks.findFirst({
+    where: and(
+      eq(tracks.examTemplateId, template.id),
+      eq(tracks.code, trackCode),
+    ),
+  });
+  if (!track) return { error: actionError("Seçilen alan bulunamadı.") };
+  return { examTemplateId: template.id, trackId: track.id };
 }
 
 export type CreatedStudent = {
@@ -99,6 +128,14 @@ export async function createStudent(
       trackId = track.id;
     }
 
+    // İkinci sınav (ör. Ekim'de ortaöğretim KPSS + 2027 YKS) — isteğe bağlı.
+    const secondary = await resolveExam(
+      db,
+      v.secondaryExamCode || null,
+      v.secondaryTrackCode || null,
+    );
+    if ("error" in secondary) return secondary.error;
+
     const inviteCode = newInviteCode();
 
     const [student] = await db
@@ -126,6 +163,8 @@ export async function createStudent(
         studentId: student.id,
         examTemplateId: template.id,
         trackId,
+        secondaryExamTemplateId: secondary.examTemplateId,
+        secondaryTrackId: secondary.trackId,
         coachUserId: coach.id,
         targetText: clean(v.targetText),
         startDate: v.startDate ?? new Date(),
@@ -142,6 +181,61 @@ export async function createStudent(
         invitePath: `/davet/${inviteCode}`,
       },
     };
+  });
+}
+
+/**
+ * Koç: öğrencinin İKİNCİ sınavını ekler / değiştirir / kaldırır.
+ *
+ * Birinci sınav bilerek dokunulmaz — mevcut soru/deneme/program satırları o
+ * şablonun ders id'lerine bağlıdır. İkinci sınav eklemek yalnızca ders listesini
+ * genişletir, hiçbir geçmiş satırı bozmaz. Kaldırmak da veri silmez; o sınavın
+ * dersleri seçim listelerinden çıkar (geri eklenince yeniden görünür).
+ */
+export async function setSecondaryExam(
+  input: unknown,
+): Promise<ActionResult<{ studentId: number }>> {
+  return guarded(async () => {
+    await requireCoach();
+    const parsed = setSecondaryExamSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError(
+        "Lütfen formu kontrol edin.",
+        fieldErrorsOf(parsed.error.issues),
+      );
+    }
+    const v = parsed.data;
+    const db = getDb();
+
+    const enrollment = await db.query.enrollments.findFirst({
+      where: and(
+        eq(enrollments.studentId, v.studentId),
+        eq(enrollments.status, "active"),
+      ),
+    });
+    if (!enrollment) return actionError("Aktif kayıt bulunamadı.");
+
+    const secondary = await resolveExam(
+      db,
+      v.secondaryExamCode || null,
+      v.secondaryTrackCode || null,
+    );
+    if ("error" in secondary) return secondary.error;
+    if (secondary.examTemplateId === enrollment.examTemplateId) {
+      return actionError("İkinci sınav birinciyle aynı olamaz.");
+    }
+
+    await db
+      .update(enrollments)
+      .set({
+        secondaryExamTemplateId: secondary.examTemplateId,
+        secondaryTrackId: secondary.trackId,
+        updatedAt: new Date(),
+      })
+      .where(eq(enrollments.id, enrollment.id));
+
+    revalidatePath(`/koc/ogrenciler/${v.studentId}`);
+    return { ok: true, data: { studentId: v.studentId } };
   });
 }
 

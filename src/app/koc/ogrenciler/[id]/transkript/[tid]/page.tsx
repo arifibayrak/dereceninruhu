@@ -52,14 +52,8 @@ export default async function TranskriptReviewPage({
 
   const [proposals, sections, topicGroups, resources] = await Promise.all([
     listProposalsForTranscript(transcriptId),
-    getSectionsForEnrollment(
-      detail.enrollment.examTemplateId,
-      detail.enrollment.trackCode,
-    ),
-    getTopicGroupsForExam(
-      detail.enrollment.examTemplateId,
-      detail.enrollment.trackCode,
-    ),
+    getSectionsForEnrollment(detail.enrollment),
+    getTopicGroupsForExam(detail.enrollment),
     getResourcesForEnrollment(enrollmentId),
   ]);
 

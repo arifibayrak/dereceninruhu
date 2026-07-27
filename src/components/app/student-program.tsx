@@ -119,7 +119,7 @@ export function StudentProgram({
     setSubmitting(false);
     if (res.ok) {
       toast.success("Programın koçuna gönderildi", {
-        description: "Koçun inceleyip yayınlayınca burada göreceksin.",
+        description: "Koçun inceleyip onaylayınca işaretleyebilirsin.",
       });
       router.refresh();
     } else {
@@ -136,7 +136,7 @@ export function StudentProgram({
           <span className="font-semibold">Bu senin taslağın</span>
           <span className="text-info/80">
             {studentSubmitted
-              ? "Koçuna gönderildi — inceleyip yayınlayacak."
+              ? "Koçuna gönderildi — inceleyip onaylayacak."
               : "Konularını düzenle, hazır olunca koçuna gönder."}
           </span>
         </div>

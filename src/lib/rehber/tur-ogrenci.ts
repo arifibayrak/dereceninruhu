@@ -99,7 +99,7 @@ export const ogrenciTuru: Tour = {
         },
         {
           label: "Nereden gelir",
-          text: "Görevler koçunun yayınladığı haftalık programdan düşer; koç o haftayı yayınlamadıysa bu bölüm hiç görünmez.",
+          text: "Görevler koçunun kurduğu haftalık programdan düşer; o haftaya henüz konu eklenmediyse bu bölüm hiç görünmez.",
         },
       ],
       buttons: [
@@ -152,7 +152,7 @@ export const ogrenciTuru: Tour = {
       route: "/ogrenci/program",
       target: "program-alan",
       purpose:
-        "Koçunun senin için yayınladığı haftalık konu planı. Görevleri buradan izler, bitirdiklerini işaretlersin. Hafta her zaman Pazartesi başlar.",
+        "Koçunun senin için kurduğu haftalık konu planı. Görevleri buradan izler, bitirdiklerini işaretlersin. Hafta her zaman Pazartesi başlar.",
       highlights: [
         {
           label: "Motto",
@@ -224,11 +224,11 @@ export const ogrenciTuru: Tour = {
         },
         {
           label: "Yayın kuralı",
-          text: "Koçunun taslağı sana görünmez: o Yayınla'ya basana kadar hafta boş görünür — taslak üstünde çalışıyor olabilir, biraz bekle.",
+          text: "Hafta boş görünüyorsa koçun o haftaya henüz konu eklememiştir — ilk konuyu eklediği an program burada belirir.",
         },
         {
           label: "Program henüz hazır değil",
-          text: "Geçmiş bir haftada yayınlanmış plan yoksa bu kartı görürsün — o hafta program tutulmamış demektir.",
+          text: "Geçmiş bir haftada plan yoksa bu kartı görürsün — o hafta program tutulmamış demektir.",
         },
         {
           label: "Boş haftada davet",
@@ -243,11 +243,11 @@ export const ogrenciTuru: Tour = {
       title: "Kendi programını da kurabilirsin",
       route: "/ogrenci/program",
       purpose:
-        "Koçun o hafta için program yayınlamadıysa planı sen kurarsın: konu ekle, düzenle, hazır olunca koçuna gönder.",
+        "Koçun o hafta için henüz konu eklemediyse planı sen kurarsın: konu ekle, düzenle, hazır olunca koçuna gönder.",
       highlights: [
         {
           label: "Taslak",
-          text: "Konu eklemeye başladığın anda taslağın oluşur. Koçun inceleyip yayınlayana kadar yalnız plandır — yayınlanınca işaretlenebilir programa dönüşür.",
+          text: "Konu eklemeye başladığın anda taslağın oluşur. Koçun inceleyip onaylayana kadar yalnız plandır — onaylanınca işaretlenebilir programa dönüşür.",
         },
         {
           label: "Konu detayı",
@@ -269,10 +269,10 @@ export const ogrenciTuru: Tour = {
         },
         {
           label: "Koça gönder",
-          does: "Taslağını koçuna iletir; koç düzenleyip yayınlar.",
+          does: "Taslağını koçuna iletir; koç düzenleyip onaylar.",
         },
       ],
-      tip: "Son söz her zaman koçunda: gönderdiğin taslağı o inceler, gerekirse düzeltir, sonra yayınlar.",
+      tip: "Son söz her zaman koçunda: gönderdiğin taslağı o inceler, gerekirse düzeltir, sonra onaylar.",
       section: "kendi-programin",
     },
     {

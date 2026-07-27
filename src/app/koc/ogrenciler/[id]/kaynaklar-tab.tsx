@@ -1,4 +1,7 @@
-import { getSectionsForEnrollment } from "@/db/queries/enrollment";
+import {
+  getSectionsForEnrollment,
+  type ExamScopeSource,
+} from "@/db/queries/enrollment";
 import { listResourcesWithStats } from "@/db/queries/konular";
 import { formatInt } from "@/lib/format";
 import { ResourceManager } from "@/components/app/resource-manager";
@@ -21,16 +24,15 @@ import {
 /** Kokpit "Kaynaklar" sekmesi — kaynak CRUD + kaynak başına soru & konu. */
 export async function KaynaklarTab({
   enrollmentId,
-  examTemplateId,
-  trackCode,
+  exam,
 }: {
   enrollmentId: number;
-  examTemplateId: number;
-  trackCode: string | null;
+  /** Kaydın sınav(lar)ı — çift sınavlı öğrencide iki şablonun dersleri gelir. */
+  exam: ExamScopeSource;
 }) {
   const [stats, sections] = await Promise.all([
     listResourcesWithStats(enrollmentId),
-    getSectionsForEnrollment(examTemplateId, trackCode),
+    getSectionsForEnrollment(exam),
   ]);
   const subjectOptions = sections.flatMap((s) =>
     s.loggable.map((sub) => ({ id: sub.id, name: `${sub.name} (${s.name})` })),

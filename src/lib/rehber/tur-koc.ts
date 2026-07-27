@@ -123,8 +123,8 @@ export const kocTuru: Tour = {
           text: 'Girilen ama birlikte analiz edilmemiş denemeler burada bekler; "Analiz gir" seni doğrudan analiz ekranına götürür.',
         },
         {
-          label: "Yayınlanmayı bekleyen programlar",
-          text: 'Taslak kalan haftalık programlar listelenir; "Öğrenci önerisi" rozetlileri öncelikle incele — öğrenci senden yanıt bekliyor.',
+          label: "Eli değmesi gereken programlar",
+          text: 'Onay bekleyen öğrenci önerileri ve konu eklenmemiş boş haftalar listelenir; "Onay bekliyor" rozetlileri öncelikle incele — öğrenci senden yanıt bekliyor.',
         },
         {
           label: "Yaklaşan görüşmeler (7 gün)",
@@ -365,14 +365,14 @@ export const kocTuru: Tour = {
     {
       id: "kokpit-program",
       nav: "Öğrenci kokpiti",
-      title: "Program: haftalık planı kur ve yayınla",
+      title: "Program: haftalık planı kur",
       route: "/koc/tur/ornek/program",
       purpose:
-        "Haftalık programı ders × konu görevleriyle burada kurarsın. Taslak sende kalır; öğrenci ancak Yayınla'ya bastığında görür.",
+        "Haftalık programı ders × konu görevleriyle burada kurarsın. Ayrı bir yayınlama adımı yok: ilk konuyu ekler eklemez program öğrenciye açılır.",
       highlights: [
         {
           label: "Durum şeridi",
-          text: "Taslak / Yayınlandı / Tamamlandı rozeti, tamamlanma yüzdesi ve öğrenci önerisi işareti en üstte durur.",
+          text: "Hazırlanıyor / Yayınlandı / Tamamlandı rozeti, tamamlanma yüzdesi ve öğrenci önerisi işareti en üstte durur.",
         },
         {
           label: "Strateji paneli",
@@ -384,13 +384,13 @@ export const kocTuru: Tour = {
         },
         {
           label: "Öğrenci önerisi",
-          text: 'Öğrenci kendi taslağını gönderebilir; "Öğrenci önerisi" rozetiyle gelir, sen düzenleyip yayınlarsın.',
+          text: 'Öğrenci kendi taslağını gönderebilir; "Öğrenci önerisi" rozetiyle gelir, sen düzenleyip onaylarsın. Onaylanan tek durum budur.',
         },
       ],
       buttons: [
         {
-          label: "Yayınla",
-          does: "Taslağı öğrenciye açar — basılmadan öğrenci programı hiç görmez.",
+          label: "Onayla",
+          does: "Öğrenci önerisini resmileştirir; yalnız öğrenci taslaklarında görünür.",
         },
         {
           label: "AI ile oluştur",
@@ -746,7 +746,7 @@ export const kocTuru: Tour = {
         },
         {
           label: "Program oluştur",
-          text: 'Görüşme kartındaki "Program oluştur" gelecek haftanın taslağını açar; görevleri ekleyip Yayınla\'ya basarsın. Taslak varsa düğme "Programı aç" olur.',
+          text: 'Görüşme kartındaki "Program oluştur" gelecek haftanın boş planını açar; görev eklemen yeter — program o an öğrenciye açılır. Plan varsa düğme "Programı aç" olur.',
         },
       ],
       buttons: [
@@ -758,7 +758,7 @@ export const kocTuru: Tour = {
         },
         { label: "Programı aç", does: "Görüşmeye bağlı taslağa geri döner." },
       ],
-      tip: "Program taslağı bir sonraki haftaya (Pazartesi başlangıçlı) açılır; öğrenci sen Yayınla'ya basana kadar görmez.",
+      tip: "Program bir sonraki haftaya (Pazartesi başlangıçlı) açılır; hafta boş kaldığı sürece öğrenci bir şey görmez.",
       section: "gorusme-planlama",
     },
     {

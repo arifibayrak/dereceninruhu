@@ -44,10 +44,7 @@ export async function generatePlanDraft(
     const enrollmentId = detail.enrollment.id;
     await assertEnrollmentAccess(db, enrollmentId, user);
 
-    const sections = await getSectionsForEnrollment(
-      detail.enrollment.examTemplateId,
-      detail.enrollment.trackCode,
-    );
+    const sections = await getSectionsForEnrollment(detail.enrollment);
     const subjects = sections.flatMap((s) =>
       s.loggable.map((sub) => ({ id: sub.id, name: sub.name })),
     );

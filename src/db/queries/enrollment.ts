@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   enrollments,
@@ -7,9 +7,11 @@ import {
   subjects,
 } from "@/db/schema";
 import {
+  examScopesOf,
   filterSubjectsForTrack,
   loggableSubjects,
   scoredSubjects,
+  type ExamScope,
   type SubjectRow,
 } from "@/lib/exam";
 
@@ -41,6 +43,15 @@ export type EnrollmentDetail = {
     examName: string;
     trackCode: string | null;
     trackName: string | null;
+    /**
+     * İkinci sınav — öğrenci aynı dönemde iki sınava hazırlanıyorsa dolu
+     * (ör. Ekim'de ortaöğretim KPSS + 2027 YKS). NULL = tek sınav.
+     */
+    secondaryExamTemplateId: number | null;
+    secondaryExamCode: string | null;
+    secondaryExamName: string | null;
+    secondaryTrackCode: string | null;
+    secondaryTrackName: string | null;
     /** Atanan koç — null = henüz atanmadı. */
     coachUserId: string | null;
     coachName: string | null;
@@ -68,7 +79,13 @@ export async function getEnrollmentDetailByStudentId(
       eq(enrollments.studentId, studentId),
       eq(enrollments.status, "active"),
     ),
-    with: { examTemplate: true, track: true, coach: true },
+    with: {
+      examTemplate: true,
+      track: true,
+      coach: true,
+      secondaryExamTemplate: true,
+      secondaryTrack: true,
+    },
   });
   if (!enrollment) return null;
   return {
@@ -98,6 +115,11 @@ export async function getEnrollmentDetailByStudentId(
       examName: enrollment.examTemplate.name,
       trackCode: enrollment.track?.code ?? null,
       trackName: enrollment.track?.name ?? null,
+      secondaryExamTemplateId: enrollment.secondaryExamTemplateId,
+      secondaryExamCode: enrollment.secondaryExamTemplate?.code ?? null,
+      secondaryExamName: enrollment.secondaryExamTemplate?.name ?? null,
+      secondaryTrackCode: enrollment.secondaryTrack?.code ?? null,
+      secondaryTrackName: enrollment.secondaryTrack?.name ?? null,
       coachUserId: enrollment.coachUserId,
       coachName: enrollment.coach?.name ?? null,
       coachCalBookingUrl: enrollment.coach?.calBookingUrl ?? null,
@@ -124,22 +146,50 @@ export type SectionSubjects = {
   code: string;
   name: string;
   wrongPenaltyDivisor: number;
+  /** Bölümün ait olduğu sınav — çift sınavlı kayıtta ders/bölüm etiketi. */
+  examTemplateId: number;
+  examCode: string;
+  examName: string;
+  /** İkinci sınavın bölümü mü — arayüzde rozet/filtre sırası için. */
+  isSecondary: boolean;
   /** Alan-filtreli, sıralı — soru takibi satırları (alt dersler dahil). */
   loggable: SubjectRow[];
   /** Yalnız puanlanan dersler — deneme sonuç satırları. */
   scored: SubjectRow[];
 };
 
-/** Kaydın sınav şablonundaki bölümler + alan-filtreli dersler. */
+/**
+ * Ders/bölüm çözen sorguların girdisi: kaydın sınav(lar)ı. `EnrollmentDetail`
+ * içindeki `enrollment` nesnesi olduğu gibi verilebilir.
+ */
+export type ExamScopeSource = {
+  examTemplateId: number;
+  trackCode: string | null;
+  secondaryExamTemplateId?: number | null;
+  secondaryTrackCode?: string | null;
+};
+
+/**
+ * Kaydın sınav(lar)ındaki bölümler + alan-filtreli dersler.
+ *
+ * Çift sınavlı kayıtta İKİ şablonun bölümleri arka arkaya döner: önce birincil
+ * sınav (kendi sortOrder'ında), sonra ikincil. Ders id'leri bölüme özgü
+ * olduğundan (KPSS Türkçesi ≠ TYT Türkçesi) çakışma olmaz; her bölüm kendi
+ * sınavının alan koduyla filtrelenir.
+ */
 export async function getSectionsForEnrollment(
-  examTemplateId: number,
-  trackCode: string | null,
+  source: ExamScopeSource,
 ): Promise<SectionSubjects[]> {
   const db = getDb();
-  const sections = await db.query.examSections.findMany({
-    where: eq(examSections.examTemplateId, examTemplateId),
+  const scopes = examScopesOf(source);
+  const rows = await db.query.examSections.findMany({
+    where: inArray(
+      examSections.examTemplateId,
+      scopes.map((s) => s.examTemplateId),
+    ),
     orderBy: asc(examSections.sortOrder),
     with: {
+      examTemplate: true,
       subjects: {
         where: eq(subjects.isActive, true),
         orderBy: asc(subjects.sortOrder),
@@ -147,8 +197,19 @@ export async function getSectionsForEnrollment(
     },
   });
 
-  return sections.map((section) => {
-    const rows: SubjectRow[] = section.subjects.map((s) => ({
+  const trackOf = new Map<number, ExamScope>(
+    scopes.map((s) => [s.examTemplateId, s]),
+  );
+  // Sınav sırası: birincil önce, ikincil sonra — her biri kendi sortOrder'ında.
+  const rank = new Map(scopes.map((s, i) => [s.examTemplateId, i]));
+  const ordered = [...rows].sort(
+    (a, b) =>
+      (rank.get(a.examTemplateId) ?? 0) - (rank.get(b.examTemplateId) ?? 0) ||
+      a.sortOrder - b.sortOrder,
+  );
+
+  return ordered.map((section) => {
+    const subjectRows: SubjectRow[] = section.subjects.map((s) => ({
       id: s.id,
       examSectionId: s.examSectionId,
       code: s.code,
@@ -160,12 +221,17 @@ export async function getSectionsForEnrollment(
       sortOrder: s.sortOrder,
       chartColor: s.chartColor,
     }));
-    const forTrack = filterSubjectsForTrack(rows, trackCode);
+    const scope = trackOf.get(section.examTemplateId);
+    const forTrack = filterSubjectsForTrack(subjectRows, scope?.trackCode ?? null);
     return {
       id: section.id,
       code: section.code,
       name: section.name,
       wrongPenaltyDivisor: section.wrongPenaltyDivisor,
+      examTemplateId: section.examTemplateId,
+      examCode: section.examTemplate.code,
+      examName: section.examTemplate.name,
+      isSecondary: (rank.get(section.examTemplateId) ?? 0) > 0,
       loggable: loggableSubjects(forTrack),
       scored: scoredSubjects(forTrack),
     };

@@ -66,7 +66,7 @@ export default async function KronometrePage() {
     bySubject,
     studyDayKeys,
   ] = await Promise.all([
-    getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
+    getSectionsForEnrollment(enrollment),
     listStudyLogs(enrollment.id, { day: now }),
     getStudyDayTotal(enrollment.id, now),
     getStudyWeekTotal(enrollment.id, now),

@@ -99,7 +99,6 @@ export function MockActions({
             <MockForm
               enrollmentId={payload.mock.enrollmentId}
               sections={payload.sections}
-              combinedLabel={payload.combinedLabel}
               initial={payload.mock}
               onSuccess={() => {
                 setEditOpen(false);

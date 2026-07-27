@@ -35,6 +35,9 @@ export const createStudentSchema = z
     phone: phoneSchema.optional().or(z.literal("")),
     examCode: examCodeSchema,
     trackCode: trackCodeSchema.optional(),
+    /** İkinci sınav — öğrenci aynı dönemde iki sınava hazırlanıyorsa. */
+    secondaryExamCode: examCodeSchema.optional().or(z.literal("")),
+    secondaryTrackCode: trackCodeSchema.optional().or(z.literal("")),
     targetText: z.string().trim().max(200).optional().or(z.literal("")),
     grade: z.string().trim().max(40).optional().or(z.literal("")),
     field: z.string().trim().max(80).optional().or(z.literal("")),
@@ -50,8 +53,34 @@ export const createStudentSchema = z
   .refine((v) => v.examCode !== "YKS" || !!v.trackCode, {
     message: "YKS için alan (Sayısal/Eşit Ağırlık/Sözel) seçin.",
     path: ["trackCode"],
+  })
+  .refine((v) => v.secondaryExamCode !== "YKS" || !!v.secondaryTrackCode, {
+    message: "İkinci sınav YKS ise alan seçin.",
+    path: ["secondaryTrackCode"],
+  })
+  .refine((v) => !v.secondaryExamCode || v.secondaryExamCode !== v.examCode, {
+    message: "İkinci sınav birinciyle aynı olamaz.",
+    path: ["secondaryExamCode"],
   });
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
+
+/**
+ * İkinci sınavı ekler / kaldırır (koç). BİRİNCİ sınav bilerek değiştirilemez:
+ * mevcut soru/deneme satırları o şablonun ders id'lerine bağlıdır, şablonu
+ * yerinde değiştirmek geçmişi öksüz bırakır. İkinci sınav eklemek güvenlidir.
+ */
+export const setSecondaryExamSchema = z
+  .object({
+    studentId: z.coerce.number().int().positive(),
+    /** Boş dize = ikinci sınavı kaldır. */
+    secondaryExamCode: examCodeSchema.or(z.literal("")),
+    secondaryTrackCode: trackCodeSchema.optional().or(z.literal("")),
+  })
+  .refine((v) => v.secondaryExamCode !== "YKS" || !!v.secondaryTrackCode, {
+    message: "YKS için alan (Sayısal/Eşit Ağırlık/Sözel) seçin.",
+    path: ["secondaryTrackCode"],
+  });
+export type SetSecondaryExamInput = z.infer<typeof setSecondaryExamSchema>;
 
 /**
  * Profil düzenleme — sınav/alan değiştirmez, yalnız kişisel bilgiler + hedef.

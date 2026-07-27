@@ -49,13 +49,15 @@ export default async function SoruTakibiPage({
   const isCurrentWeek = monday.getTime() === currentMonday.getTime();
 
   const [sections, grid] = await Promise.all([
-    getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
+    getSectionsForEnrollment(enrollment),
     getWeekGrid(enrollment.id, monday),
   ]);
 
+  // Çift sınavlı kayıtta bölüm başlıkları sınav koduyla ayrışır.
+  const multiExam = new Set(sections.map((s) => s.examCode)).size > 1;
   const gridSections: GridSection[] = sections.map((s) => ({
     id: s.id,
-    name: s.name,
+    name: multiExam ? `${s.examCode} · ${s.name}` : s.name,
     // Net önizlemesi için bölüm böleni (LGS 3, YKS/KPSS 4).
     wrongPenaltyDivisor: s.wrongPenaltyDivisor,
     subjects: s.loggable.map((sub) => ({

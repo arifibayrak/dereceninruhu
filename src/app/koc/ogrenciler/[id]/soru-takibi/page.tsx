@@ -19,18 +19,17 @@ export default async function SoruTakibiPage({
   const { enrollment } = await resolveCockpit(studentId);
   const now = new Date();
 
-  const sections = await getSectionsForEnrollment(
-    enrollment.examTemplateId,
-    enrollment.trackCode,
-  );
+  const sections = await getSectionsForEnrollment(enrollment);
   const [grid, breakdown] = await Promise.all([
     getWeekGrid(enrollment.id, now),
     getSubjectBreakdown(enrollment.id, 8, now),
   ]);
 
+  // Çift sınavlı kayıtta bölüm başlıkları sınav koduyla ayrışır.
+  const multiExam = new Set(sections.map((s) => s.examCode)).size > 1;
   const gridSections: GridSection[] = sections.map((s) => ({
     id: s.id,
-    name: s.name,
+    name: multiExam ? `${s.examCode} · ${s.name}` : s.name,
     wrongPenaltyDivisor: s.wrongPenaltyDivisor,
     subjects: s.loggable.map((sub) => ({
       id: sub.id,

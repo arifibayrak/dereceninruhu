@@ -1,4 +1,5 @@
 import { getTopicDeficits } from "@/db/queries/analiz";
+import type { ExamScopeSource } from "@/db/queries/enrollment";
 import { getKonuProgress, getTopicResourceMatrix } from "@/db/queries/konular";
 import { formatInt } from "@/lib/format";
 import { TopicDeficitList } from "@/components/app/topic-deficit-list";
@@ -14,16 +15,15 @@ import {
 /** Kokpit "Konular" sekmesi — konu ilerleme + en zayıf konular + Bitti matrisi. */
 export async function KonularTab({
   enrollmentId,
-  examTemplateId,
-  trackCode,
+  exam,
 }: {
   enrollmentId: number;
-  examTemplateId: number;
-  trackCode: string | null;
+  /** Kaydın sınav(lar)ı — çift sınavlı öğrencide iki şablonun konuları gelir. */
+  exam: ExamScopeSource;
 }) {
   const [matrix, progress, deficits] = await Promise.all([
-    getTopicResourceMatrix(enrollmentId, examTemplateId, trackCode),
-    getKonuProgress(enrollmentId, examTemplateId, trackCode),
+    getTopicResourceMatrix(enrollmentId, exam),
+    getKonuProgress(enrollmentId, exam),
     getTopicDeficits(enrollmentId),
   ]);
 

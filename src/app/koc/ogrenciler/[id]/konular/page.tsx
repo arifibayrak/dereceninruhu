@@ -17,11 +17,7 @@ export default async function KonularPage({
   return (
     <>
       <CockpitShell studentId={studentId} active="konular" />
-      <KonularTab
-        enrollmentId={enrollment.id}
-        examTemplateId={enrollment.examTemplateId}
-        trackCode={enrollment.trackCode}
-      />
+      <KonularTab enrollmentId={enrollment.id} exam={enrollment} />
     </>
   );
 }

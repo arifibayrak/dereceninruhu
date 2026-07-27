@@ -156,10 +156,7 @@ export function buildAgentTools(coachUserId: string) {
       execute: async ({ studentId }) => {
         const detail = await getEnrollmentDetailByStudentId(studentId);
         if (!detail) return { error: "Öğrenci bulunamadı." };
-        const sections = await getSectionsForEnrollment(
-          detail.enrollment.examTemplateId,
-          detail.enrollment.trackCode,
-        );
+        const sections = await getSectionsForEnrollment(detail.enrollment);
         const subjects = sections.flatMap((s) =>
           s.loggable.map((subj) => ({ id: subj.id, name: subj.name })),
         );

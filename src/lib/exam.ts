@@ -29,6 +29,60 @@ export function combinedMockLabel(templateCode: string): string | null {
   return templateCode === "KPSS" ? "KPSS Denemesi" : null;
 }
 
+/** Tek bir sınav kapsamı: şablon + (varsa) alan. */
+export type ExamScope = {
+  examTemplateId: number;
+  trackCode: string | null;
+};
+
+/**
+ * Kaydın sınav kapsamları — ikinci sınav varsa İKİ, yoksa TEK eleman.
+ *
+ * Bir öğrenci aynı dönemde iki sınava hazırlanabilir (ör. Ekim'de ortaöğretim
+ * KPSS, ardından 2027 YKS). Ders/bölüm çözen her sorgu buradan geçer, böylece
+ * program ızgarası, soru takibi ve deneme girişi iki sınavın derslerini birden
+ * gösterir. Aynı şablon iki kez seçilmişse sessizce tekilleştirilir.
+ */
+export function examScopesOf(e: {
+  examTemplateId: number;
+  trackCode: string | null;
+  secondaryExamTemplateId?: number | null;
+  secondaryTrackCode?: string | null;
+}): ExamScope[] {
+  const scopes: ExamScope[] = [
+    { examTemplateId: e.examTemplateId, trackCode: e.trackCode },
+  ];
+  if (
+    e.secondaryExamTemplateId != null &&
+    e.secondaryExamTemplateId !== e.examTemplateId
+  ) {
+    scopes.push({
+      examTemplateId: e.secondaryExamTemplateId,
+      trackCode: e.secondaryTrackCode ?? null,
+    });
+  }
+  return scopes;
+}
+
+/**
+ * Rozet metinleri — çift sınavlı kayıtta iki eleman ("YKS · Sayısal", "KPSS").
+ * Kokpit ve öğrenci başlığı aynı listeyi basar.
+ */
+export function examLabels(e: {
+  examCode: string;
+  trackName: string | null;
+  secondaryExamCode?: string | null;
+  secondaryTrackName?: string | null;
+}): string[] {
+  const label = (code: string, track: string | null | undefined) =>
+    track ? `${code} · ${track}` : code;
+  const out = [label(e.examCode, e.trackName)];
+  if (e.secondaryExamCode) {
+    out.push(label(e.secondaryExamCode, e.secondaryTrackName));
+  }
+  return out;
+}
+
 export function parseTrackCodes(raw: string | null): string[] | null {
   if (!raw) return null;
   try {

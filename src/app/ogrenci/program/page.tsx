@@ -71,7 +71,7 @@ export default async function OgrenciProgramPage({
   const status = isPublished ? "published" : isOwnDraft ? "draft-own" : "none";
 
   const [sections, resources, layout] = await Promise.all([
-    getSectionsForEnrollment(enrollment.examTemplateId, enrollment.trackCode),
+    getSectionsForEnrollment(enrollment),
     getResourcesForEnrollment(enrollment.id),
     getPlanDayLayout(enrollment.id),
   ]);
@@ -86,6 +86,8 @@ export default async function OgrenciProgramPage({
       id: sub.id,
       name: sub.name,
       sectionName: s.name,
+      examCode: s.examCode,
+      examName: s.examName,
     })),
   );
   const gridDays = weekDays(monday).map((_, i) => ({

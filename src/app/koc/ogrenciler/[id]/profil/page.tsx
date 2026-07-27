@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { listCoaches } from "@/db/queries/admin";
 import { CoachAssignSelect } from "@/components/app/coach-assign-select";
+import { SecondaryExamSelect } from "@/components/app/secondary-exam-select";
 import { StudentProfileForm } from "@/components/app/student-profile-form";
 import {
   Card,
@@ -56,6 +57,20 @@ export default async function ProfilPage({
             ) : (
               <ProfileRow label="Koç" value={enrollment.coachName} />
             )}
+            <dt className="self-center text-muted-foreground">Sınav</dt>
+            <dd className="py-1 text-sm">
+              {enrollment.examCode}
+              {enrollment.trackName ? ` · ${enrollment.trackName}` : ""}
+            </dd>
+            <dt className="self-center text-muted-foreground">İkinci sınav</dt>
+            <dd>
+              <SecondaryExamSelect
+                studentId={studentId}
+                primaryExamCode={enrollment.examCode}
+                secondaryExamCode={enrollment.secondaryExamCode}
+                secondaryTrackCode={enrollment.secondaryTrackCode}
+              />
+            </dd>
             <ProfileRow
               label="Başlangıç"
               value={

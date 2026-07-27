@@ -102,6 +102,23 @@ async function assertPlanWritable(
 }
 
 /**
+ * Koçun kurduğu programda ayrı bir "Yayınla" adımı YOKTUR: ilk görev eklendiği
+ * an program canlıya çıkar. Tek istisna öğrencinin kendi önerdiği taslaktır
+ * (`proposedByStudent`) — o, koç `publishPlan` ile onaylayana kadar taslak
+ * kalır; öğrenci kendi taslağını zaten görür ama işaretleyemez.
+ */
+async function autoPublishCoachPlan(
+  db: DB,
+  plan: { id: number; status: PlanStatus; proposedByStudent: boolean },
+): Promise<void> {
+  if (plan.status !== "draft" || plan.proposedByStudent) return;
+  await db
+    .update(weeklyPlans)
+    .set({ status: "published", updatedAt: new Date() })
+    .where(eq(weeklyPlans.id, plan.id));
+}
+
+/**
  * Haftalık plan üst bilgisi (motto, not, durum) — hafta bazında upsert.
  * Koç durumu değiştirebilir; öğrenci yalnız kendi taslağının motto/notunu
  * yazar (durum değişmez, taslak öğrenci önerisi olarak işaretlenir).
@@ -199,6 +216,7 @@ export async function addPlanTask(
     const plan =
       existing ?? (await getOrCreateWeeklyPlan(db, v.enrollmentId, v.weekStart));
     // Öğrenci yeni taslak açtıysa sahiplen — kendi görüp düzenleyebilsin.
+    const proposedByStudent = plan.proposedByStudent || isStudentRole(user);
     if (isStudentRole(user) && !plan.proposedByStudent) {
       await db
         .update(weeklyPlans)
@@ -233,6 +251,9 @@ export async function addPlanTask(
         targetQuestions: v.targetQuestions ?? null,
       })
       .returning({ id: planTasks.id });
+
+    // İlk görevle birlikte program kendiliğinden yayına girer (koç tarafı).
+    await autoPublishCoachPlan(db, { ...plan, proposedByStudent });
 
     return { ok: true, data: { taskId: task.id, planId: plan.id } };
   });
@@ -315,7 +336,11 @@ export async function deletePlanTask(
   });
 }
 
-/** Koç: taslağı yayınlar — öğrenci programı ancak bundan sonra görür. */
+/**
+ * Koç: ÖĞRENCİ ÖNERİSİNİ onaylar — program resmileşir, öğrenci artık görevleri
+ * işaretleyebilir. Koçun kendi kurduğu program zaten otomatik yayınlanır
+ * (bkz. `autoPublishCoachPlan`); bu aksiyonun tek kullanımı öğrenci taslağıdır.
+ */
 export async function publishPlan(
   input: unknown,
 ): Promise<ActionResult<{ planId: number; weekKey: string }>> {
@@ -329,6 +354,14 @@ export async function publishPlan(
       where: eq(weeklyPlans.id, parsed.data.planId),
     });
     if (!plan) return actionError("Program bulunamadı.");
+
+    const [taskCount] = await db
+      .select({ n: sql<number>`count(*)` })
+      .from(planTasks)
+      .where(eq(planTasks.weeklyPlanId, plan.id));
+    if (Number(taskCount?.n ?? 0) === 0) {
+      return actionError("Boş program onaylanamaz — önce en az bir konu ekle.");
+    }
 
     await db
       .update(weeklyPlans)
@@ -476,20 +509,31 @@ export async function copyPlanDayLayout(
   });
 }
 
-/** Kaydın sınav şablonundaki geçerli ders id'leri (düzen doğrulaması). */
+/**
+ * Kaydın sınav(lar)ındaki geçerli ders id'leri (düzen doğrulaması).
+ * Çift sınavlı kayıtta İKİ şablonun dersleri de geçerlidir — yoksa ikinci
+ * sınavın dersleri günlük ders düzenine eklenemezdi.
+ */
 async function allowedSubjectIds(
   db: DB,
   enrollmentId: number,
 ): Promise<Set<number>> {
+  const enrollment = await db.query.enrollments.findFirst({
+    where: eq(enrollments.id, enrollmentId),
+    columns: { examTemplateId: true, secondaryExamTemplateId: true },
+  });
+  if (!enrollment) return new Set();
+  const templateIds = [
+    enrollment.examTemplateId,
+    ...(enrollment.secondaryExamTemplateId != null
+      ? [enrollment.secondaryExamTemplateId]
+      : []),
+  ];
   const rows = await db
     .select({ id: subjects.id })
     .from(subjects)
     .innerJoin(examSections, eq(examSections.id, subjects.examSectionId))
-    .innerJoin(
-      enrollments,
-      eq(enrollments.examTemplateId, examSections.examTemplateId),
-    )
-    .where(eq(enrollments.id, enrollmentId));
+    .where(inArray(examSections.examTemplateId, templateIds));
   return new Set(rows.map((r) => r.id));
 }
 

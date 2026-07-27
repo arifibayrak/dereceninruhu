@@ -191,24 +191,24 @@ export const AKISLAR: Flow[] = [
             does: "Öğrencinin verisine göre AI konu önerir; sen onaylamadan yazılmaz.",
           },
         ],
-        outcome: "Program taslak durumundadır — öğrenci henüz göremez.",
+        outcome: "İlk konu eklenir eklenmez program öğrenciye açılır.",
         section: "program-olustur",
       },
       {
         id: "yayinla",
         actor: "koc",
-        title: "Program yayınlanır",
+        title: "Program kendiliğinden yayınlanır",
         summary:
-          "Taslak yayına alınır; ancak bu andan sonra öğrencinin ekranında belirir.",
+          "Ayrı bir yayınlama adımı yoktur: koç ilk konuyu eklediği an program öğrencinin ekranına düşer. Yalnız öğrencinin kendi önerdiği taslak koç onayı bekler.",
         buttons: [
           {
-            label: "Yayınla",
-            does: "Programı öğrenciye açar; durumu Yayınlandı yapar.",
+            label: "Onayla",
+            does: "Öğrenci önerisini resmileştirir; öğrenci artık konuları işaretleyebilir.",
           },
         ],
         outcome: "Öğrencinin Program sekmesinde haftanın görevleri görünür.",
         gate:
-          "Sistemdeki en kritik devir noktası. Yayınla'ya basılmadan öğrenci 'Program henüz hazır değil' görür.",
+          "Devir noktası artık ilk konudur: hafta boşken öğrenci 'Program henüz hazır değil' görür.",
         section: "program-yayinla",
       },
       {
