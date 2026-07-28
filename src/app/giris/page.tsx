@@ -6,6 +6,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { getSession, type Role } from "@/lib/session";
 import { LoginForm } from "@/components/app/login-form";
 import { Logo } from "@/components/brand/logo";
+import { WhatsappFabSlot } from "@/components/marketing/whatsapp-fab-slot";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 // Reads the session (D1 binding) → must render per-request, never prerendered.
@@ -62,6 +63,9 @@ export default async function GirisPage() {
           </Link>
         </p>
       </div>
+
+      {/* Giriş yapamayan/PIN'ini unutan doğrudan koça ulaşabilsin. */}
+      <WhatsappFabSlot />
     </div>
   );
 }

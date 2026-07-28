@@ -87,7 +87,8 @@ const optionalUrl = z
 /**
  * Yönetici site iletişim/sosyal ayarını günceller. Telefon serbest biçimde
  * girilir (0538…, +90 538…, boşluklu); action `normalizePhone` ile 10 haneye
- * indirger. Boş telefon → WhatsApp butonu hiç render edilmez.
+ * indirger. Boş telefon → `DEFAULT_WA_PHONE`'a düşülür (buton yine görünür);
+ * butonu gizleyen tek anahtar `whatsappVisible`.
  */
 export const updateSiteSettingsSchema = z.object({
   whatsappPhone: z

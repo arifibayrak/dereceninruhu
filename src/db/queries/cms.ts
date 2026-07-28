@@ -702,8 +702,9 @@ export const getSiteSettings = cache(async (): Promise<SiteSettings> => {
     row ?? {
       id: 1,
       whatsappPhone: null,
+      // Sınavdan bağımsız: buton LGS ve KPSS sayfalarında da çıkıyor.
       whatsappMessage:
-        "Merhaba, YKS koçluk süreci hakkında bilgi almak istiyorum.",
+        "Merhaba, koçluk süreci hakkında bilgi almak istiyorum.",
       whatsappVisible: true,
       instagramUrl: null,
       tiktokUrl: null,

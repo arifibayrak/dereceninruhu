@@ -6,7 +6,7 @@ import { EyeIcon, ExternalLinkIcon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateSiteSettings } from "@/actions/site-settings";
-import { buildWaLink } from "@/lib/whatsapp";
+import { buildWaLink, DEFAULT_WA_PHONE } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -29,8 +29,9 @@ export type SiteSettingsValues = {
 
 /**
  * Site iletişim/sosyal ayarları — yüzen WhatsApp butonunu ve header/footer
- * sosyal ikonlarını besler. Sosyal alanlar boş bırakılırsa koddaki
- * SOCIAL_LINKS sabiti kullanılır (yer tutucular gerçek adresleri gösterir).
+ * sosyal ikonlarını besler. Boş bırakılan alanlar koddaki sabitlere düşer:
+ * sosyal için SOCIAL_LINKS, telefon için DEFAULT_WA_PHONE (yer tutucular
+ * gerçek adresleri gösterir). Butonu gizleyen tek anahtar `whatsappVisible`.
  */
 export function SiteSettingsForm({ initial }: { initial: SiteSettingsValues }) {
   const router = useRouter();
@@ -45,11 +46,18 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettingsValues }) {
     publicStatsVisible: initial.publicStatsVisible,
   });
 
+  // Alan boşken canlıda DEFAULT_WA_PHONE kullanılıyor → önizleme de onu göstersin.
+  // Yarım girilmiş numarada (1-9 hane) önizleme yok: yanlış linki test ettirmeyelim.
   const digits = values.whatsappPhone.replace(/\D/g, "");
-  const previewHref =
+  const previewPhone =
     digits.length >= 10
-      ? buildWaLink(values.whatsappPhone, values.whatsappMessage)
-      : null;
+      ? values.whatsappPhone
+      : digits.length === 0
+        ? DEFAULT_WA_PHONE
+        : null;
+  const previewHref = previewPhone
+    ? buildWaLink(previewPhone, values.whatsappMessage)
+    : null;
 
   const save = async () => {
     setSaving(true);
@@ -88,8 +96,9 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettingsValues }) {
           }
         />
         <FieldDescription>
-          Boş bırakılırsa sitedeki yüzen buton hiç görünmez. +90 / 0 / boşluk
-          serbest — kaydederken otomatik düzeltilir.
+          Boş bırakılırsa koddaki varsayılan işletme numarası kullanılır; buton
+          yine görünür. Tamamen kapatmak için aşağıdaki kutunun işaretini
+          kaldır. +90 / 0 / boşluk serbest — kaydederken otomatik düzeltilir.
         </FieldDescription>
       </Field>
 

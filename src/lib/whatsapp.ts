@@ -5,6 +5,17 @@ import { normalizePhone } from "@/lib/phone";
  * fires these from their own WhatsApp with the message pre-filled. ₺0, human-in-loop.
  */
 
+/**
+ * Panelde numara girilmemişse kullanılacak işletme numarası (Ahmet Hakan).
+ *
+ * `SOCIAL_LINKS` (`src/lib/seo.ts`) ile aynı desen: DB doluysa DB kazanır, boşsa
+ * buraya düşülür. Böylece yüzen WhatsApp butonu seed'siz/panel adımsız da
+ * çalışır — numara boş kaldığı için butonun aylarca canlıda görünmemesi tam
+ * olarak bu yedek olmadığı için yaşandı. Butonu kapatmak isteyen
+ * `site_settings.whatsappVisible`'ı kullanır.
+ */
+export const DEFAULT_WA_PHONE = "5078823189";
+
 /** Build a wa.me link to a TR number with an optional pre-filled message. */
 export function buildWaLink(phone: string, message?: string): string {
   const local = normalizePhone(phone); // 10 digits, e.g. 5384360511

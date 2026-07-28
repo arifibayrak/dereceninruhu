@@ -6,6 +6,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { getSession, type Role } from "@/lib/session";
 import { KatilFlow } from "@/components/app/katil-flow";
 import { Logo } from "@/components/brand/logo";
+import { WhatsappFabSlot } from "@/components/marketing/whatsapp-fab-slot";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 // Reads the session (D1 binding) → must render per-request, never prerendered.
@@ -59,6 +60,9 @@ export default async function KatilPage() {
           </Link>
         </p>
       </div>
+
+      {/* Numarası sistemde çıkmayan aday doğrudan koça ulaşabilsin. */}
+      <WhatsappFabSlot />
     </div>
   );
 }
