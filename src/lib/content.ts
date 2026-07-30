@@ -67,6 +67,34 @@ export const UPLOAD_ACCEPT = UPLOAD_EXTS.map((e) => `.${e}`).join(",");
  */
 export const MAX_CONTENT_FILE_BYTES = 250 * 1024 * 1024; // 250 MB
 
+/**
+ * Parça boyutu — bundan büyük dosya R2 "multipart upload" ile parça parça
+ * gönderilir. Her parça AYRI bir istektir, dolayısıyla Cloudflare'in istek
+ * gövdesi limiti (plana göre 100–500 MB) tek dosyanın değil tek PARÇANIN
+ * tavanıdır: 50 MB en dar planda bile rahat sığar.
+ *
+ * R2 kuralı: son parça DIŞINDA tüm parçalar eşit boyutta olmalı (ve en az
+ * 5 MiB). Dosyayı sabit 50 MB'lık dilimlere böldüğümüz için bu kendiliğinden
+ * sağlanır — 128 MB → 50 + 50 + 28.
+ */
+export const UPLOAD_CHUNK_BYTES = 50 * 1024 * 1024; // 50 MB
+
+/** Dosya parçalara bölünerek mi gönderilmeli? */
+export function needsMultipart(size: number): boolean {
+  return size > UPLOAD_CHUNK_BYTES;
+}
+
+/** Dosyanın kaç parçaya bölüneceği (son parça küçük olabilir). */
+export function chunkCountFor(size: number): number {
+  return Math.max(1, Math.ceil(size / UPLOAD_CHUNK_BYTES));
+}
+
+/** R2 anahtarı yalnız `content/<uuid>.<uzantı>` olabilir (istemci uyduramasın). */
+const CONTENT_KEY_RE = /^content\/[0-9a-f-]{36}\.[a-z0-9]{1,8}$/i;
+export function isContentKey(key: string): boolean {
+  return CONTENT_KEY_RE.test(key);
+}
+
 /** Dosya adının son uzantısı (küçük harf, noktasız). */
 export function fileExtOf(fileName: string): string {
   const m = /\.([A-Za-z0-9]{1,8})$/.exec(fileName.trim());

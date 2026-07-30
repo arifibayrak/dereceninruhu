@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  UPLOAD_CHUNK_BYTES,
+  chunkCountFor,
   contentHref,
   contentTypeForFile,
   fileExtOf,
   formatFileSize,
+  isContentKey,
+  needsMultipart,
   uploadExtFor,
   youtubeVideoId,
 } from "./content";
@@ -74,5 +78,52 @@ describe("youtubeVideoId", () => {
       "abc123xyz",
     );
     expect(youtubeVideoId("https://example.com/video")).toBeNull();
+  });
+});
+
+const MB = 1024 * 1024;
+
+describe("needsMultipart", () => {
+  it("parça boyutunun altındaki dosya tek istekle gider", () => {
+    expect(needsMultipart(10 * MB)).toBe(false);
+    expect(needsMultipart(UPLOAD_CHUNK_BYTES)).toBe(false);
+  });
+
+  it("parça boyutunu aşan dosya parçalanır", () => {
+    expect(needsMultipart(UPLOAD_CHUNK_BYTES + 1)).toBe(true);
+    expect(needsMultipart(128 * MB)).toBe(true);
+  });
+});
+
+describe("chunkCountFor", () => {
+  it("128 MB'ı 50'şer MB'lık 3 parçaya böler (50+50+28)", () => {
+    expect(chunkCountFor(128 * MB)).toBe(3);
+  });
+
+  it("tam bölünen boyutta fazladan parça açmaz", () => {
+    expect(chunkCountFor(UPLOAD_CHUNK_BYTES * 2)).toBe(2);
+  });
+
+  it("küçük dosyada tek parça", () => {
+    expect(chunkCountFor(1)).toBe(1);
+    expect(chunkCountFor(0)).toBe(1);
+  });
+
+  it("üst sınırda R2'nin 10.000 parça limitini aşmaz", () => {
+    expect(chunkCountFor(250 * MB)).toBeLessThan(10_000);
+  });
+});
+
+describe("isContentKey", () => {
+  it("yalnız content/<uuid>.<uzantı> kabul eder", () => {
+    const key = "content/0f8fad5b-d9cb-469f-a165-70867728950e.pdf";
+    expect(isContentKey(key)).toBe(true);
+  });
+
+  it("başka önek ya da yol kaçışı reddedilir", () => {
+    expect(isContentKey("transcripts/0f8fad5b-d9cb-469f-a165-70867728950e.mp3")).toBe(false);
+    expect(isContentKey("content/../secret.pdf")).toBe(false);
+    expect(isContentKey("content/evil.pdf")).toBe(false);
+    expect(isContentKey("")).toBe(false);
   });
 });

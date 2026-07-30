@@ -13,8 +13,11 @@ import {
   CONTENT_TYPE_LABELS,
   MAX_CONTENT_FILE_BYTES,
   UPLOAD_ACCEPT,
+  UPLOAD_CHUNK_BYTES,
+  chunkCountFor,
   contentTypeForFile,
   formatFileSize,
+  needsMultipart,
   type ContentType,
 } from "@/lib/content";
 import { cn } from "@/lib/utils";
@@ -80,6 +83,103 @@ function titleFromFileName(name: string): string {
   return name.replace(/\.[A-Za-z0-9]{1,8}$/, "").trim().slice(0, 150);
 }
 
+type UploadResult =
+  | { ok: true; data: UploadedFile }
+  | { ok: false; error: string };
+
+const UPLOAD_URL = "/api/icerik/yukle";
+
+/** Sunucu yanıtını tek biçime indirger (ağ hatası da bir sonuçtur). */
+async function readResult(res: Response): Promise<UploadResult> {
+  try {
+    return (await res.json()) as UploadResult;
+  } catch {
+    return { ok: false, error: "Dosya yüklenemedi. Bağlantını kontrol et." };
+  }
+}
+
+/**
+ * Küçük dosya: tek istek, ham gövde. Tarayıcı dosyayı akıtır, sunucu da
+ * doğrudan R2'ye bağlar — bellekte tam kopya tutulmaz.
+ */
+async function uploadWhole(file: File): Promise<UploadResult> {
+  const res = await fetch(UPLOAD_URL, {
+    method: "POST",
+    headers: {
+      "content-type": file.type || "application/octet-stream",
+      "x-file-name": encodeURIComponent(file.name),
+    },
+    body: file,
+  });
+  return readResult(res);
+}
+
+/**
+ * Büyük dosya: R2 multipart. Dosya sabit UPLOAD_CHUNK_BYTES'lık dilimlere
+ * bölünür (son dilim küçük kalabilir — R2'nin "son parça hariç hepsi eşit"
+ * kuralı böyle sağlanır) ve her dilim AYRI istekle gider. Böylece
+ * Cloudflare'in istek gövdesi limiti dosyanın değil parçanın tavanı olur.
+ *
+ * Parçalar SIRAYLA gönderilir: paralel gönderim mobil bağlantıda bant
+ * genişliğini bölüp zaman aşımı riskini artırır, kazancı da belirsizdir.
+ */
+async function uploadInChunks(
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<UploadResult> {
+  const started = await fetch(`${UPLOAD_URL}?faz=basla`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      fileName: file.name,
+      fileType: file.type || "application/octet-stream",
+      fileSize: file.size,
+    }),
+  });
+  const session = (await readResult(started)) as
+    | { ok: true; data: { key: string; uploadId: string } }
+    | { ok: false; error: string };
+  if (!session.ok) return session;
+
+  const { key, uploadId } = session.data;
+  const q = `key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(uploadId)}`;
+  const total = chunkCountFor(file.size);
+  const parts: { partNumber: number; etag: string }[] = [];
+
+  for (let i = 0; i < total; i++) {
+    const slice = file.slice(
+      i * UPLOAD_CHUNK_BYTES,
+      Math.min((i + 1) * UPLOAD_CHUNK_BYTES, file.size),
+    );
+    const res = await fetch(`${UPLOAD_URL}?faz=parca&${q}&parca=${i + 1}`, {
+      method: "POST",
+      headers: { "content-type": "application/octet-stream" },
+      body: slice,
+    });
+    const part = (await readResult(res)) as
+      | { ok: true; data: { partNumber: number; etag: string } }
+      | { ok: false; error: string };
+    if (!part.ok) {
+      // Yarım kalan oturumu bırakma — R2'de çöp parça kalmasın.
+      void fetch(`${UPLOAD_URL}?faz=iptal&${q}`, { method: "POST" });
+      return part;
+    }
+    parts.push(part.data);
+    onProgress(Math.round(((i + 1) / total) * 100));
+  }
+
+  const done = await fetch(`${UPLOAD_URL}?faz=bitir&${q}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      fileName: file.name,
+      fileType: file.type || "application/octet-stream",
+      parts,
+    }),
+  });
+  return readResult(done);
+}
+
 /** Koç: içerik ekleme diyaloğu — kütüphane ya da kişiye özel atama. */
 export function ContentCreateDialog({
   options,
@@ -99,6 +199,8 @@ export function ContentCreateDialog({
   );
   const [source, setSource] = useState<Source>("upload");
   const [uploading, setUploading] = useState(false);
+  /** Parçalı yüklemede tamamlanan yüzde (0 = tek parça / henüz başlamadı). */
+  const [progress, setProgress] = useState(0);
   const [uploaded, setUploaded] = useState<UploadedFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -169,20 +271,11 @@ export function ContentCreateDialog({
       return;
     }
     setUploading(true);
+    setProgress(0);
     try {
-      // Ham gövde (multipart değil): tarayıcı dosyayı akıtır, sunucu da
-      // doğrudan R2'ye bağlar — büyük dosya bellekte toplanmaz.
-      const res = await fetch("/api/icerik/yukle", {
-        method: "POST",
-        headers: {
-          "content-type": file.type || "application/octet-stream",
-          "x-file-name": encodeURIComponent(file.name),
-        },
-        body: file,
-      });
-      const json = (await res.json()) as
-        | { ok: true; data: UploadedFile }
-        | { ok: false; error: string };
+      const json = needsMultipart(file.size)
+        ? await uploadInChunks(file, setProgress)
+        : await uploadWhole(file);
       if (!json.ok) {
         toast.error(json.error);
         return;
@@ -198,6 +291,7 @@ export function ContentCreateDialog({
       toast.error("Dosya yüklenemedi. Bağlantını kontrol et.");
     } finally {
       setUploading(false);
+      setProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -408,7 +502,9 @@ export function ContentCreateDialog({
               <FieldError errors={[errors.url]} />
               <FieldDescription>
                 {uploading
-                  ? "Yükleniyor…"
+                  ? progress > 0
+                    ? `Yükleniyor… %${progress}`
+                    : "Yükleniyor…"
                   : source === "upload"
                     ? `PDF, Word/Excel, görsel, ses ya da video — en fazla ${formatFileSize(MAX_CONTENT_FILE_BYTES)}. Öğrenci uygulama içinden açar.`
                     : source === "link"
