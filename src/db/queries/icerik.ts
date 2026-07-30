@@ -184,6 +184,57 @@ export async function listContentForEnrollment(
   }));
 }
 
+/** Öğrenciye görünen içerik sayacı — rozet/kısayol için (satırları çekmez). */
+export type ContentCounts = { total: number; unseen: number };
+
+/**
+ * Kaynaklar sayfasındaki kısayolun rozeti. Görünürlük kuralı
+ * `listContentForEnrollment` ile AYNI olmalı — yoksa rozet bir sayı, sayfa
+ * başka bir sayı gösterir.
+ */
+export async function countContentForEnrollment(
+  enrollmentId: number,
+  examTemplateId: number,
+): Promise<ContentCounts> {
+  const db = getDb();
+
+  const assigned = await db
+    .select({ contentItemId: contentVisibility.contentItemId })
+    .from(contentVisibility)
+    .where(eq(contentVisibility.enrollmentId, enrollmentId));
+  const assignedIds = new Set(assigned.map((a) => a.contentItemId));
+
+  const visibility = or(
+    and(
+      eq(contentItems.isLibrary, true),
+      or(
+        isNull(contentItems.examTemplateId),
+        eq(contentItems.examTemplateId, examTemplateId),
+      ),
+    ),
+    assignedIds.size > 0
+      ? inArray(contentItems.id, [...assignedIds])
+      : sql`0 = 1`,
+  );
+
+  const [row] = await db
+    .select({
+      total: sql<number>`count(*)`,
+      unseen: sql<number>`sum(case when ${contentViews.viewedAt} is null then 1 else 0 end)`,
+    })
+    .from(contentItems)
+    .leftJoin(
+      contentViews,
+      and(
+        eq(contentViews.contentItemId, contentItems.id),
+        eq(contentViews.enrollmentId, enrollmentId),
+      ),
+    )
+    .where(visibility);
+
+  return { total: Number(row?.total ?? 0), unseen: Number(row?.unseen ?? 0) };
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Atama seçenekleri (sınava göre hızlı seçim)                               */
 /* -------------------------------------------------------------------------- */
