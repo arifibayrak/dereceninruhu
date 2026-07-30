@@ -15,10 +15,14 @@ import {
  * Neden Server Action değil: aksiyon gövde sınırı (next.config, 8 MB) tüm
  * aksiyonlar için geçerli; PDF/doküman için ayrı bir uç daha güvenli.
  *
- * Neden `formData()` DEĞİL: dosyanın tamamını belleğe alır, üstüne
- * `arrayBuffer()` bir kopya daha çıkarır — Worker'ın 128 MB izolat belleği
- * büyük dosyada patlar. Dosya HAM GÖVDE olarak gelir, `req.body` akışı
- * doğrudan R2'ye bağlanır; ad/tür başlıklarda taşınır.
+ * Neden `formData()` DEĞİL: dosyanın tamamını belleğe alır, üstüne bir kopya
+ * daha çıkarır — Worker'ın 128 MB izolat belleği büyük dosyada patlar. Dosya
+ * HAM GÖVDE olarak gelir; ad/tür başlıklarda taşınır.
+ *
+ * Gövde R2'ye verilirken BELLEĞE alınır (akış olarak DEĞİL): R2 uzunluğu
+ * bilinen bir değer ister, OpenNext'ten geçen akışın uzunluğu bilinmediği
+ * için `put`/`uploadPart` hata veriyordu. Bu yüzden tek istekte gelen dosya
+ * parça boyutuyla sınırlıdır; büyüğü parçalara bölünür.
  *
  * İki mod (`faz` sorgu parametresi):
  *  - yok       → tek istekte yükleme (küçük dosya).
@@ -110,6 +114,14 @@ async function singleShot(req: Request) {
       413,
     );
   }
+  // Tek istekte gelen dosya belleğe alınır (R2 uzunluğu bilinen değer ister),
+  // o yüzden parça boyutunu aşamaz — büyüğü istemci parçalayarak gönderir.
+  if (declared > UPLOAD_CHUNK_BYTES) {
+    return bad(
+      `${formatFileSize(UPLOAD_CHUNK_BYTES)} üzeri dosyalar parçalı gönderilmeli.`,
+      413,
+    );
+  }
 
   const fileName = fileNameOf(req);
   if (!fileName) return bad("Dosya bulunamadı.");
@@ -117,21 +129,23 @@ async function singleShot(req: Request) {
   const declaredType = req.headers.get("content-type") ?? "";
   const ext = uploadExtFor(declaredType, fileName);
   if (!ext) return bad(UNSUPPORTED);
-  if (!req.body) return bad("Dosya bulunamadı.");
+
+  let bytes: ArrayBuffer;
+  try {
+    bytes = await req.arrayBuffer();
+  } catch {
+    return bad("Dosya okunamadı.");
+  }
+  if (bytes.byteLength === 0) return bad("Dosya boş.");
 
   const key = `content/${crypto.randomUUID()}.${ext}`;
   const contentType = normalizeType(declaredType);
 
-  // Akış doğrudan R2'ye — dosya bellekte toplanmaz.
-  const object = await getR2().put(key, req.body, {
+  const object = await getR2().put(key, bytes, {
     httpMetadata: objectMeta(fileName, contentType),
   });
   // Boyut R2'nin yazdığı gerçek bayt sayısıdır — istemcinin beyanı değil.
-  const fileSize = object?.size ?? declared;
-  if (fileSize === 0) {
-    await getR2().delete(key);
-    return bad("Dosya boş.");
-  }
+  const fileSize = object?.size ?? bytes.byteLength;
 
   return Response.json({
     ok: true,
@@ -211,16 +225,35 @@ async function uploadPart(req: Request) {
   }
   if (!req.body) return bad("Parça boş.");
 
+  // Parça BELLEĞE alınır: R2 uzunluğu bilinen bir değer ister ve OpenNext'ten
+  // geçen akışın uzunluğu bilinmiyor ("must have a known length"). Parça
+  // boyutu sınırlı olduğu için tampon güvenli — bkz. UPLOAD_CHUNK_BYTES.
+  let bytes: ArrayBuffer;
+  try {
+    bytes = await req.arrayBuffer();
+  } catch {
+    return bad("Parça okunamadı.");
+  }
+  if (bytes.byteLength === 0) return bad("Parça boş.");
+
   const upload = getR2().resumeMultipartUpload(session.key, session.uploadId);
   try {
-    const part = await upload.uploadPart(partNumber, req.body);
+    const part = await upload.uploadPart(partNumber, bytes);
     return Response.json({
       ok: true,
       data: { partNumber: part.partNumber, etag: part.etag },
     });
-  } catch {
-    // Süresi dolmuş/iptal edilmiş oturum — istemci baştan başlamalı.
-    return bad("Yükleme oturumu geçersiz. Dosyayı yeniden yükle.", 409);
+  } catch (err) {
+    // Gerçek sebep loglanır (observability açık) — "oturum geçersiz" sanıp
+    // yanlış yere bakmayalım diye kısa hâli yanıtta da döner.
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error("[icerik/yukle] uploadPart", {
+      key: session.key,
+      partNumber,
+      size: bytes.byteLength,
+      reason,
+    });
+    return bad(`Parça yüklenemedi (${reason.slice(0, 120)})`, 409);
   }
 }
 
@@ -257,8 +290,14 @@ async function completeMultipart(req: Request) {
   let object;
   try {
     object = await upload.complete(parts);
-  } catch {
-    return bad("Dosya birleştirilemedi. Yeniden yükle.", 409);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error("[icerik/yukle] complete", {
+      key: session.key,
+      parts: parts.length,
+      reason,
+    });
+    return bad(`Dosya birleştirilemedi (${reason.slice(0, 120)})`, 409);
   }
 
   const contentType = normalizeType(

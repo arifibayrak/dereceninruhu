@@ -114,6 +114,28 @@ async function uploadWhole(file: File): Promise<UploadResult> {
   return readResult(res);
 }
 
+type PartResult =
+  | { ok: true; data: { partNumber: number; etag: string } }
+  | { ok: false; error: string };
+
+/** Tek parçayı gönderir (ham gövde). */
+async function sendPart(
+  q: string,
+  partNumber: number,
+  slice: Blob,
+): Promise<PartResult> {
+  try {
+    const res = await fetch(`${UPLOAD_URL}?faz=parca&${q}&parca=${partNumber}`, {
+      method: "POST",
+      headers: { "content-type": "application/octet-stream" },
+      body: slice,
+    });
+    return (await readResult(res)) as PartResult;
+  } catch {
+    return { ok: false, error: "Bağlantı koptu." };
+  }
+}
+
 /**
  * Büyük dosya: R2 multipart. Dosya sabit UPLOAD_CHUNK_BYTES'lık dilimlere
  * bölünür (son dilim küçük kalabilir — R2'nin "son parça hariç hepsi eşit"
@@ -151,14 +173,9 @@ async function uploadInChunks(
       i * UPLOAD_CHUNK_BYTES,
       Math.min((i + 1) * UPLOAD_CHUNK_BYTES, file.size),
     );
-    const res = await fetch(`${UPLOAD_URL}?faz=parca&${q}&parca=${i + 1}`, {
-      method: "POST",
-      headers: { "content-type": "application/octet-stream" },
-      body: slice,
-    });
-    const part = (await readResult(res)) as
-      | { ok: true; data: { partNumber: number; etag: string } }
-      | { ok: false; error: string };
+    // Tek parça takılırsa tüm yükleme çöpe gitmesin — bir kez daha denenir.
+    let part = await sendPart(q, i + 1, slice);
+    if (!part.ok) part = await sendPart(q, i + 1, slice);
     if (!part.ok) {
       // Yarım kalan oturumu bırakma — R2'de çöp parça kalmasın.
       void fetch(`${UPLOAD_URL}?faz=iptal&${q}`, { method: "POST" });

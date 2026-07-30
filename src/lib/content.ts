@@ -71,13 +71,18 @@ export const MAX_CONTENT_FILE_BYTES = 250 * 1024 * 1024; // 250 MB
  * Parça boyutu — bundan büyük dosya R2 "multipart upload" ile parça parça
  * gönderilir. Her parça AYRI bir istektir, dolayısıyla Cloudflare'in istek
  * gövdesi limiti (plana göre 100–500 MB) tek dosyanın değil tek PARÇANIN
- * tavanıdır: 50 MB en dar planda bile rahat sığar.
+ * tavanıdır.
  *
  * R2 kuralı: son parça DIŞINDA tüm parçalar eşit boyutta olmalı (ve en az
- * 5 MiB). Dosyayı sabit 50 MB'lık dilimlere böldüğümüz için bu kendiliğinden
- * sağlanır — 128 MB → 50 + 50 + 28.
+ * 5 MiB). Dosyayı sabit dilimlere böldüğümüz için bu kendiliğinden sağlanır —
+ * 128 MB → 20×6 + 8.
+ *
+ * Neden 20 MB: parça sunucuda BELLEĞE alınıp öyle R2'ye verilir (R2 uzunluğu
+ * bilinen bir değer ister; OpenNext'ten geçen akışın uzunluğu bilinmiyor ve
+ * `uploadPart` hata veriyordu). 20 MB'lık tampon Worker'ın 128 MB izolat
+ * belleğinde rahat kalır; büyütmek o hatayı geri getirir.
  */
-export const UPLOAD_CHUNK_BYTES = 50 * 1024 * 1024; // 50 MB
+export const UPLOAD_CHUNK_BYTES = 20 * 1024 * 1024; // 20 MB
 
 /** Dosya parçalara bölünerek mi gönderilmeli? */
 export function needsMultipart(size: number): boolean {

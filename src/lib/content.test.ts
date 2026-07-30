@@ -96,8 +96,8 @@ describe("needsMultipart", () => {
 });
 
 describe("chunkCountFor", () => {
-  it("128 MB'ı 50'şer MB'lık 3 parçaya böler (50+50+28)", () => {
-    expect(chunkCountFor(128 * MB)).toBe(3);
+  it("128 MB'ı 20'şer MB'lık 7 parçaya böler (20×6 + 8)", () => {
+    expect(chunkCountFor(128 * MB)).toBe(7);
   });
 
   it("tam bölünen boyutta fazladan parça açmaz", () => {
