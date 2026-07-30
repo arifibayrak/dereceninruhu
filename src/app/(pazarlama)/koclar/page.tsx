@@ -176,6 +176,7 @@ export default async function KoclarPage() {
             eyebrow="Ekip"
             title="Ekipteki diğer koçlar"
             description="Kadroya yalnız kendi sınavında derece yapmış isimler katılıyor. Her koçun alanı ve yaklaşımı farklı; profilinde ayrıntısını görebilirsin."
+            align="center"
           />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {team.map((member) => (
@@ -236,6 +237,7 @@ export default async function KoclarPage() {
         <SectionHeading
           eyebrow="Öğrencilerinden"
           title="Birlikte çalışanlar ne diyor?"
+          align="center"
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {testimonials.slice(0, 3).map((t) => (

@@ -60,8 +60,8 @@ export default async function HakkindaPage() {
       />
 
       {/* Kimlik */}
-      <section className="flex flex-col gap-8">
-        <div className="flex flex-col items-start gap-6 md:flex-row md:items-center">
+      <section className="flex flex-col items-center gap-8 text-center">
+        <div className="flex flex-col items-center gap-4">
           <Avatar className="size-24 ring-2 ring-primary/25 md:size-28">
             {coach.photoUrl && (
               <AvatarImage src={coach.photoUrl} alt={coach.displayName} />
@@ -70,7 +70,7 @@ export default async function HakkindaPage() {
               {initialsOf(coach.displayName)}
             </AvatarFallback>
           </Avatar>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col items-center gap-2">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] text-primary uppercase">
               <span aria-hidden className="size-1.5 rounded-full bg-gold" />
               Kurucu koç
@@ -78,7 +78,7 @@ export default async function HakkindaPage() {
             <h1 className="font-heading text-headline text-balance">
               {coach.displayName}
             </h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <GraduationCapIcon className="size-4" />
                 {title}
@@ -92,7 +92,7 @@ export default async function HakkindaPage() {
         </div>
 
         {/* Alıntılanabilir özet — GEO: LLM'ler bu tür net cümleleri alıntılar. */}
-        <p className="max-w-3xl text-base leading-relaxed text-pretty text-muted-foreground md:text-lg">
+        <p className="mx-auto max-w-2xl text-base leading-relaxed text-pretty text-muted-foreground md:text-lg">
           Derecenin Ruhu, LGS, YKS ve KPSS için birebir online sınav koçluğu
           sunar. Kurucu koç {coach.displayName}, Marmara Üniversitesi Hukuk
           Fakültesi öğrencisidir; YKS&apos;de Türkiye 876., KPSS&apos;de 93
@@ -101,12 +101,13 @@ export default async function HakkindaPage() {
         </p>
 
         {coach.bio && (
-          <p className="max-w-3xl text-base leading-relaxed text-pretty text-muted-foreground">
+          <p className="mx-auto max-w-2xl text-base leading-relaxed text-pretty text-muted-foreground">
             {coach.bio}
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {/* `items-center` grid'i shrink-wrap etmesin diye `w-full` şart. */}
+        <div className="grid w-full grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile
             label="Yorum ortalaması"
             value="5,0"
@@ -119,9 +120,13 @@ export default async function HakkindaPage() {
       </section>
 
       {/* Özgeçmiş */}
-      <section className="flex flex-col gap-4">
-        <SectionHeading eyebrow="Özgeçmiş" title="Dereceler ve birikim" />
-        <div className="flex flex-wrap gap-1.5">
+      <section className="flex flex-col items-center gap-4 text-center">
+        <SectionHeading
+          eyebrow="Özgeçmiş"
+          title="Dereceler ve birikim"
+          align="center"
+        />
+        <div className="flex flex-wrap justify-center gap-1.5">
           {coach.achievements.map((a) => (
             <Badge
               key={a}
@@ -142,14 +147,16 @@ export default async function HakkindaPage() {
       </section>
 
       {/* Sosyal kanıt */}
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col items-center gap-4 text-center">
         <SectionHeading
           eyebrow="Sosyal kanıt"
           title="Bağımsız olarak doğrulanabilir"
           description="Yorumların tamamı Gigbi üzerinde gerçek öğrenci ve velilere aittir."
+          align="center"
         />
-        <ProofStrip />
-        <div className="flex flex-wrap items-center gap-3">
+        {/* `ml-auto` butonu olan flex satır — `items-center` altında `w-full` şart. */}
+        <ProofStrip className="w-full" />
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <Button render={<Link href="/iletisim" />}>
             Ahmet Hoca ile ön görüşme planla
           </Button>

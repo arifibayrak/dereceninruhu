@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { combinedMockLabel, durationPresets } from "@/lib/exam";
+import { combinedMockLabel } from "@/lib/exam";
 import { cn } from "@/lib/utils";
 
 export type MockSubject = {
@@ -39,8 +39,6 @@ export type MockSubject = {
 
 export type MockSection = {
   id: number;
-  /** Bölüm kodu (TYT, AYT, KPSS_GY…) — resmî süre önerileri buna bakar. */
-  code: string;
   name: string;
   wrongPenaltyDivisor: number;
   /** Bölümün sınavı — çift sınavlı kayıtta seçenekler sınava göre gruplanır. */
@@ -254,11 +252,6 @@ export function MockForm({
    * Hazır süreler seçilen kapsama + bölüme göre değişir: tam denemede o
    * sınavın resmî süresi (birleşikte bölümlerin toplamı), branşta kısa süreler.
    */
-  const presets = durationPresets({
-    scope,
-    sectionCodes: activeSections.map((s) => s.code),
-  });
-
   const submit = async () => {
     if (!section) return;
     if (!takenOn) {
@@ -398,31 +391,6 @@ export function MockForm({
           <FieldLabel htmlFor="deneme-sure">
             Süre (dk) <span className="text-destructive">*</span>
           </FieldLabel>
-          {/* Tek dokunuşla süre — klavye açmadan. Seçenekler kapsama göre. */}
-          <div className="flex flex-wrap gap-1.5">
-            {presets.map((p) => {
-              const active = durationMinutes === p.minutes;
-              return (
-                <button
-                  key={p.minutes}
-                  type="button"
-                  onClick={() => {
-                    setDuration(String(p.minutes));
-                    setDurationError(false);
-                  }}
-                  aria-pressed={active}
-                  className={cn(
-                    "h-8 rounded-full px-3 text-xs font-medium tabular-nums transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-                  )}
-                >
-                  {p.label}
-                </button>
-              );
-            })}
-          </div>
           <Input
             id="deneme-sure"
             type="text"
@@ -438,7 +406,7 @@ export function MockForm({
           />
           {durationError ? (
             <p className="text-xs font-medium text-destructive">
-              Süre zorunlu — kaç dakikada bitirdiğini yaz ya da yukarıdan seç.
+              Süre zorunlu — denemeyi kaç dakikada bitirdiğini yaz.
             </p>
           ) : livePace ? (
             <p className="text-xs font-medium text-primary tabular-nums">

@@ -22,9 +22,10 @@ import {
 import { coachContent, coachStats } from "@/db/seed/cms-content";
 import { cohortView, enrollmentOpen } from "@/lib/cohort";
 import { formatKurus } from "@/lib/format";
+import { AiSystemSection } from "@/components/marketing/ai-system-section";
 import { CohortBanner } from "@/components/marketing/cohort-banner";
 import { CtaBand } from "@/components/marketing/cta-band";
-import { ExamCountdown } from "@/components/marketing/exam-countdown";
+import { ExamCountdownStrip } from "@/components/marketing/exam-countdown-strip";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { HeroCarousel } from "@/components/marketing/hero-carousel";
 import { HeroReveal } from "@/components/marketing/hero-reveal";
@@ -63,7 +64,7 @@ const STEPS = [
   {
     icon: TrendingUpIcon,
     title: "Deneme analizi + haftalık görüşme",
-    body: "Her hafta birebir görüşmede denemelerini analiz eder, programı birlikte güncelleriz. Net artışı grafikte görünür.",
+    body: "Her hafta birebir görüşmede denemelerini analiz eder, programı birlikte güncelleriz. Konuşulanlar yazılı özete ve takip maddelerine dönüşür.",
   },
 ] as const;
 
@@ -197,7 +198,6 @@ export default async function HomePage() {
           title="Üç adımda derecenin ruhu"
           description="Karmaşık değil: tanış, programını al, her hafta ölçerek ilerle."
           align="center"
-          className="items-center"
         />
         <div className="grid gap-4 md:grid-cols-3">
           {STEPS.map((step, i) => (
@@ -228,12 +228,16 @@ export default async function HomePage() {
         </Button>
       </section>
 
+      {/* ------------------------- AI destekli sistem ------------------------ */}
+      <AiSystemSection />
+
       {/* ------------------------------ Koç kartı ---------------------------- */}
       <section className="flex flex-col gap-8">
         <SectionHeading
           eyebrow="Koçun"
           title="Bu yoldan geçmiş biriyle çalış"
           description="Teoriden değil, kendi derecesinden konuşan koçlar."
+          align="center"
         />
         <div className="grid items-center gap-6 rounded-3xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8 lg:grid-cols-[auto_1fr_auto]">
           <div className="flex items-center gap-4 lg:flex-col lg:items-start">
@@ -295,6 +299,7 @@ export default async function HomePage() {
           eyebrow="Sosyal kanıt"
           title="Öğrenciler ve veliler ne diyor?"
           description={`Gigbi üzerinde 5,0 yıldız ortalamayla ${coachStats.reviewCount} gerçek yorum. Sitede ad + soyadın ilk harfi kullanılır.`}
+          align="center"
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {featured.map((t) => (
@@ -350,7 +355,6 @@ export default async function HomePage() {
           title="Hangi sınava hazırlanıyorsan"
           description="Üç sınav, tek yöntem: ölç, planla, analiz et, tekrarla."
           align="center"
-          className="items-center"
         />
         <div className="grid gap-4 md:grid-cols-3">
           {EXAM_CARDS.map((exam) => (
@@ -378,34 +382,15 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* -------------------------------- Sayaç ------------------------------ */}
-      <section className="flex flex-col gap-8">
-        <SectionHeading
-          eyebrow="Sayaç"
-          title="Sınava kaç gün kaldı?"
-          description="LGS, YKS ve KPSS için geri sayım. Tarihler ÖSYM/MEB takvimine göredir."
-          align="center"
-          className="items-center"
-        />
-        <ExamCountdown />
-        <Button
-          variant="link"
-          className="self-center"
-          render={<Link href="/sayac" />}
-        >
-          Tüm sınav tarihleri
-          <ArrowRightIcon data-icon="inline-end" />
-        </Button>
-      </section>
-
       {/* ------------------------------ Kaynaklar ---------------------------- */}
-      <section className="flex flex-col gap-6 rounded-2xl bg-secondary/40 p-6 sm:p-8">
+      <section className="flex flex-col items-center gap-6 rounded-2xl bg-secondary/40 p-6 text-center sm:p-8">
         <SectionHeading
           eyebrow="Ücretsiz kaynaklar"
           title="Resmî kaynak merkezi"
-          description="ÖSYM ve MEB çıkmış soruları, OGM Materyal & MEBİ, YÖK Atlas ve net hesaplama aracı — hepsi tek sayfada, tamamen ücretsiz."
+          description="ÖSYM ve MEB çıkmış soruları, OGM Materyal & MEBİ, ders notları ve YÖK Atlas — hepsi tek sayfada, resmî kaynağına doğrudan bağlantıyla. Tamamen ücretsiz."
+          align="center"
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           {[
             "Çıkmış sorular",
             "OGM Materyal & MEBİ",
@@ -421,10 +406,21 @@ export default async function HomePage() {
             </span>
           ))}
         </div>
-        <Button className="self-start" render={<Link href="/kaynaklar" />}>
+        <Button className="self-center" render={<Link href="/kaynaklar" />}>
           Kaynaklara göz at
           <ArrowRightIcon data-icon="inline-end" />
         </Button>
+      </section>
+
+      {/* --------------------------- Sayaç (kompakt) ------------------------- */}
+      <section
+        aria-label="Sınav geri sayımı"
+        className="flex flex-col items-center gap-3"
+      >
+        <span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          Sınava kalan
+        </span>
+        <ExamCountdownStrip />
       </section>
 
       {/* ------------------------------ Fiyat teaser ------------------------- */}
@@ -433,6 +429,7 @@ export default async function HomePage() {
           eyebrow="Paketler"
           title="Şeffaf ve sade fiyatlandırma"
           description="Uzun taahhüt yok; her paket ücretsiz ön görüşmeyle başlar."
+          align="center"
         />
         <div className="grid gap-4 md:grid-cols-3">
           {packages.slice(0, 3).map((pkg, i) => (
@@ -494,15 +491,16 @@ export default async function HomePage() {
       </section>
 
       {/* ------------------------------- SSS teaser -------------------------- */}
-      <section className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+      <section className="flex flex-col gap-8">
         <SectionHeading
           eyebrow="Merak edilenler"
           title="Aklına takılanlar"
           description="En çok sorulan sorulardan birkaçı — tamamı SSS sayfasında."
+          align="center"
         />
-        <div className="flex flex-col gap-4">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           <FaqAccordion items={faqs.slice(0, 4)} />
-          <Button variant="link" className="self-start" render={<Link href="/sss" />}>
+          <Button variant="link" className="self-center" render={<Link href="/sss" />}>
             Tüm soruları gör
             <ArrowRightIcon data-icon="inline-end" />
           </Button>

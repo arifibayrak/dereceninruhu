@@ -410,8 +410,6 @@ export type MockEditPayload = {
   mock: MockEditData;
   sections: {
     id: number;
-    /** Bölüm kodu (TYT, AYT…) — formdaki resmî süre önerileri buna bakar. */
-    code: string;
     name: string;
     wrongPenaltyDivisor: number;
     /** Bölümün sınavı — çift sınavlı kayıtta form seçenekleri buna göre gruplanır. */
@@ -482,7 +480,6 @@ export async function getMockForEdit(
     },
     sections: sections.map((s) => ({
       id: s.id,
-      code: s.code,
       name: s.name,
       wrongPenaltyDivisor: s.wrongPenaltyDivisor,
       examTemplateId: s.examTemplateId,

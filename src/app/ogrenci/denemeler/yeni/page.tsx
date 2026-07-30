@@ -27,7 +27,6 @@ export default async function YeniDenemePage() {
   const sections = await getSectionsForEnrollment(enrollment);
   const mockSections: MockSection[] = sections.map((s) => ({
     id: s.id,
-    code: s.code,
     name: s.name,
     wrongPenaltyDivisor: s.wrongPenaltyDivisor,
     examTemplateId: s.examTemplateId,

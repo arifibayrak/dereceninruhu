@@ -19,7 +19,6 @@ export default function SayacPage() {
           title="Sınava kaç gün kaldı?"
           description="LGS, YKS ve KPSS'nin üç kademesi için gün gün geri sayım."
           align="center"
-          className="items-center"
         />
         <ExamCountdown />
         <p className="mx-auto max-w-prose text-center text-xs text-muted-foreground">

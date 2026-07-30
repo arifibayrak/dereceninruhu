@@ -34,6 +34,7 @@ export const COACHING_INCLUDES: IncludeGroup[] = [
       "Net gelişim grafiği — ilk günden bugüne",
       "Eksik konu haritası ve kaynak takibi",
       "Çalışma süresi kronometresi",
+      "Otomatik içgörüler: net trendi, düşen soru hacmi ve eksik konu uyarıları",
     ],
   },
   {
@@ -42,7 +43,7 @@ export const COACHING_INCLUDES: IncludeGroup[] = [
       "Çözemediğin soru ve acil durumlar için WhatsApp erişimi",
       "Uzun süre giriş yapmadığında koçunun proaktif takibi",
       "Veli bilgilendirmesi (isteğe bağlı, somut verilerle)",
-      "Görüşme notlarının kayıt altına alınması ve takibi",
+      "Görüşme notlarının kayıt altına alınması — konuşulanlar özet ve takip maddelerine dönüşür",
     ],
   },
   {
@@ -51,7 +52,8 @@ export const COACHING_INCLUDES: IncludeGroup[] = [
       "Derecenin Ruhu uygulamasına sınırsız erişim (telefon ve bilgisayar)",
       "Koçunun sana özel paylaştığı kaynak ve içerik kütüphanesi",
       "Deneme sonuçlarının geçmişe dönük arşivi",
-      "Ücretsiz kaynak merkezine ve net hesaplama aracına erişim",
+      "Görüşme sonrası yazılı özet ve takip önerileri (koç onayından geçer)",
+      "Ücretsiz kaynak merkezine erişim — herkese açık",
     ],
   },
 ];
@@ -61,4 +63,5 @@ export const COACHING_EXCLUDES: string[] = [
   "Ders anlatımı / özel ders (koçluk, öğretmenlik değildir)",
   "Kitap ve yayın satışı — kaynak önerilir, satılmaz",
   "Sınav sonucu garantisi",
+  "Yapay zekânın koç yerine geçmesi — öneriyi AI çıkarır, kararı koçun verir",
 ];

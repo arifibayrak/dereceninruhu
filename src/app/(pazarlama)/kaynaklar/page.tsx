@@ -68,7 +68,11 @@ export default async function KaynaklarPage() {
 
       {grouped.map(({ category, meta, items }) => (
         <section key={category} className="flex flex-col gap-5">
-          <SectionHeading title={meta.label} description={meta.description} />
+          <SectionHeading
+            title={meta.label}
+            description={meta.description}
+            align="center"
+          />
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
               <li key={`${item.category}-${item.url}`}>

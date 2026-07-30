@@ -29,7 +29,7 @@ export default async function BlogPage() {
           { name: "Blog", path: "/blog" },
         ])}
       />
-      <section className="relative flex flex-col items-start gap-4">
+      <section className="relative flex flex-col items-center gap-4 text-center">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/3 h-64 w-[min(28rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />
         </div>

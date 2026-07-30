@@ -181,7 +181,6 @@ export default async function FiyatlarPage() {
           title="Her pakette olanlar"
           description="Paketler süre ve görüşme sıklığıyla ayrışır; aşağıdakiler hepsinde vardır."
           align="center"
-          className="items-center"
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {COACHING_INCLUDES.map((group) => (
@@ -223,12 +222,15 @@ export default async function FiyatlarPage() {
 
       {/* İlgili SSS */}
       {paymentFaqs.length > 0 && (
-        <section className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+        <section className="flex flex-col gap-8">
           <SectionHeading
             eyebrow="Merak edilenler"
             title="Ödeme ve başlangıç"
+            align="center"
           />
-          <FaqAccordion items={paymentFaqs} />
+          <div className="mx-auto w-full max-w-3xl">
+            <FaqAccordion items={paymentFaqs} />
+          </div>
         </section>
       )}
 

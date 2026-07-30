@@ -16,9 +16,10 @@ import type {
   SupportPillar,
 } from "@/lib/exam-landing-content";
 import { breadcrumbSchema, courseSchema, faqPageSchema } from "@/lib/schema";
+import { AiSystemSection } from "@/components/marketing/ai-system-section";
 import { CohortBanner } from "@/components/marketing/cohort-banner";
 import { CtaBand } from "@/components/marketing/cta-band";
-import { ExamCountdown } from "@/components/marketing/exam-countdown";
+import { ExamCountdownStrip } from "@/components/marketing/exam-countdown-strip";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { ProofStrip } from "@/components/marketing/proof-strip";
 import { ScarcityBadge } from "@/components/marketing/scarcity-badge";
@@ -76,7 +77,7 @@ export async function ExamLanding({ config }: { config: ExamLandingConfig }) {
       />
 
       {/* Hero */}
-      <section className="relative flex flex-col items-start gap-5">
+      <section className="relative flex flex-col items-center gap-5 text-center">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/3 h-64 w-[min(32rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />
           <div className="absolute top-4 right-[10%] size-32 rounded-full bg-gold/15 blur-2xl" />
@@ -93,7 +94,7 @@ export async function ExamLanding({ config }: { config: ExamLandingConfig }) {
         <p className="max-w-2xl text-base text-pretty text-muted-foreground md:text-lg">
           {config.heroLead}
         </p>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" render={<Link href={ctaHref} />}>
             <SparklesIcon data-icon="inline-start" />
             {ctaLabel}
@@ -115,7 +116,6 @@ export async function ExamLanding({ config }: { config: ExamLandingConfig }) {
           title={config.introTitle}
           description={config.introBody}
           align="center"
-          className="items-center"
         />
 
         {/*
@@ -156,6 +156,16 @@ export async function ExamLanding({ config }: { config: ExamLandingConfig }) {
         </div>
       </section>
 
+      {/*
+        AI destekli sistem — üç kart (görüşme notu, program taslağı, gizlilik).
+        Başlık/gövde sınava göre değişir; kart metinleri sabittir.
+      */}
+      <AiSystemSection
+        title={config.aiTitle}
+        description={config.aiDescription}
+        items={["gorusme", "program", "gizlilik"]}
+      />
+
       {/* Paket teaser */}
       <section className="flex flex-col gap-8">
         <SectionHeading
@@ -163,7 +173,6 @@ export async function ExamLanding({ config }: { config: ExamLandingConfig }) {
           title="Sade ve şeffaf fiyatlandırma"
           description="Uzun taahhüt yok; her paket ücretsiz ön görüşmeyle başlar."
           align="center"
-          className="items-center"
         />
         <div className="grid gap-4 md:grid-cols-3">
           {packages.slice(0, 3).map((pkg, i) => (
@@ -216,26 +225,28 @@ export async function ExamLanding({ config }: { config: ExamLandingConfig }) {
         </Button>
       </section>
 
-      {/* Sayaç */}
-      <section className="flex flex-col gap-8">
-        <SectionHeading
-          eyebrow="Sayaç"
-          title="Sınava kaç gün kaldı?"
-          description="LGS, YKS ve KPSS için geri sayım. Tarihler ÖSYM/MEB takvimine göredir."
-          align="center"
-          className="items-center"
-        />
-        <ExamCountdown />
+      {/* Sayaç — kompakt şerit, yalnız bu sınav ailesi. */}
+      <section
+        aria-label="Sınav geri sayımı"
+        className="flex flex-col items-center gap-3"
+      >
+        <span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          Sınava kalan
+        </span>
+        <ExamCountdownStrip exams={[config.code]} />
       </section>
 
       {/* SSS */}
-      <section className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+      <section className="flex flex-col gap-8">
         <SectionHeading
           eyebrow="Merak edilenler"
           title="Sıkça sorulan sorular"
           description="Süreç, görüşmeler ve ödeme hakkında en çok sorulanlar."
+          align="center"
         />
-        <FaqAccordion items={faqs} />
+        <div className="mx-auto w-full max-w-3xl">
+          <FaqAccordion items={faqs} />
+        </div>
       </section>
 
       <CtaBand

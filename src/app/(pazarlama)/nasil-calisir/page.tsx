@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { COACHING_INCLUDES } from "@/lib/coaching-includes";
+import { AiSystemSection } from "@/components/marketing/ai-system-section";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -116,7 +117,7 @@ export default function NasilCalisirPage() {
           { name: "Nasıl Çalışır", path: "/nasil-calisir" },
         ])}
       />
-      <section className="relative flex flex-col items-start gap-5">
+      <section className="relative flex flex-col items-center gap-5 text-center">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-24 left-1/3 h-64 w-[min(30rem,90vw)] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />
         </div>
@@ -135,7 +136,7 @@ export default function NasilCalisirPage() {
         </p>
 
         {/* Haftalık döngü — metinde geçen adımların görünür hâli. */}
-        <ol className="flex w-full flex-wrap items-center gap-x-2 gap-y-2 pt-1">
+        <ol className="flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-2 pt-1">
           {CYCLE.map((step, i) => (
             <li key={step} className="flex items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full bg-card px-3.5 py-1.5 text-sm font-medium ring-1 ring-foreground/10">
@@ -164,11 +165,20 @@ export default function NasilCalisirPage() {
         <SectionHeading
           eyebrow="Süreç"
           title="Adım adım koçluk döngüsü"
+          description="Her adımın somut bir çıktısı var: o adım bittiğinde elinde tam olarak ne olduğu."
+          align="center"
         />
-        <ol className="relative flex flex-col gap-6 border-l border-border pl-6 md:gap-8">
+        {/*
+          Ray sola çakılı olduğu için adım metni kart içinde sola hizalı kalır;
+          boşluk sorunu rayın kendisini ortalayarak (mx-auto max-w-3xl) çözülür.
+        */}
+        <ol className="relative mx-auto flex w-full max-w-3xl flex-col gap-4 border-l border-border pl-6 md:gap-5">
           {TIMELINE.map((step) => (
-            <li key={step.title} className="relative flex flex-col gap-2">
-              <span className="absolute top-1 -left-[31px] flex size-3 items-center justify-center rounded-full bg-primary ring-4 ring-background" />
+            <li
+              key={step.title}
+              className="relative flex flex-col gap-2 rounded-2xl bg-card p-5 ring-1 ring-foreground/10"
+            >
+              <span className="absolute top-7 -left-[31px] flex size-3 items-center justify-center rounded-full bg-primary ring-4 ring-background" />
               <div className="flex flex-wrap items-center gap-2">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <step.icon className="size-4" />
@@ -178,11 +188,11 @@ export default function NasilCalisirPage() {
                   {step.title}
                 </h3>
               </div>
-              <p className="max-w-2xl text-sm leading-relaxed text-pretty text-muted-foreground">
+              <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
                 {step.body}
               </p>
               {/* Somut çıktı — "bu adım bitince elimde ne olacak?" */}
-              <p className="max-w-2xl rounded-lg bg-success/8 px-3 py-2 text-sm text-pretty text-foreground/85">
+              <p className="rounded-lg bg-success/8 px-3 py-2 text-sm text-pretty text-foreground/85">
                 <span className="font-medium">Çıktı: </span>
                 {step.output}
               </p>
@@ -190,6 +200,16 @@ export default function NasilCalisirPage() {
           ))}
         </ol>
       </section>
+
+      {/*
+        Yöntemin derinlemesine anlatıldığı tek sayfa — beş kartın tamamı burada.
+        Diğer yüzeyler alt küme gösterir (bkz. ai-system-section.tsx).
+      */}
+      <AiSystemSection
+        title="Döngünün görünmeyen yarısı"
+        description="Yukarıdaki adımların not tutma, taslak çıkarma ve hatırlama kısmını sistem üstlenir; karar ve yorum koçunda kalır."
+        items={["gorusme", "program", "radar", "asistan", "gizlilik"]}
+      />
 
       {/*
         Kapsam listesi /fiyatlar ile AYNI kaynaktan (`COACHING_INCLUDES`) gelir
@@ -200,6 +220,7 @@ export default function NasilCalisirPage() {
           eyebrow="Kapsam"
           title="Koçluğa neler dahil?"
           description="Paket ne olursa olsun sürecin omurgası aynıdır."
+          align="center"
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {COACHING_INCLUDES.map((group) => (

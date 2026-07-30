@@ -38,6 +38,13 @@ export type ExamLandingConfig = {
   introBody: string;
   /** Dört destek sütunu — "Koçluğun kapsamı" bölümünü besler. */
   pillars: SupportPillar[];
+  /**
+   * AI sistem bölümünün sınava göre değişen başlığı/gövdesi. Kart metinleri
+   * `ai-system-section.tsx`'te sabittir — burada yalnız çerçeve değişir; üç
+   * sayfa aynı başlıkla yayınlanmasın diye (duplicate content).
+   */
+  aiTitle: string;
+  aiDescription: string;
   /** JSON-LD Course açıklaması. */
   courseName: string;
   courseDescription: string;
@@ -113,6 +120,9 @@ export const EXAM_LANDING: Record<ExamCode, ExamLandingConfig> = {
         ],
       },
     ],
+    aiTitle: "Koçun TYT-AYT dengesini kurarken yalnız değil",
+    aiDescription:
+      "Görüşme notu ve haftalık program taslağı sistemden çıkar; koçun bunları alanına ve son denemelerine göre onaylar ya da değiştirir. Böylece görüşme süresi \"ne yaptın\" sorusuna değil, stratejiye harcanır.",
     courseName: "YKS Koçluğu (TYT-AYT)",
     courseDescription:
       "TYT ve AYT için birebir online YKS koçluğu: haftalık program, deneme analizi, konu bazlı eksik haritası ve net takibi.",
@@ -186,6 +196,9 @@ export const EXAM_LANDING: Record<ExamCode, ExamLandingConfig> = {
         ],
       },
     ],
+    aiTitle: "Ne yapıldığı da neden yapıldığı da görünür",
+    aiDescription:
+      "Görüşmede konuşulanlar yazıya döner, haftalık program taslağı hazır gelir; koçun 8. sınıfın temposunu bilerek onaylar. Sen de velin de sürecin neresinde olduğunuzu somut olarak görürsünüz.",
     courseName: "LGS Koçluğu",
     courseDescription:
       "8. sınıf öğrencileri için birebir online LGS koçluğu: sürdürülebilir haftalık program, deneme analizi ve veli bilgilendirmesi.",
@@ -259,6 +272,9 @@ export const EXAM_LANDING: Record<ExamCode, ExamLandingConfig> = {
         ],
       },
     ],
+    aiTitle: "Kıt zamanın tamamı çalışmaya kalsın",
+    aiDescription:
+      "Görüşme notu ve program taslağı sistemden çıkar; koçun mesai temponu bilerek onaylar. Not tutma ve hatırlama yükü senden de koçundan da kalkar.",
     courseName: "KPSS Koçluğu",
     courseDescription:
       "Çalışan ve öğrenci adaylar için birebir online KPSS koçluğu: gerçekçi program, deneme analizi, net takibi ve atama hedefine göre puan stratejisi.",
