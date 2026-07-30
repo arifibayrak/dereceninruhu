@@ -170,9 +170,16 @@ export function ContentCreateDialog({
     }
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/icerik/yukle", { method: "POST", body: fd });
+      // Ham gövde (multipart değil): tarayıcı dosyayı akıtır, sunucu da
+      // doğrudan R2'ye bağlar — büyük dosya bellekte toplanmaz.
+      const res = await fetch("/api/icerik/yukle", {
+        method: "POST",
+        headers: {
+          "content-type": file.type || "application/octet-stream",
+          "x-file-name": encodeURIComponent(file.name),
+        },
+        body: file,
+      });
       const json = (await res.json()) as
         | { ok: true; data: UploadedFile }
         | { ok: false; error: string };

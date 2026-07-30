@@ -96,5 +96,7 @@ export async function GET(
     headers.set("Content-Disposition", disposition);
   }
   if (obj.httpEtag) headers.set("ETag", obj.httpEtag);
+  // Büyük dosyada tarayıcı indirme ilerlemesini gösterebilsin.
+  headers.set("Content-Length", String(obj.size));
   return new Response(obj.body as ReadableStream, { headers });
 }

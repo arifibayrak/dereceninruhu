@@ -58,8 +58,14 @@ const UPLOAD_EXTS = [...new Set(Object.values(UPLOAD_EXT_BY_MIME))];
 /** `<input type="file" accept>` değeri. */
 export const UPLOAD_ACCEPT = UPLOAD_EXTS.map((e) => `.${e}`).join(",");
 
-/** Tek dosya üst sınırı — Worker isteği bunu bellekte tutar, abartma. */
-export const MAX_CONTENT_FILE_BYTES = 20 * 1024 * 1024; // 20 MB
+/**
+ * Tek dosya üst sınırı. Dosya artık belleğe alınmadan doğrudan R2'ye akıtılır
+ * (bkz. /api/icerik/yukle), o yüzden Worker'ın 128 MB bellek tavanı sınır
+ * değil. Asıl tavan Cloudflare'in istek gövdesi limitidir ve PLANA bağlıdır:
+ * Free/Pro 100 MB, Business 200 MB, Enterprise 500 MB. Plan limitini aşan
+ * dosyayı uç (edge) daha kod çalışmadan 413 ile reddeder.
+ */
+export const MAX_CONTENT_FILE_BYTES = 250 * 1024 * 1024; // 250 MB
 
 /** Dosya adının son uzantısı (küçük harf, noktasız). */
 export function fileExtOf(fileName: string): string {

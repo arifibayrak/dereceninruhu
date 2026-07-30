@@ -12,6 +12,12 @@ import {
  * Neden Server Action değil: aksiyon gövde sınırı (next.config, 8 MB) tüm
  * aksiyonlar için geçerli; PDF/doküman için ayrı bir uç daha güvenli.
  * Dosya `/api/uploads/content/…` üzerinden (oturum şart) servis edilir.
+ *
+ * Neden multipart DEĞİL: `formData()` dosyanın tamamını belleğe alır, üstüne
+ * `arrayBuffer()` bir kopya daha çıkarır — Worker'ın 128 MB izolat belleği
+ * büyük dosyada patlar. Bunun yerine dosya HAM GÖVDE olarak gelir ve
+ * `req.body` akışı doğrudan R2'ye bağlanır; bellekte tam kopya tutulmaz.
+ * Dosya adı/türü başlıklarda taşınır.
  */
 export const dynamic = "force-dynamic";
 
@@ -33,6 +39,11 @@ export async function POST(req: Request) {
   }
 
   const declared = Number(req.headers.get("content-length") ?? "0");
+  // R2'ye akış yazabilmek için uzunluk BİLİNMELİ; tarayıcı dosya gövdesinde
+  // Content-Length'i hep gönderir, yoksa istek zaten kullanılamaz.
+  if (!Number.isFinite(declared) || declared <= 0) {
+    return bad("Dosya bulunamadı.");
+  }
   if (declared > MAX_CONTENT_FILE_BYTES) {
     return bad(
       `Dosya en fazla ${formatFileSize(MAX_CONTENT_FILE_BYTES)} olabilir.`,
@@ -40,52 +51,53 @@ export async function POST(req: Request) {
     );
   }
 
-  let file: unknown;
+  // Dosya adı başlıkta URL-kodlu gelir (başlıklar ASCII; Türkçe ad bozulmasın).
+  let fileName = "";
   try {
-    const form = await req.formData();
-    file = form.get("file");
+    fileName = decodeURIComponent(req.headers.get("x-file-name") ?? "").trim();
   } catch {
-    return bad("Dosya okunamadı.");
+    return bad("Dosya adı okunamadı.");
   }
-  if (!(file instanceof File) || file.size === 0) {
-    return bad("Dosya bulunamadı.");
-  }
-  if (file.size > MAX_CONTENT_FILE_BYTES) {
-    return bad(
-      `Dosya en fazla ${formatFileSize(MAX_CONTENT_FILE_BYTES)} olabilir.`,
-      413,
-    );
-  }
+  if (!fileName) return bad("Dosya bulunamadı.");
 
-  const ext = uploadExtFor(file.type, file.name);
+  const declaredType = req.headers.get("content-type") ?? "";
+  const ext = uploadExtFor(declaredType, fileName);
   if (!ext) {
     return bad(
       "Bu dosya türü desteklenmiyor (PDF, Office belgeleri, görsel, ses/video).",
     );
   }
+  if (!req.body) return bad("Dosya bulunamadı.");
 
   const key = `content/${crypto.randomUUID()}.${ext}`;
   const contentType =
-    file.type && file.type !== "application/octet-stream"
-      ? file.type
+    declaredType && declaredType !== "application/octet-stream"
+      ? declaredType
       : "application/octet-stream";
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  await getR2().put(key, bytes, {
+
+  // Akış doğrudan R2'ye — dosya bellekte toplanmaz.
+  const object = await getR2().put(key, req.body, {
     httpMetadata: {
       contentType,
       // Tarayıcıda açılsın; indirilirse özgün adıyla insin (UTF-8 güvenli).
       contentDisposition: `inline; filename*=UTF-8''${encodeURIComponent(
-        file.name,
+        fileName,
       )}`,
     },
   });
+  // Boyut R2'nin yazdığı gerçek bayt sayısıdır — istemcinin beyanı değil.
+  const fileSize = object?.size ?? declared;
+  if (fileSize === 0) {
+    await getR2().delete(key);
+    return bad("Dosya boş.");
+  }
 
   return Response.json({
     ok: true,
     data: {
       fileKey: key,
-      fileName: file.name,
-      fileSize: file.size,
+      fileName,
+      fileSize,
       fileType: contentType,
       url: `/api/uploads/${key}`,
     },
