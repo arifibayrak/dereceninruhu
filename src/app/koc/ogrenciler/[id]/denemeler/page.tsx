@@ -50,6 +50,7 @@ export default async function DenemelerPage({
 
   const mockSections: MockSection[] = sections.map((s) => ({
     id: s.id,
+    code: s.code,
     name: s.name,
     wrongPenaltyDivisor: s.wrongPenaltyDivisor,
     examTemplateId: s.examTemplateId,

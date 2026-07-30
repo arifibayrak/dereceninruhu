@@ -21,6 +21,10 @@ export type CoachContentRow = {
   title: string;
   url: string | null;
   body: string | null;
+  /** Cihazdan yüklenen dosya (R2) — varsa `url` yerine bu açılır. */
+  fileKey: string | null;
+  fileName: string | null;
+  fileSize: number | null;
   examCode: string | null;
   subjectName: string | null;
   topicName: string | null;
@@ -44,6 +48,9 @@ export async function listContentForCoach(): Promise<CoachContentRow[]> {
       title: contentItems.title,
       url: contentItems.url,
       body: contentItems.body,
+      fileKey: contentItems.fileKey,
+      fileName: contentItems.fileName,
+      fileSize: contentItems.fileSize,
       examCode: examTemplates.code,
       subjectName: subjects.name,
       topicName: topics.name,
@@ -103,6 +110,9 @@ export type StudentContentRow = {
   title: string;
   url: string | null;
   body: string | null;
+  fileKey: string | null;
+  fileName: string | null;
+  fileSize: number | null;
   subjectName: string | null;
   topicName: string | null;
   /** Doğrudan atandı mı (kütüphane yerine kişiye özel). */
@@ -146,6 +156,9 @@ export async function listContentForEnrollment(
       title: contentItems.title,
       url: contentItems.url,
       body: contentItems.body,
+      fileKey: contentItems.fileKey,
+      fileName: contentItems.fileName,
+      fileSize: contentItems.fileSize,
       subjectName: subjects.name,
       topicName: topics.name,
       viewedAt: contentViews.viewedAt,

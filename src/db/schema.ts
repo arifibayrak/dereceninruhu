@@ -738,12 +738,22 @@ export const contentItems = sqliteTable(
   "content_items",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    type: text("type", { enum: ["video", "pdf", "note", "link"] }).notNull(),
+    type: text("type", {
+      enum: ["video", "pdf", "doc", "note", "link"],
+    }).notNull(),
     title: text("title").notNull(),
-    /** YouTube / Drive / external URL (NULL for pure notes). */
+    /** YouTube / Drive / external URL (NULL when a file was uploaded). */
     url: text("url"),
     /** Inline body for type=note. */
     body: text("body"),
+    /** R2 key of a file uploaded from the coach's device (`content/…`). */
+    fileKey: text("file_key"),
+    /** Original file name — shown in the UI, used for the download name. */
+    fileName: text("file_name"),
+    /** Bytes; rendered next to the file name. */
+    fileSize: integer("file_size"),
+    /** MIME type as reported at upload time. */
+    fileType: text("file_type"),
     /** Exam scope for library filtering; NULL = all exams. */
     examTemplateId: integer("exam_template_id").references(
       () => examTemplates.id,

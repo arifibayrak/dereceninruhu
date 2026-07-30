@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { combinedMockLabel } from "@/lib/exam";
+import { combinedMockLabel, durationPresets } from "@/lib/exam";
 import { cn } from "@/lib/utils";
 
 export type MockSubject = {
@@ -39,6 +39,8 @@ export type MockSubject = {
 
 export type MockSection = {
   id: number;
+  /** Bölüm kodu (TYT, AYT, KPSS_GY…) — resmî süre önerileri buna bakar. */
+  code: string;
   name: string;
   wrongPenaltyDivisor: number;
   /** Bölümün sınavı — çift sınavlı kayıtta seçenekler sınava göre gruplanır. */
@@ -149,10 +151,12 @@ export function MockForm({
   );
   const [publisher, setPublisher] = useState(initial?.publisher ?? "");
   const [name, setName] = useState(initial?.name ?? "");
-  /** Çözüm süresi, dakika (metin: boş bırakılabilir — zorunlu değil). */
+  /** Çözüm süresi, dakika (metin). Kaydetmek için ZORUNLU. */
   const [duration, setDuration] = useState(
     initial?.durationMinutes != null ? String(initial.durationMinutes) : "",
   );
+  /** Süresiz kaydetmeye çalışıldı — alan kırmızıya döner. */
+  const [durationError, setDurationError] = useState(false);
   const [counts, setCounts] = useState<Record<number, Counts>>(() =>
     countsOf(initial),
   );
@@ -242,12 +246,29 @@ export function MockForm({
   }, [counts, activeSections]);
 
   /** Canlı tempo — süre yazılırken anında görünür (D/Y/B girildiyse). */
-  const livePace = secondsPerQuestion(parseInt(duration, 10), totalQuestions);
+  const durationMinutes = parseInt(duration, 10);
+  const hasDuration = Number.isFinite(durationMinutes) && durationMinutes > 0;
+  const livePace = secondsPerQuestion(durationMinutes, totalQuestions);
+
+  /**
+   * Hazır süreler seçilen kapsama + bölüme göre değişir: tam denemede o
+   * sınavın resmî süresi (birleşikte bölümlerin toplamı), branşta kısa süreler.
+   */
+  const presets = durationPresets({
+    scope,
+    sectionCodes: activeSections.map((s) => s.code),
+  });
 
   const submit = async () => {
     if (!section) return;
     if (!takenOn) {
       toast.error("Deneme tarihini seç.");
+      return;
+    }
+    // Süre zorunlu: tempo (sn/soru) onsuz hesaplanamaz, hız takibi de kopar.
+    if (!hasDuration) {
+      setDurationError(true);
+      toast.error("Süre zorunlu — denemeyi kaç dakikada bitirdin?");
       return;
     }
     const results = activeSections
@@ -264,7 +285,6 @@ export function MockForm({
       return;
     }
     setSaving(true);
-    const minutes = parseInt(duration, 10);
     const payload = {
       enrollmentId,
       examSectionId: section.id,
@@ -273,8 +293,7 @@ export function MockForm({
       publisher,
       name,
       takenOn,
-      // Boş bırakılırsa süre YOK olarak yazılır (0 değil) — tempo hesaplanmaz.
-      durationMinutes: Number.isFinite(minutes) && minutes > 0 ? minutes : undefined,
+      durationMinutes,
       results,
     };
     const res = initial
@@ -376,19 +395,52 @@ export function MockForm({
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="deneme-sure">Süre (dk)</FieldLabel>
+          <FieldLabel htmlFor="deneme-sure">
+            Süre (dk) <span className="text-destructive">*</span>
+          </FieldLabel>
+          {/* Tek dokunuşla süre — klavye açmadan. Seçenekler kapsama göre. */}
+          <div className="flex flex-wrap gap-1.5">
+            {presets.map((p) => {
+              const active = durationMinutes === p.minutes;
+              return (
+                <button
+                  key={p.minutes}
+                  type="button"
+                  onClick={() => {
+                    setDuration(String(p.minutes));
+                    setDurationError(false);
+                  }}
+                  aria-pressed={active}
+                  className={cn(
+                    "h-8 rounded-full px-3 text-xs font-medium tabular-nums transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                  )}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
           <Input
             id="deneme-sure"
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
-            placeholder={scope === "branch" ? "Örn. 35" : "Örn. 135"}
+            placeholder={scope === "branch" ? "Örn. 35" : "Örn. 165"}
             value={duration}
-            onChange={(e) =>
-              setDuration(e.target.value.replace(/\D/g, "").slice(0, 3))
-            }
+            aria-invalid={durationError || undefined}
+            onChange={(e) => {
+              setDuration(e.target.value.replace(/\D/g, "").slice(0, 3));
+              setDurationError(false);
+            }}
           />
-          {livePace ? (
+          {durationError ? (
+            <p className="text-xs font-medium text-destructive">
+              Süre zorunlu — kaç dakikada bitirdiğini yaz ya da yukarıdan seç.
+            </p>
+          ) : livePace ? (
             <p className="text-xs font-medium text-primary tabular-nums">
               {totalQuestions} soru · {duration} dk → {formatPace(livePace)}
             </p>
@@ -396,7 +448,7 @@ export function MockForm({
             <p className="text-xs text-muted-foreground">
               {scope === "branch"
                 ? "Kaç dakikada bitirdin? Hızını buradan takip edeceğiz."
-                : "İstersen kaç dakikada bitirdiğini yaz."}
+                : "Kaç dakikada bitirdin?"}
             </p>
           )}
         </Field>

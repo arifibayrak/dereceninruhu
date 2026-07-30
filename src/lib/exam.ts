@@ -19,6 +19,75 @@ export type SubjectRow = {
 };
 
 /**
+ * Bölümün RESMÎ sınav süresi (dakika), bölüm koduna göre.
+ *
+ * `exam_sections.duration_minutes` sütunu var ama hiçbir kayıtta dolu değil;
+ * süre bir kurum bilgisi olduğu için burada, kodun yanında durur — böylece
+ * veri tabanına dokunmadan güncellenir. Birleşik oturumda (KPSS GY+GK)
+ * bölümlerin süreleri TOPLANIR: 65 + 65 = 130 dk.
+ */
+const OFFICIAL_SECTION_MINUTES: Record<string, number> = {
+  TYT: 165,
+  AYT: 180,
+  YDT: 120,
+  KPSS_GY: 65,
+  KPSS_GK: 65,
+  LGS_SOZEL: 75,
+  LGS_SAYISAL: 80,
+};
+
+/** Verilen bölümlerin toplam resmî süresi; hiçbiri tanınmıyorsa null. */
+export function officialDurationMinutes(sectionCodes: string[]): number | null {
+  let total = 0;
+  for (const code of sectionCodes) {
+    const m = OFFICIAL_SECTION_MINUTES[code];
+    if (m) total += m;
+  }
+  return total > 0 ? total : null;
+}
+
+/** Süre alanının hızlı seçim düğmesi. */
+export type DurationPreset = { minutes: number; label: string };
+
+/** Branşta tipik çözüm süreleri — tek dersin 10–40 soruluk testi. */
+const BRANCH_PRESETS = [15, 20, 30, 40, 60];
+/** Bölümü tanınmayan tam denemede makul aralık. */
+const FALLBACK_FULL_PRESETS = [60, 90, 120, 150, 180];
+
+/**
+ * Süre alanının hazır seçenekleri — öğrenci klavye açmadan tek dokunuşla
+ * girsin diye. Tam denemede resmî süre ilk sırada ("Resmî") ve ondan geriye
+ * 15'er dakikalık gerçekçi adımlar gelir (deneme erken bitirilir); branşta
+ * sabit kısa süreler.
+ */
+export function durationPresets(opts: {
+  scope: "full" | "branch";
+  sectionCodes: string[];
+}): DurationPreset[] {
+  if (opts.scope === "branch") {
+    return BRANCH_PRESETS.map((minutes) => ({
+      minutes,
+      label: `${minutes} dk`,
+    }));
+  }
+  const official = officialDurationMinutes(opts.sectionCodes);
+  if (!official) {
+    return FALLBACK_FULL_PRESETS.map((minutes) => ({
+      minutes,
+      label: `${minutes} dk`,
+    }));
+  }
+  const presets: DurationPreset[] = [
+    { minutes: official, label: `${official} dk · Resmî` },
+  ];
+  for (const step of [15, 30, 45]) {
+    const minutes = official - step;
+    if (minutes > 0) presets.push({ minutes, label: `${minutes} dk` });
+  }
+  return presets;
+}
+
+/**
  * Şablonun bölümleri TEK oturumda çözülüyorsa birleşik deneme adı, değilse null.
  *
  * KPSS'de Genel Yetenek ve Genel Kültür aynı oturumun iki kitapçığıdır; iki ayrı

@@ -671,7 +671,14 @@ export const createMockSchema = z.object({
   publisher: z.string().trim().max(80).optional().or(z.literal("")),
   name: z.string().trim().max(120).optional().or(z.literal("")),
   takenOn: z.coerce.date(),
-  durationMinutes: z.coerce.number().int().min(0).max(600).optional(),
+  /**
+   * Çözüm süresi (dk). Formda ZORUNLU (bkz. MockForm) — tempo onsuz çıkmaz.
+   * Şemada opsiyonel kalır: görüşme transkriptinden çıkarılan öneriler
+   * (`mock_exam_create`) süreyi çoğu zaman içermez ve koç onları düzenleyemez;
+   * zorunlu kılınsa o öneriler uygulanamaz olurdu. 0 kabul edilmez — süresiz
+   * kayıt NULL'dur, "0 dakika" değil.
+   */
+  durationMinutes: z.coerce.number().int().min(1).max(600).optional(),
   results: z
     .array(
       z.object({

@@ -1,7 +1,7 @@
 "use server";
 
 import { and, eq, notInArray } from "drizzle-orm";
-import { getDb } from "@/db";
+import { getDb, getR2 } from "@/db";
 import {
   contentItems,
   contentViews,
@@ -36,13 +36,20 @@ export async function createContentItem(
     const v = parsed.data;
     const db = getDb();
 
+    // Dosya yüklendiyse dış bağlantı yok sayılır — tek kaynak.
+    const fileKey = v.fileKey?.trim() || null;
+
     const [item] = await db
       .insert(contentItems)
       .values({
         type: v.type,
         title: v.title,
-        url: v.url?.trim() || null,
+        url: fileKey ? null : v.url?.trim() || null,
         body: v.body?.trim() || null,
+        fileKey,
+        fileName: fileKey ? v.fileName?.trim() || null : null,
+        fileSize: fileKey ? (v.fileSize ?? null) : null,
+        fileType: fileKey ? v.fileType?.trim() || null : null,
         examTemplateId: v.examTemplateId ?? null,
         subjectId: v.subjectId ?? null,
         topicId: v.topicId ?? null,
@@ -128,7 +135,7 @@ export async function deleteContentItem(
     const db = getDb();
     const item = await db.query.contentItems.findFirst({
       where: eq(contentItems.id, id),
-      columns: { id: true, createdByUserId: true },
+      columns: { id: true, createdByUserId: true, fileKey: true },
     });
     if (!item) return actionError("İçerik bulunamadı.");
     // Koç yalnız kendi oluşturduğu içeriği silebilir; yönetici hepsini.
@@ -140,6 +147,13 @@ export async function deleteContentItem(
       .delete(contentVisibility)
       .where(eq(contentVisibility.contentItemId, id));
     await db.delete(contentItems).where(eq(contentItems.id, id));
+    if (item.fileKey) {
+      try {
+        await getR2().delete(item.fileKey);
+      } catch {
+        // Kayıt gitti; artık sahipsiz kalan objeyi yutmak sorun değil.
+      }
+    }
     return { ok: true, data: { contentItemId: id } };
   });
 }

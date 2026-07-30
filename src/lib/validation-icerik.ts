@@ -2,7 +2,13 @@ import { z } from "zod";
 
 /** Faz 5 — içerik kütüphanesi şemaları. */
 
-export const contentTypeSchema = z.enum(["video", "pdf", "note", "link"]);
+export const contentTypeSchema = z.enum([
+  "video",
+  "pdf",
+  "doc",
+  "note",
+  "link",
+]);
 
 export const createContentSchema = z
   .object({
@@ -12,6 +18,17 @@ export const createContentSchema = z
       .union([z.url("Geçerli bir bağlantı girin."), z.literal("")])
       .optional(),
     body: z.string().trim().max(4000).optional().or(z.literal("")),
+    /** Cihazdan yüklenen dosya (`/api/icerik/yukle` döner). Bağlantı yerine geçer. */
+    fileKey: z
+      .string()
+      .trim()
+      .max(200)
+      .regex(/^content\/[\w./-]+$/, "Geçersiz dosya.")
+      .optional()
+      .or(z.literal("")),
+    fileName: z.string().trim().max(255).optional().or(z.literal("")),
+    fileSize: z.coerce.number().int().nonnegative().nullish(),
+    fileType: z.string().trim().max(120).optional().or(z.literal("")),
     examTemplateId: z.coerce.number().int().positive().nullish(),
     subjectId: z.coerce.number().int().positive().nullish(),
     topicId: z.coerce.number().int().positive().nullish(),
@@ -24,10 +41,16 @@ export const createContentSchema = z
     message: "Not içeriği gerekli.",
     path: ["body"],
   })
-  .refine((v) => (v.type === "note" ? true : !!v.url?.trim()), {
-    message: "Bağlantı gerekli.",
-    path: ["url"],
-  });
+  // Not dışındaki türlerde kaynak şart, ama hangisi olduğu koçun seçimi:
+  // ya cihazdan yüklenen dosya ya da dış bağlantı.
+  .refine(
+    (v) =>
+      v.type === "note" ? true : !!v.url?.trim() || !!v.fileKey?.trim(),
+    {
+      message: "Dosya yükle ya da bağlantı gir.",
+      path: ["url"],
+    },
+  );
 export type CreateContentInput = z.input<typeof createContentSchema>;
 
 export const assignContentSchema = z.object({

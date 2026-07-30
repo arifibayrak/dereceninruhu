@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { ExternalLinkIcon, LibraryIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  ExternalLinkIcon,
+  LibraryIcon,
+} from "lucide-react";
 
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { listContentForEnrollment } from "@/db/queries/icerik";
 import { getCurrentUser, type Role } from "@/lib/session";
 import {
   CONTENT_TYPE_LABELS,
+  contentHref,
+  formatFileSize,
   youtubeThumbnailUrl,
   youtubeVideoId,
 } from "@/lib/content";
@@ -62,6 +68,7 @@ export default async function OgrenciIcerikPage() {
           {items.map((item) => {
             const ytId =
               item.type === "video" ? youtubeVideoId(item.url) : null;
+            const href = contentHref(item);
             return (
               <li
                 key={item.id}
@@ -111,15 +118,28 @@ export default async function OgrenciIcerikPage() {
                     </p>
                   )}
                   <div className="flex items-center justify-between gap-2 pt-1">
-                    {item.url && !ytId ? (
+                    {href && !ytId ? (
                       <a
-                        href={item.url}
+                        href={href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        className="inline-flex min-w-0 items-center gap-1 text-xs font-medium text-primary hover:underline"
                       >
-                        <ExternalLinkIcon className="size-3.5" />
-                        İçeriği aç
+                        {item.fileKey ? (
+                          <DownloadIcon className="size-3.5 shrink-0" />
+                        ) : (
+                          <ExternalLinkIcon className="size-3.5 shrink-0" />
+                        )}
+                        <span className="truncate">
+                          {item.fileKey
+                            ? (item.fileName ?? "Dosyayı aç")
+                            : "İçeriği aç"}
+                        </span>
+                        {item.fileKey && item.fileSize != null && (
+                          <span className="shrink-0 font-normal text-muted-foreground">
+                            · {formatFileSize(item.fileSize)}
+                          </span>
+                        )}
                       </a>
                     ) : (
                       <span />

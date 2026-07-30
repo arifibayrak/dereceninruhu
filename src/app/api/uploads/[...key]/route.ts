@@ -19,6 +19,8 @@ function notFound() {
  *    veya koç/yönetici görebilir (anahtar: study-proofs/{enrollmentId}/…).
  *  - `transcripts/…`  → ÖZEL görüşme ses kayıtları; YALNIZ koç/yönetici ve
  *    transkriptin enrollment'ına erişimi olan (anahtar: transcripts/{id}/…).
+ *  - `content/…`      → İçerik kütüphanesi dosyaları; oturum açmış herkes
+ *    (kütüphane zaten tüm öğrencilere açık, anahtarlar tahmin edilemez).
  * Başka hiçbir önek bu yoldan sızmaz.
  */
 export async function GET(
@@ -32,7 +34,17 @@ export async function GET(
   const isProfile = objectKey.startsWith("profiles/");
   const isProof = objectKey.startsWith("study-proofs/");
   const isTranscript = objectKey.startsWith("transcripts/");
-  if (!isProfile && !isProof && !isTranscript) return notFound();
+  const isContent = objectKey.startsWith("content/");
+  if (!isProfile && !isProof && !isTranscript && !isContent) return notFound();
+
+  if (isContent) {
+    // İçerik kütüphanesi: oturum yeterli (öğrenci/koç). Anonim erişim yok.
+    try {
+      await requireUser();
+    } catch {
+      return notFound();
+    }
+  }
 
   if (isProof) {
     const enrollmentId = Number(key[1]);
@@ -75,8 +87,14 @@ export async function GET(
     "Cache-Control",
     isProof || isTranscript
       ? "private, no-store"
-      : "public, max-age=31536000, immutable",
+      : isContent
+        ? "private, max-age=3600"
+        : "public, max-age=31536000, immutable",
   );
+  const disposition = obj.httpMetadata?.contentDisposition;
+  if (isContent && disposition) {
+    headers.set("Content-Disposition", disposition);
+  }
   if (obj.httpEtag) headers.set("ETag", obj.httpEtag);
   return new Response(obj.body as ReadableStream, { headers });
 }

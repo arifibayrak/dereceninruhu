@@ -1,15 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon } from "lucide-react";
+import { LinkIcon, PaperclipIcon, PlusIcon, UploadIcon, XIcon } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
 import { createContentItem } from "@/actions/icerik";
-import { CONTENT_TYPE_LABELS, type ContentType } from "@/lib/content";
+import {
+  CONTENT_TYPE_LABELS,
+  MAX_CONTENT_FILE_BYTES,
+  UPLOAD_ACCEPT,
+  contentTypeForFile,
+  formatFileSize,
+  type ContentType,
+} from "@/lib/content";
+import { cn } from "@/lib/utils";
 import { createContentSchema } from "@/lib/validation-icerik";
 import type { ContentFormOptions } from "@/db/queries/icerik";
 import { Button } from "@/components/ui/button";
@@ -45,7 +53,28 @@ const TYPE_ITEMS = (
   Object.entries(CONTENT_TYPE_LABELS) as [ContentType, string][]
 ).map(([value, label]) => ({ value, label }));
 
+const SOURCE_ITEMS = [
+  { value: "upload" as const, label: "Cihazdan yükle", icon: UploadIcon },
+  { value: "link" as const, label: "Bağlantı", icon: LinkIcon },
+  { value: "none" as const, label: "Ek yok", icon: XIcon },
+];
+
 export type AssignableStudent = { enrollmentId: number; label: string };
+
+/** İçerik kaynağı — koç birini seçer; notta "Ek yok" da geçerlidir. */
+type Source = "upload" | "link" | "none";
+
+type UploadedFile = {
+  fileKey: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+};
+
+/** Dosya adından başlık önerisi: "paragraf-taktik.pdf" → "paragraf-taktik". */
+function titleFromFileName(name: string): string {
+  return name.replace(/\.[A-Za-z0-9]{1,8}$/, "").trim().slice(0, 150);
+}
 
 /** Koç: içerik ekleme diyaloğu — kütüphane ya da kişiye özel atama. */
 export function ContentCreateDialog({
@@ -64,6 +93,10 @@ export function ContentCreateDialog({
   const [assignIds, setAssignIds] = useState<number[]>(
     fixedEnrollmentId ? [fixedEnrollmentId] : [],
   );
+  const [source, setSource] = useState<Source>("upload");
+  const [uploading, setUploading] = useState(false);
+  const [uploaded, setUploaded] = useState<UploadedFile | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(createContentSchema),
@@ -72,6 +105,10 @@ export function ContentCreateDialog({
       title: "",
       url: "",
       body: "",
+      fileKey: "",
+      fileName: "",
+      fileSize: null,
+      fileType: "",
       examTemplateId: null,
       subjectId: null,
       topicId: null,
@@ -110,6 +147,65 @@ export function ContentCreateDialog({
     );
   };
 
+  /** Dosya alanlarını forma yazar (boş obje → temizler). */
+  const setFileFields = (file: UploadedFile | null) => {
+    setUploaded(file);
+    form.setValue("fileKey", file?.fileKey ?? "");
+    form.setValue("fileName", file?.fileName ?? "");
+    form.setValue("fileSize", file?.fileSize ?? null);
+    form.setValue("fileType", file?.fileType ?? "");
+    if (file) form.clearErrors("url");
+  };
+
+  const pickSource = (next: Source) => {
+    setSource(next);
+    // Kaynak tek olsun: diğerini boşalt ki kayıtta ikisi birden durmasın.
+    if (next !== "upload" && uploaded) setFileFields(null);
+    if (next !== "link") form.setValue("url", "");
+    form.clearErrors("url");
+  };
+
+  const uploadFile = async (file: File) => {
+    if (file.size > MAX_CONTENT_FILE_BYTES) {
+      toast.error(
+        `Dosya en fazla ${formatFileSize(MAX_CONTENT_FILE_BYTES)} olabilir.`,
+      );
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/icerik/yukle", { method: "POST", body: fd });
+      const json = (await res.json()) as
+        | { ok: true; data: UploadedFile }
+        | { ok: false; error: string };
+      if (!json.ok) {
+        toast.error(json.error);
+        return;
+      }
+      setFileFields(json.data);
+      // Tür ve başlık boşsa dosyadan doldur — koç istediğinde değiştirir.
+      form.setValue("type", contentTypeForFile(file.type, file.name));
+      if (!form.getValues("title")?.trim()) {
+        form.setValue("title", titleFromFileName(file.name));
+      }
+      toast.success("Dosya yüklendi");
+    } catch {
+      toast.error("Dosya yüklenemedi. Bağlantını kontrol et.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const resetForm = () => {
+    form.reset();
+    setUploaded(null);
+    setSource("upload");
+    setAssignIds(fixedEnrollmentId ? [fixedEnrollmentId] : []);
+  };
+
   const onSubmit = async (values: FormOutput) => {
     setSubmitting(true);
     const res = await createContentItem({ ...values, enrollmentIds: assignIds });
@@ -120,13 +216,18 @@ export function ContentCreateDialog({
     }
     toast.success("İçerik eklendi");
     setOpen(false);
-    form.reset();
-    setAssignIds(fixedEnrollmentId ? [fixedEnrollmentId] : []);
+    resetForm();
     router.refresh();
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) resetForm();
+      }}
+    >
       <DialogTrigger render={<Button size="sm" />}>
         <PlusIcon data-icon="inline-start" />
         İçerik ekle
@@ -135,7 +236,8 @@ export function ContentCreateDialog({
         <DialogHeader>
           <DialogTitle>İçerik ekle</DialogTitle>
           <DialogDescription>
-            YouTube videosu, PDF, not ya da bağlantı — kütüphaneye ya da belirli
+            Video, PDF, doküman, not ya da bağlantı. Dosyayı cihazından
+            yükleyebilir ya da bağlantı verebilirsin — kütüphaneye ya da belirli
             öğrencilere.
           </DialogDescription>
         </DialogHeader>
@@ -151,7 +253,16 @@ export function ContentCreateDialog({
                     <Select
                       items={TYPE_ITEMS}
                       value={field.value}
-                      onValueChange={(value) => field.onChange(value)}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Notun kendisi içeriktir → ek varsayılan olarak yok;
+                        // diğer türlerde bir kaynak seçili kalmalı.
+                        if (value === "note" && !uploaded) {
+                          pickSource("none");
+                        } else if (value !== "note" && source === "none") {
+                          pickSource("upload");
+                        }
+                      }}
                     >
                       <SelectTrigger id="ic-tip" className="w-full">
                         <SelectValue />
@@ -219,9 +330,69 @@ export function ContentCreateDialog({
               <FieldError errors={[errors.title]} />
             </Field>
 
-            {type !== "note" && (
-              <Field data-invalid={errors.url ? true : undefined}>
-                <FieldLabel htmlFor="ic-url">Bağlantı *</FieldLabel>
+            <Field data-invalid={errors.url ? true : undefined}>
+              <FieldLabel>
+                {type === "note" ? "Ek (isteğe bağlı)" : "İçerik kaynağı *"}
+              </FieldLabel>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {SOURCE_ITEMS.filter(
+                  (s) => s.value !== "none" || type === "note",
+                ).map((s) => (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => pickSource(s.value)}
+                    aria-pressed={source === s.value}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                      source === s.value
+                        ? "bg-foreground text-background"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70",
+                    )}
+                  >
+                    <s.icon className="size-3.5" />
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              {source === "upload" &&
+                (uploaded ? (
+                  <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm">
+                    <PaperclipIcon className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate">
+                      {uploaded.fileName}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {formatFileSize(uploaded.fileSize)}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Dosyayı kaldır"
+                      onClick={() => setFileFields(null)}
+                    >
+                      <XIcon />
+                    </Button>
+                  </div>
+                ) : (
+                  <input
+                    ref={fileInputRef}
+                    id="ic-dosya"
+                    type="file"
+                    accept={UPLOAD_ACCEPT}
+                    disabled={uploading}
+                    aria-invalid={errors.url ? true : undefined}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void uploadFile(file);
+                    }}
+                    className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium"
+                  />
+                ))}
+
+              {source === "link" && (
                 <Input
                   id="ic-url"
                   inputMode="url"
@@ -229,14 +400,19 @@ export function ContentCreateDialog({
                   aria-invalid={errors.url ? true : undefined}
                   {...form.register("url")}
                 />
-                <FieldError errors={[errors.url]} />
-                {type === "video" && (
-                  <FieldDescription>
-                    YouTube bağlantıları öğrenci tarafında küçük resimle görünür.
-                  </FieldDescription>
-                )}
-              </Field>
-            )}
+              )}
+
+              <FieldError errors={[errors.url]} />
+              <FieldDescription>
+                {uploading
+                  ? "Yükleniyor…"
+                  : source === "upload"
+                    ? `PDF, Word/Excel, görsel, ses ya da video — en fazla ${formatFileSize(MAX_CONTENT_FILE_BYTES)}. Öğrenci uygulama içinden açar.`
+                    : source === "link"
+                      ? "YouTube bağlantıları öğrenci tarafında küçük resimle görünür."
+                      : "İstersen nota bir dosya ya da bağlantı ekleyebilirsin."}
+              </FieldDescription>
+            </Field>
 
             {type === "note" && (
               <Field data-invalid={errors.body ? true : undefined}>
@@ -376,8 +552,16 @@ export function ContentCreateDialog({
               </Field>
             )}
 
-            <Button type="submit" disabled={submitting} className="self-start">
-              {submitting ? "Ekleniyor…" : "İçeriği ekle"}
+            <Button
+              type="submit"
+              disabled={submitting || uploading}
+              className="self-start"
+            >
+              {submitting
+                ? "Ekleniyor…"
+                : uploading
+                  ? "Dosya yükleniyor…"
+                  : "İçeriği ekle"}
             </Button>
           </FieldGroup>
         </form>

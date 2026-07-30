@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { ExternalLinkIcon, LibraryIcon } from "lucide-react";
+import { ExternalLinkIcon, LibraryIcon, PaperclipIcon } from "lucide-react";
 
 import {
   getContentFormOptions,
@@ -9,6 +9,8 @@ import {
 import { getEnrollmentOptions } from "@/db/queries/muhasebe";
 import {
   CONTENT_TYPE_LABELS,
+  contentHref,
+  formatFileSize,
   youtubeThumbnailUrl,
   youtubeVideoId,
 } from "@/lib/content";
@@ -75,6 +77,7 @@ export default async function KocIcerikPage() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
             const ytId = item.type === "video" ? youtubeVideoId(item.url) : null;
+            const href = contentHref(item);
             // Yönetici her içeriği; koç yalnız kendi eklediğini yönetebilir.
             const canManage =
               isAdmin || item.createdByUserId === viewer?.id;
@@ -140,6 +143,19 @@ export default async function KocIcerikPage() {
                       {item.body}
                     </p>
                   )}
+                  {item.fileKey && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <PaperclipIcon className="size-3 shrink-0" />
+                      <span className="truncate">
+                        {item.fileName ?? "Dosya"}
+                      </span>
+                      {item.fileSize != null && (
+                        <span className="shrink-0">
+                          · {formatFileSize(item.fileSize)}
+                        </span>
+                      )}
+                    </span>
+                  )}
                   {item.createdByName && (
                     <span className="truncate text-xs text-muted-foreground">
                       Ekleyen: {item.createdByName}
@@ -162,9 +178,9 @@ export default async function KocIcerikPage() {
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      {item.url && !ytId && (
+                      {href && !ytId && (
                         <a
-                          href={item.url}
+                          href={href}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 hover:text-primary"
