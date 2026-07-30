@@ -20,6 +20,10 @@ import {
 import { cn } from "@/lib/utils";
 import { createContentSchema } from "@/lib/validation-icerik";
 import type { ContentFormOptions } from "@/db/queries/icerik";
+import {
+  StudentAssignPicker,
+  type AssignableStudent,
+} from "@/components/app/student-assign-picker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -59,7 +63,7 @@ const SOURCE_ITEMS = [
   { value: "none" as const, label: "Ek yok", icon: XIcon },
 ];
 
-export type AssignableStudent = { enrollmentId: number; label: string };
+export type { AssignableStudent } from "@/components/app/student-assign-picker";
 
 /** İçerik kaynağı — koç birini seçer; notta "Ek yok" da geçerlidir. */
 type Source = "upload" | "link" | "none";
@@ -138,14 +142,6 @@ export function ContentCreateDialog({
         : [],
     [options.topics, subjectId],
   );
-
-  const toggleAssign = (enrollmentId: number) => {
-    setAssignIds((prev) =>
-      prev.includes(enrollmentId)
-        ? prev.filter((id) => id !== enrollmentId)
-        : [...prev, enrollmentId],
-    );
-  };
 
   /** Dosya alanlarını forma yazar (boş obje → temizler). */
   const setFileFields = (file: UploadedFile | null) => {
@@ -533,22 +529,15 @@ export function ContentCreateDialog({
             {students.length > 0 && !fixedEnrollmentId && (
               <Field>
                 <FieldLabel>Öğrencilere ata</FieldLabel>
-                <div className="flex max-h-36 flex-col gap-1.5 overflow-y-auto rounded-lg border p-3">
-                  {students.map((s) => (
-                    <label
-                      key={s.enrollmentId}
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={assignIds.includes(s.enrollmentId)}
-                        onChange={() => toggleAssign(s.enrollmentId)}
-                        className="size-4 accent-primary"
-                      />
-                      {s.label}
-                    </label>
-                  ))}
-                </div>
+                <StudentAssignPicker
+                  students={students}
+                  value={assignIds}
+                  onChange={setAssignIds}
+                />
+                <FieldDescription>
+                  Sınav sekmesini seç, &quot;Görünenleri seç&quot; ile o gruba
+                  tek dokunuşta ata.
+                </FieldDescription>
               </Field>
             )}
 

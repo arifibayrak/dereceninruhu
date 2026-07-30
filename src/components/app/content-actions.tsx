@@ -10,6 +10,10 @@ import {
   deleteContentItem,
   toggleContentViewed,
 } from "@/actions/icerik";
+import {
+  StudentAssignPicker,
+  type AssignableStudent,
+} from "@/components/app/student-assign-picker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,7 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-export type AssignOption = { enrollmentId: number; label: string };
+export type AssignOption = AssignableStudent;
 
 /** Koç: içeriği öğrencilere atama diyaloğu (küme değiştirme). */
 export function ContentAssignDialog({
@@ -38,14 +42,6 @@ export function ContentAssignDialog({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [ids, setIds] = useState<number[]>(assignedEnrollmentIds);
-
-  const toggle = (enrollmentId: number) => {
-    setIds((prev) =>
-      prev.includes(enrollmentId)
-        ? prev.filter((id) => id !== enrollmentId)
-        : [...prev, enrollmentId],
-    );
-  };
 
   const save = async () => {
     setSaving(true);
@@ -65,40 +61,30 @@ export function ContentAssignDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        // Her açılışta kayıtlı kümeye dön (kaydetmeden kapatılan seçim kalmasın).
+        if (next) setIds(assignedEnrollmentIds);
+      }}
+    >
       <DialogTrigger
         render={<Button variant="outline" size="xs" aria-label="Öğrencilere ata" />}
       >
         <UsersIcon data-icon="inline-start" />
         Ata ({assignedEnrollmentIds.length})
       </DialogTrigger>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Öğrencilere ata</DialogTitle>
           <DialogDescription className="truncate">{title}</DialogDescription>
         </DialogHeader>
-        <div className="flex max-h-64 flex-col gap-1.5 overflow-y-auto rounded-lg border p-3">
-          {students.length === 0 ? (
-            <span className="text-sm text-muted-foreground">
-              Aktif öğrenci yok.
-            </span>
-          ) : (
-            students.map((s) => (
-              <label
-                key={s.enrollmentId}
-                className="flex items-center gap-2 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  checked={ids.includes(s.enrollmentId)}
-                  onChange={() => toggle(s.enrollmentId)}
-                  className="size-4 accent-primary"
-                />
-                {s.label}
-              </label>
-            ))
-          )}
-        </div>
+        <StudentAssignPicker
+          students={students}
+          value={ids}
+          onChange={setIds}
+        />
         <Button onClick={save} disabled={saving} className="self-start">
           {saving ? "Kaydediliyor…" : "Atamaları kaydet"}
         </Button>

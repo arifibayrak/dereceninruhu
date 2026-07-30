@@ -4,6 +4,7 @@ import {
   contentItems,
   contentViews,
   contentVisibility,
+  enrollments,
   examTemplates,
   subjects,
   topics,
@@ -181,6 +182,60 @@ export async function listContentForEnrollment(
     isAssigned: assignedIds.has(r.id),
     viewedAt: r.viewedAt ?? null,
   }));
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Atama seçenekleri (sınava göre hızlı seçim)                               */
+/* -------------------------------------------------------------------------- */
+
+export type ContentAssignOption = {
+  enrollmentId: number;
+  label: string;
+  /**
+   * Hazırlandığı sınav kodları — iki sınava birden hazırlanan öğrencide iki
+   * kod olur (bkz. enrollments.secondaryExamTemplateId). Atama diyaloğundaki
+   * "tüm YKS/LGS/KPSS" hızlı seçimi bunun üzerinden çalışır.
+   */
+  examCodes: string[];
+  /** Sınıf (varsa) — isim yanında küçük etiket. */
+  grade: string | null;
+};
+
+/**
+ * İçerik atanabilecek aktif öğrenciler, sınav kodlarıyla.
+ * `coachUserId` verilirse yalnız o koçun öğrencileri (yönetici için null).
+ */
+export async function getContentAssignOptions(
+  coachUserId?: string | null,
+): Promise<ContentAssignOption[]> {
+  const db = getDb();
+  const rows = await db.query.enrollments.findMany({
+    where: coachUserId
+      ? and(
+          eq(enrollments.status, "active"),
+          eq(enrollments.coachUserId, coachUserId),
+        )
+      : eq(enrollments.status, "active"),
+    columns: { id: true },
+    with: {
+      student: { columns: { fullName: true, grade: true, status: true } },
+      examTemplate: { columns: { code: true } },
+      secondaryExamTemplate: { columns: { code: true } },
+    },
+  });
+
+  return rows
+    .filter((r) => r.student?.status === "active")
+    .map((r) => ({
+      enrollmentId: r.id,
+      label: r.student.fullName,
+      examCodes: [
+        r.examTemplate?.code,
+        r.secondaryExamTemplate?.code,
+      ].filter((c): c is string => !!c),
+      grade: r.student.grade?.trim() || null,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, "tr"));
 }
 
 /* -------------------------------------------------------------------------- */

@@ -3,10 +3,10 @@ import Image from "next/image";
 import { ExternalLinkIcon, LibraryIcon, PaperclipIcon } from "lucide-react";
 
 import {
+  getContentAssignOptions,
   getContentFormOptions,
   listContentForCoach,
 } from "@/db/queries/icerik";
-import { getEnrollmentOptions } from "@/db/queries/muhasebe";
 import {
   CONTENT_TYPE_LABELS,
   contentHref,
@@ -37,15 +37,11 @@ export default async function KocIcerikPage() {
   const isAdmin = viewer?.role === "admin";
   // Herkes tüm içeriği görür; koç yalnız kendi eklediğini yönetir (atama/sil).
   const coachUserId = viewer?.role === "coach" ? viewer.id : null;
-  const [items, options, students] = await Promise.all([
+  const [items, options, studentOptions] = await Promise.all([
     listContentForCoach(),
     getContentFormOptions(),
-    getEnrollmentOptions(coachUserId),
+    getContentAssignOptions(coachUserId),
   ]);
-  const studentOptions = students.map((s) => ({
-    enrollmentId: s.enrollmentId,
-    label: s.label,
-  }));
 
   return (
     <>

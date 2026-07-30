@@ -5,7 +5,7 @@ import {
   getContentFormOptions,
   listContentForEnrollment,
 } from "@/db/queries/icerik";
-import { CONTENT_TYPE_LABELS } from "@/lib/content";
+import { CONTENT_TYPE_LABELS, contentHref } from "@/lib/content";
 import { ContentCreateDialog } from "@/components/app/content-create-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export async function IcerikTab({
           </Button>
           <ContentCreateDialog
             options={options}
-            students={[{ enrollmentId, label: studentName }]}
+            students={[{ enrollmentId, label: studentName, examCodes: [] }]}
             fixedEnrollmentId={enrollmentId}
           />
         </div>
@@ -93,9 +93,9 @@ export async function IcerikTab({
                   Bekliyor
                 </Badge>
               )}
-              {item.url && (
+              {contentHref(item) && (
                 <a
-                  href={item.url}
+                  href={contentHref(item) ?? undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="İçeriği aç"
