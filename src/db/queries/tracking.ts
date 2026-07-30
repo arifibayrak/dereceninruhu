@@ -295,9 +295,16 @@ export type MockRow = {
   sectionName: string;
   sectionCode: string;
   totalNet: number;
+  /** Öğrencinin girdiği çözüm süresi (dk) — opsiyonel, tempo bundan çıkar. */
+  durationMinutes: number | null;
+  /** D+Y+B toplamı — tempo (sn/soru) paydası. */
+  questionCount: number;
+  /** Denemedeki puanlanan dersler — branş etiketi + tempo kıyas anahtarı. */
+  subjectIds: number[];
+  subjectNames: string[];
 };
 
-/** Deneme listesi (bölüm adı + toplam net ile), yeniden eskiye. */
+/** Deneme listesi (bölüm adı + toplam net + süre/tempo ile), yeniden eskiye. */
 export async function getMockList(enrollmentId: number): Promise<MockRow[]> {
   const db = getDb();
   const rows = await db
@@ -309,10 +316,16 @@ export async function getMockList(enrollmentId: number): Promise<MockRow[]> {
       name: mockExams.name,
       analysisDone: mockExams.analysisDone,
       isCombined: mockExams.isCombined,
+      durationMinutes: mockExams.durationMinutes,
       templateCode: examTemplates.code,
       sectionName: examSections.name,
       sectionCode: examSections.code,
       totalNet: sql<number>`coalesce(sum(${mockExamResults.net}), 0)`,
+      questionCount: sql<number>`coalesce(sum(${mockExamResults.correctCount} + ${mockExamResults.wrongCount} + ${mockExamResults.blankCount}), 0)`,
+      subjectIds: sql<
+        string | null
+      >`group_concat(${mockExamResults.subjectId}, ',')`,
+      subjectNames: sql<string | null>`group_concat(${subjects.name}, '|')`,
     })
     .from(mockExams)
     .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
@@ -321,6 +334,7 @@ export async function getMockList(enrollmentId: number): Promise<MockRow[]> {
       eq(examTemplates.id, examSections.examTemplateId),
     )
     .leftJoin(mockExamResults, eq(mockExamResults.mockExamId, mockExams.id))
+    .leftJoin(subjects, eq(subjects.id, mockExamResults.subjectId))
     .where(eq(mockExams.enrollmentId, enrollmentId))
     .groupBy(mockExams.id)
     .orderBy(desc(mockExams.takenOn), desc(mockExams.id));
@@ -328,7 +342,19 @@ export async function getMockList(enrollmentId: number): Promise<MockRow[]> {
     ...r,
     ...mockSectionLabels(r),
     totalNet: Number(r.totalNet),
+    questionCount: Number(r.questionCount),
+    subjectIds: splitConcat(r.subjectIds, ",").map(Number).filter(Number.isFinite),
+    subjectNames: splitConcat(r.subjectNames, "|"),
   }));
+}
+
+/** `group_concat` çıktısı → dizi (boş/NULL güvenli). */
+function splitConcat(raw: string | null, sep: string): string[] {
+  if (!raw) return [];
+  return raw
+    .split(sep)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -364,6 +390,8 @@ export type MockEditData = {
   name: string;
   /** `YYYY-MM-DD` (TRT) — `<input type="date">` için. */
   takenOn: string;
+  /** Çözüm süresi (dk) — girilmemişse null. */
+  durationMinutes: number | null;
   results: {
     subjectId: number;
     correctCount: number;
@@ -447,6 +475,7 @@ export async function getMockForEdit(
       publisher: exam.publisher ?? "",
       name: exam.name ?? "",
       takenOn: trDayKey(exam.takenOn),
+      durationMinutes: exam.durationMinutes ?? null,
       results,
     },
     sections: sections.map((s) => ({
@@ -588,6 +617,9 @@ export type WeeklyMockRow = {
   takenOn: Date;
   totalNet: number;
   analysisDone: boolean;
+  /** Çözüm süresi (dk) + tempo paydası — branş denemelerinde hız takibi. */
+  durationMinutes: number | null;
+  questionCount: number;
 };
 
 /**
@@ -620,7 +652,9 @@ export async function getWeeklyMockResults(opts: {
       scope: mockExams.scope,
       takenOn: mockExams.takenOn,
       analysisDone: mockExams.analysisDone,
+      durationMinutes: mockExams.durationMinutes,
       totalNet: sql<number>`coalesce(sum(${mockExamResults.net}), 0)`,
+      questionCount: sql<number>`coalesce(sum(${mockExamResults.correctCount} + ${mockExamResults.wrongCount} + ${mockExamResults.blankCount}), 0)`,
     })
     .from(mockExams)
     .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
@@ -647,6 +681,7 @@ export async function getWeeklyMockResults(opts: {
     sectionName:
       (r.isCombined ? combinedMockLabel(r.examCode) : null) ?? r.sectionName,
     totalNet: Number(r.totalNet),
+    questionCount: Number(r.questionCount),
   }));
 
   if (opts.sort === "isim") {

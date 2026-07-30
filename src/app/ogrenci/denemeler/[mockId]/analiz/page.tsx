@@ -10,6 +10,8 @@ import {
 } from "@/db/queries/analiz";
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { getCurrentUser } from "@/lib/session";
+import { formatPace, secondsPerQuestion } from "@/lib/pace";
+import { formatMinutes } from "@/lib/study";
 import { TopicErrorForm } from "@/components/app/topic-error-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +47,7 @@ export default async function OgrenciDenemeAnalizPage({
     getTopicGroupsForExam(detail.enrollment),
     getMockTopicErrors(mockExamId),
   ]);
+  const pace = secondsPerQuestion(mock.durationMinutes, mock.questionCount);
 
   return (
     <>
@@ -62,6 +65,12 @@ export default async function OgrenciDenemeAnalizPage({
           <h1 className="font-heading text-title">{mock.label}</h1>
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {mock.sectionName} · {dateFmt.format(mock.takenOn)}
+            {pace && (
+              <span className="tabular-nums">
+                · {formatMinutes(mock.durationMinutes ?? 0)} ·{" "}
+                {formatPace(pace)}
+              </span>
+            )}
             {mock.analysisDone ? (
               <Badge className="bg-success/10 text-success">
                 Analiz yapıldı

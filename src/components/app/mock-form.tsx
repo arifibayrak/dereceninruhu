@@ -9,6 +9,7 @@ import { createMock, updateMock } from "@/actions/tracking";
 import type { MockEditData } from "@/db/queries/tracking";
 import { trDayKey } from "@/lib/dates";
 import { formatNet } from "@/lib/format";
+import { formatPace, secondsPerQuestion } from "@/lib/pace";
 import {
   computeNet,
   rollUpChildren,
@@ -148,6 +149,10 @@ export function MockForm({
   );
   const [publisher, setPublisher] = useState(initial?.publisher ?? "");
   const [name, setName] = useState(initial?.name ?? "");
+  /** Çözüm süresi, dakika (metin: boş bırakılabilir — zorunlu değil). */
+  const [duration, setDuration] = useState(
+    initial?.durationMinutes != null ? String(initial.durationMinutes) : "",
+  );
   const [counts, setCounts] = useState<Record<number, Counts>>(() =>
     countsOf(initial),
   );
@@ -195,11 +200,13 @@ export function MockForm({
    * içinde ayrı yapılır — alt ders hiçbir zaman bölüm sınırını aşmaz ve her
    * bölüm kendi yanlış bölenini kullanır.
    */
-  const { rolledNets, sectionNets, totalNet, hasAny } = useMemo(() => {
+  const { rolledNets, sectionNets, totalNet, hasAny, totalQuestions } = useMemo(() => {
     const nets = new Map<number, number>();
     const perSection = new Map<number, number>();
     let total = 0;
     let any = false;
+    /** Tempo paydası: D+Y+B. Roll-up SONRASI sayılır — alt ders iki kez sayılmaz. */
+    let questions = 0;
     for (const sec of activeSections) {
       const map = new Map<number, SubjectCounts>();
       for (const s of sec.subjects) {
@@ -219,6 +226,7 @@ export function MockForm({
         const net = computeNet(c.correct, c.wrong, sec.wrongPenaltyDivisor);
         nets.set(id, net);
         sectionTotal += net;
+        questions += c.correct + c.wrong + (c.blank ?? 0);
       }
       perSection.set(sec.id, Math.round(sectionTotal * 100) / 100);
       total += sectionTotal;
@@ -228,9 +236,13 @@ export function MockForm({
       sectionNets: perSection,
       totalNet: Math.round(total * 100) / 100,
       hasAny: any,
+      totalQuestions: questions,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [counts, activeSections]);
+
+  /** Canlı tempo — süre yazılırken anında görünür (D/Y/B girildiyse). */
+  const livePace = secondsPerQuestion(parseInt(duration, 10), totalQuestions);
 
   const submit = async () => {
     if (!section) return;
@@ -252,6 +264,7 @@ export function MockForm({
       return;
     }
     setSaving(true);
+    const minutes = parseInt(duration, 10);
     const payload = {
       enrollmentId,
       examSectionId: section.id,
@@ -260,6 +273,8 @@ export function MockForm({
       publisher,
       name,
       takenOn,
+      // Boş bırakılırsa süre YOK olarak yazılır (0 değil) — tempo hesaplanmaz.
+      durationMinutes: Number.isFinite(minutes) && minutes > 0 ? minutes : undefined,
       results,
     };
     const res = initial
@@ -271,13 +286,16 @@ export function MockForm({
       return;
     }
     toast.success(initial ? "Deneme güncellendi" : "Deneme kaydedildi", {
-      description: `Toplam ${formatNet(totalNet)} net`,
+      description: livePace
+        ? `Toplam ${formatNet(totalNet)} net · ${formatPace(livePace)}`
+        : `Toplam ${formatNet(totalNet)} net`,
     });
     // Düzenlemede alanlar kayıtlı haliyle kalmalı — yalnız yeni girişte temizle.
     if (!initial) {
       setCounts({});
       setPublisher("");
       setName("");
+      setDuration("");
     }
     onSuccess?.();
     if (redirectTo) {
@@ -356,6 +374,31 @@ export function MockForm({
             max={trDayKey(new Date())}
             onChange={(e) => setTakenOn(e.target.value)}
           />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="deneme-sure">Süre (dk)</FieldLabel>
+          <Input
+            id="deneme-sure"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder={scope === "branch" ? "Örn. 35" : "Örn. 135"}
+            value={duration}
+            onChange={(e) =>
+              setDuration(e.target.value.replace(/\D/g, "").slice(0, 3))
+            }
+          />
+          {livePace ? (
+            <p className="text-xs font-medium text-primary tabular-nums">
+              {totalQuestions} soru · {duration} dk → {formatPace(livePace)}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {scope === "branch"
+                ? "Kaç dakikada bitirdin? Hızını buradan takip edeceğiz."
+                : "İstersen kaç dakikada bitirdiğini yaz."}
+            </p>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="deneme-yayin">Yayınevi</FieldLabel>

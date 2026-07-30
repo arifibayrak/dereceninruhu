@@ -4,6 +4,7 @@ import {
   enrollments,
   examSections,
   examTemplates,
+  mockExamResults,
   mockExams,
   mockTopicErrors,
   subjects,
@@ -28,6 +29,10 @@ export type MockDetail = {
   label: string;
   sectionName: string;
   analysisDone: boolean;
+  /** Çözüm süresi (dk) — girilmemişse null. */
+  durationMinutes: number | null;
+  /** D+Y+B toplamı — tempo (sn/soru) paydası. */
+  questionCount: number;
 };
 
 /** Deneme başlığı — analiz giriş sayfası üstü. */
@@ -45,9 +50,17 @@ export async function getMockDetail(
       publisher: mockExams.publisher,
       analysisDone: mockExams.analysisDone,
       isCombined: mockExams.isCombined,
+      durationMinutes: mockExams.durationMinutes,
       templateCode: examTemplates.code,
       sectionName: examSections.name,
       sectionCode: examSections.code,
+      // Tek denemenin soru sayısı — bağıntılı alt sorgu (sonuç satırları
+      // ayrı tabloda; join edilse başlık alanları çoğalırdı).
+      questionCount: sql<number>`(
+        select coalesce(sum(${mockExamResults.correctCount} + ${mockExamResults.wrongCount} + ${mockExamResults.blankCount}), 0)
+        from ${mockExamResults}
+        where ${mockExamResults.mockExamId} = ${mockExams.id}
+      )`,
     })
     .from(mockExams)
     .innerJoin(examSections, eq(examSections.id, mockExams.examSectionId))
@@ -67,6 +80,8 @@ export async function getMockDetail(
       (combined ? row.templateCode : row.sectionCode),
     sectionName: combined ?? row.sectionName,
     analysisDone: row.analysisDone,
+    durationMinutes: row.durationMinutes ?? null,
+    questionCount: Number(row.questionCount),
   };
 }
 

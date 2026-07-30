@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PlusIcon, TargetIcon } from "lucide-react";
+import { PlusIcon, TargetIcon, TimerIcon } from "lucide-react";
 
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { getMockList } from "@/db/queries/tracking";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { formatInt, formatNet } from "@/lib/format";
+import { buildPaceViews } from "@/lib/pace";
+import { formatMinutes } from "@/lib/study";
+import { cn } from "@/lib/utils";
 import { MockActions } from "@/components/app/mock-actions";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +33,8 @@ export default async function DenemelerPage() {
     return <NoEnrollmentCard isCoach={role === "coach" || role === "admin"} />;
   }
   const mocks = await getMockList(detail.enrollment.id);
+  // Tempo, aynı dersin bir önceki denemesiyle kıyaslanır (bkz. @/lib/pace).
+  const paces = buildPaceViews(mocks);
 
   return (
     <>
@@ -73,7 +78,9 @@ export default async function DenemelerPage() {
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
-          {mocks.map((m) => (
+          {mocks.map((m) => {
+            const pace = paces.get(m.id);
+            return (
             <li
               key={m.id}
               className="flex items-center gap-2 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10"
@@ -84,6 +91,12 @@ export default async function DenemelerPage() {
                 </span>
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                   {dateFmt.format(m.takenOn)} · {m.sectionName}
+                  {/* Branşta asıl kimlik ders adıdır — "TYT" tek başına yetmez. */}
+                  {m.scope === "branch" && m.subjectNames.length > 0 && (
+                    <span className="font-medium text-foreground/70">
+                      {m.subjectNames.join(" · ")}
+                    </span>
+                  )}
                   <Badge
                     variant={m.scope === "full" ? "secondary" : "outline"}
                     className="h-4 px-1.5 text-[10px]"
@@ -103,6 +116,34 @@ export default async function DenemelerPage() {
                     </Link>
                   )}
                 </span>
+                {pace ? (
+                  <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
+                    <TimerIcon className="size-3 shrink-0 text-muted-foreground" />
+                    <span className="tabular-nums text-muted-foreground">
+                      {formatMinutes(m.durationMinutes ?? 0)} · {pace.label}
+                    </span>
+                    {pace.deltaLabel && (
+                      <span
+                        className={cn(
+                          "rounded px-1 py-px text-[10px] font-medium tabular-nums",
+                          pace.faster === true && "bg-success/10 text-success",
+                          pace.faster === false && "bg-warning/10 text-warning",
+                          pace.faster === null && "bg-muted text-muted-foreground",
+                        )}
+                        title="Aynı dersin bir önceki denemesine göre"
+                      >
+                        {pace.deltaLabel}
+                      </span>
+                    )}
+                  </span>
+                ) : m.scope === "branch" ? (
+                  // Düzenleme kalem düğmesiyle açılır (satırın sağında) — burada
+                  // yalnız eksik veriyi görünür kılıyoruz.
+                  <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                    <TimerIcon className="size-3 shrink-0" />
+                    Süre girilmedi
+                  </span>
+                ) : null}
               </div>
               <Link
                 href={`/ogrenci/denemeler/${m.id}/analiz`}
@@ -119,7 +160,8 @@ export default async function DenemelerPage() {
                 label={m.name?.trim() || m.publisher?.trim() || m.sectionName}
               />
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </>

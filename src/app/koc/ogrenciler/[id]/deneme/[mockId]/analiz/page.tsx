@@ -9,6 +9,8 @@ import {
   getTopicGroupsForExam,
 } from "@/db/queries/analiz";
 import { getEnrollmentDetailByStudentId } from "@/db/queries/enrollment";
+import { formatPace, secondsPerQuestion } from "@/lib/pace";
+import { formatMinutes } from "@/lib/study";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { TopicErrorForm } from "@/components/app/topic-error-form";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +54,10 @@ export default async function DenemeAnalizPage({
   ]);
 
   const backHref = `/koc/ogrenciler/${studentId}/denemeler`;
+  const pace = secondsPerQuestion(mock.durationMinutes, mock.questionCount);
+  const paceLabel = pace
+    ? ` · ${formatMinutes(mock.durationMinutes ?? 0)} · ${formatPace(pace)}`
+    : "";
 
   return (
     <>
@@ -69,7 +75,7 @@ export default async function DenemeAnalizPage({
           <SectionHeading
             eyebrow="Deneme analizi"
             title={mock.label}
-            description={`${mock.sectionName} · ${dateFmt.format(mock.takenOn)} — hangi konudan kaç soru kaçtı? (yanlış + boş)`}
+            description={`${mock.sectionName} · ${dateFmt.format(mock.takenOn)}${paceLabel} — hangi konudan kaç soru kaçtı? (yanlış + boş)`}
           />
           {mock.analysisDone ? (
             <Badge className="bg-success/10 text-success">Analiz yapıldı</Badge>

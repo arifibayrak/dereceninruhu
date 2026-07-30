@@ -15,6 +15,8 @@ import {
   trDayKey,
 } from "@/lib/dates";
 import { formatNet } from "@/lib/format";
+import { formatPace, secondsPerQuestion } from "@/lib/pace";
+import { formatMinutes } from "@/lib/study";
 import { getViewer } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { MockActions } from "@/components/app/mock-actions";
@@ -47,6 +49,10 @@ const dateFmt = new Intl.DateTimeFormat("tr-TR", {
 });
 
 type Sort = "net" | "isim";
+
+/** Satırın temposu (sn/soru) — süre girilmemişse null. */
+const paceOf = (r: { durationMinutes: number | null; questionCount: number }) =>
+  secondsPerQuestion(r.durationMinutes, r.questionCount);
 
 export default async function KocDenemelerPage({
   searchParams,
@@ -192,6 +198,13 @@ export default async function KocDenemelerPage({
                           Branş
                         </Badge>
                       ) : null}
+                      {/* Süre/tempo — branş denemesinde hız takibinin ta kendisi. */}
+                      {paceOf(r) && (
+                        <span className="block text-xs tabular-nums text-muted-foreground/80">
+                          {formatMinutes(r.durationMinutes ?? 0)} ·{" "}
+                          {formatPace(paceOf(r)!)}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground sm:table-cell">
                       {r.examCode} · {r.sectionName}

@@ -5,6 +5,9 @@ import { ClipboardListIcon } from "lucide-react";
 import { getSectionsForEnrollment } from "@/db/queries/enrollment";
 import { getMockList } from "@/db/queries/tracking";
 import { formatInt, formatNet } from "@/lib/format";
+import { buildPaceViews } from "@/lib/pace";
+import { formatMinutes } from "@/lib/study";
+import { cn } from "@/lib/utils";
 import { AnalysisToggle } from "@/components/app/analysis-toggle";
 import { MockActions } from "@/components/app/mock-actions";
 import { MockCreateDialog } from "@/components/app/mock-create-dialog";
@@ -42,6 +45,8 @@ export default async function DenemelerPage({
 
   const sections = await getSectionsForEnrollment(enrollment);
   const mocks = await getMockList(enrollment.id);
+  // Tempo, aynı dersin bir önceki denemesiyle kıyaslanır (bkz. @/lib/pace).
+  const paces = buildPaceViews(mocks);
 
   const mockSections: MockSection[] = sections.map((s) => ({
     id: s.id,
@@ -85,12 +90,15 @@ export default async function DenemelerPage({
                   <TableHead>Deneme</TableHead>
                   <TableHead>Bölüm</TableHead>
                   <TableHead>Kapsam</TableHead>
+                  <TableHead>Süre / tempo</TableHead>
                   <TableHead className="text-right">Net</TableHead>
                   <TableHead className="pr-4 text-right">Analiz</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mocks.map((m) => (
+                {mocks.map((m) => {
+                  const pace = paces.get(m.id);
+                  return (
                   <TableRow key={m.id}>
                     <TableCell className="pl-4 text-muted-foreground">
                       {dateFmt.format(m.takenOn)}
@@ -100,11 +108,41 @@ export default async function DenemelerPage({
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {m.sectionName}
+                      {/* Branşta hangi ders olduğu koç için kritik bilgi. */}
+                      {m.scope === "branch" && m.subjectNames.length > 0 && (
+                        <span className="block text-xs text-foreground/70">
+                          {m.subjectNames.join(" · ")}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={m.scope === "full" ? "secondary" : "outline"}>
                         {m.scope === "full" ? "Tam" : "Branş"}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {pace ? (
+                        <span className="flex flex-col leading-tight">
+                          <span>{formatMinutes(m.durationMinutes ?? 0)}</span>
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {pace.label}
+                            {pace.deltaLabel && (
+                              <span
+                                className={cn(
+                                  "font-medium",
+                                  pace.faster === true && "text-success",
+                                  pace.faster === false && "text-warning",
+                                )}
+                                title="Aynı dersin bir önceki denemesine göre"
+                              >
+                                {pace.deltaLabel}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/60">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
                       {formatNet(m.totalNet)}
@@ -135,7 +173,8 @@ export default async function DenemelerPage({
                       </span>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
