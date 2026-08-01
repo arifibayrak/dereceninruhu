@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import type { DB } from "@/db";
 import { aiProposals, transcripts } from "@/db/schema";
+import { chunkForD1 } from "@/lib/d1";
 import { extractFromTranscript } from "@/lib/ai/extraction";
 import type { SessionUser } from "@/actions/_guard";
 
@@ -85,9 +86,11 @@ export async function runExtractionCore(
         ),
       );
 
-    if (result.proposals.length > 0) {
+    // Satır başına 9 `?` — uzun görüşmelerde öneri sayısı D1'in 100 parametre
+    // sınırını aşabiliyor, o yüzden parçalanıyor.
+    for (const part of chunkForD1(result.proposals, 9)) {
       await db.insert(aiProposals).values(
-        result.proposals.map((p) => ({
+        part.map((p) => ({
           transcriptId,
           enrollmentId: t.enrollmentId,
           kind: p.kind,
