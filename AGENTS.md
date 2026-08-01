@@ -38,6 +38,11 @@ Turkish exam-prep coaching (mentorluk) OS. All-Cloudflare. Full plan:
   `wrangler.jsonc`). Env interface is the global `CloudflareEnv`.
 - Migrations: edit `src/db/schema.ts` → `pnpm db:generate` → `pnpm db:migrate:local`. Seed: `pnpm db:seed:local`.
 - Local dev/preview uses a local (Miniflare) D1; the placeholder `database_id` in `wrangler.jsonc` is fine locally.
+- **D1 allows max 100 bound parameters PER QUERY.** Any query whose `?` count grows with the data —
+  multi-row `insert … values (…),(…)`, `inArray(col, ids)` — must be split with `chunkForD1(rows, paramsPerRow)`
+  from `@/lib/d1` (a row costs one `?` per column that has a value or `$defaultFn`; autoincrement `id` is free).
+  It silently works in dev with small data and fails in prod ("Failed query: insert into …"). `notInArray`
+  can NOT be chunked — read the current rows, diff in JS, then delete with a chunked `inArray`.
 
 ## Domain rules (non-negotiable)
 - **Turkish-first.** All user-facing copy in Turkish. Locale `tr-TR`, timezone `Europe/Istanbul`,
