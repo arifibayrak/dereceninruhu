@@ -34,3 +34,22 @@ export function chunkForD1<T>(
   const budget = D1_MAX_BOUND_PARAMS - Math.max(0, Math.floor(reservedParams));
   return chunk(rows, Math.floor(budget / perRow));
 }
+
+/**
+ * `where … in (ids)` okumalarını parça parça çalıştırıp satırları birleştirir.
+ * Liste kısaysa (tek parça) tek sorgu atar — yani sıcak yol aynı kalır.
+ *
+ * @param reservedParams Sorgunun id dışındaki sabit parametreleri.
+ */
+export async function selectInChunks<Id, R>(
+  ids: readonly Id[],
+  run: (part: Id[]) => Promise<R[]>,
+  reservedParams = 0,
+): Promise<R[]> {
+  if (ids.length === 0) return [];
+  const parts = chunkForD1(ids, 1, reservedParams);
+  if (parts.length === 1) return run(parts[0]);
+  const out: R[] = [];
+  for (const part of parts) out.push(...(await run(part)));
+  return out;
+}

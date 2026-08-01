@@ -13,6 +13,7 @@ import {
   type RosterEntry,
 } from "@/lib/reconcile";
 import { extractTransfersFromText } from "@/lib/ai/statement";
+import { selectInChunks } from "@/lib/d1";
 import { startOfTrtDay } from "@/lib/dates";
 import { resolveInvoiceStatus } from "@/lib/muhasebe";
 import {
@@ -114,14 +115,16 @@ async function findOldestOpenInvoiceId(
   if (open.length === 0) return null;
 
   const ids = open.map((o) => o.id);
-  const paidRows = await db
-    .select({
-      invoiceId: payments.invoiceId,
-      paid: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
-    })
-    .from(payments)
-    .where(inArray(payments.invoiceId, ids))
-    .groupBy(payments.invoiceId);
+  const paidRows = await selectInChunks(ids, (part) =>
+    db
+      .select({
+        invoiceId: payments.invoiceId,
+        paid: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
+      })
+      .from(payments)
+      .where(inArray(payments.invoiceId, part))
+      .groupBy(payments.invoiceId),
+  );
   const paidBy = new Map<number, number>();
   for (const r of paidRows) {
     if (r.invoiceId != null) paidBy.set(r.invoiceId, Number(r.paid));

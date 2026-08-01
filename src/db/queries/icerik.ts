@@ -1,5 +1,6 @@
-import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import { getDb } from "@/db";
+import { and, asc, desc, eq, exists, inArray, isNull, or, sql } from "drizzle-orm";
+import { getDb, type DB } from "@/db";
+import { selectInChunks } from "@/lib/d1";
 import {
   contentItems,
   contentViews,
@@ -71,26 +72,31 @@ export async function listContentForCoach(): Promise<CoachContentRow[]> {
   const assignedBy = new Map<number, number[]>();
   const viewsBy = new Map<number, number>();
   if (ids.length > 0) {
-    const assignments = await db
-      .select({
-        contentItemId: contentVisibility.contentItemId,
-        enrollmentId: contentVisibility.enrollmentId,
-      })
-      .from(contentVisibility)
-      .where(inArray(contentVisibility.contentItemId, ids));
+    // D1: `in (…)` 100 parametreyle sınırlı — kütüphane büyüdükçe parçalanır.
+    const assignments = await selectInChunks(ids, (part) =>
+      db
+        .select({
+          contentItemId: contentVisibility.contentItemId,
+          enrollmentId: contentVisibility.enrollmentId,
+        })
+        .from(contentVisibility)
+        .where(inArray(contentVisibility.contentItemId, part)),
+    );
     for (const a of assignments) {
       const list = assignedBy.get(a.contentItemId) ?? [];
       list.push(a.enrollmentId);
       assignedBy.set(a.contentItemId, list);
     }
-    const views = await db
-      .select({
-        contentItemId: contentViews.contentItemId,
-        count: sql<number>`count(*)`,
-      })
-      .from(contentViews)
-      .where(inArray(contentViews.contentItemId, ids))
-      .groupBy(contentViews.contentItemId);
+    const views = await selectInChunks(ids, (part) =>
+      db
+        .select({
+          contentItemId: contentViews.contentItemId,
+          count: sql<number>`count(*)`,
+        })
+        .from(contentViews)
+        .where(inArray(contentViews.contentItemId, part))
+        .groupBy(contentViews.contentItemId),
+    );
     for (const v of views) viewsBy.set(v.contentItemId, Number(v.count));
   }
 
@@ -122,6 +128,38 @@ export type StudentContentRow = {
 };
 
 /**
+ * Görünürlük kuralı TEK yerde: kütüphane içeriği (sınavı uyanlar) + bu kayda
+ * atananlar. Atananlar `exists(…)` ALT SORGUSUYLA çözülür — id listesi `in (…)`
+ * olarak gömülseydi atama sayısı büyüdükçe D1'in 100 parametre sınırını aşardı.
+ */
+export function visibleToEnrollment(
+  db: DB,
+  enrollmentId: number,
+  examTemplateId: number,
+) {
+  return or(
+    and(
+      eq(contentItems.isLibrary, true),
+      or(
+        isNull(contentItems.examTemplateId),
+        eq(contentItems.examTemplateId, examTemplateId),
+      ),
+    ),
+    exists(
+      db
+        .select({ x: sql`1` })
+        .from(contentVisibility)
+        .where(
+          and(
+            eq(contentVisibility.contentItemId, contentItems.id),
+            eq(contentVisibility.enrollmentId, enrollmentId),
+          ),
+        ),
+    ),
+  );
+}
+
+/**
  * Öğrencinin görebildiği içerik: sınavına uyan kütüphane içeriği
  * (examTemplateId NULL = tüm sınavlar) + kendisine atananlar.
  */
@@ -136,19 +174,6 @@ export async function listContentForEnrollment(
     .from(contentVisibility)
     .where(eq(contentVisibility.enrollmentId, enrollmentId));
   const assignedIds = new Set(assigned.map((a) => a.contentItemId));
-
-  const visibility = or(
-    and(
-      eq(contentItems.isLibrary, true),
-      or(
-        isNull(contentItems.examTemplateId),
-        eq(contentItems.examTemplateId, examTemplateId),
-      ),
-    ),
-    assignedIds.size > 0
-      ? inArray(contentItems.id, [...assignedIds])
-      : sql`0 = 1`,
-  );
 
   const rows = await db
     .select({
@@ -174,7 +199,7 @@ export async function listContentForEnrollment(
         eq(contentViews.enrollmentId, enrollmentId),
       ),
     )
-    .where(visibility)
+    .where(visibleToEnrollment(db, enrollmentId, examTemplateId))
     .orderBy(desc(contentItems.createdAt), desc(contentItems.id));
 
   return rows.map((r) => ({
@@ -198,25 +223,6 @@ export async function countContentForEnrollment(
 ): Promise<ContentCounts> {
   const db = getDb();
 
-  const assigned = await db
-    .select({ contentItemId: contentVisibility.contentItemId })
-    .from(contentVisibility)
-    .where(eq(contentVisibility.enrollmentId, enrollmentId));
-  const assignedIds = new Set(assigned.map((a) => a.contentItemId));
-
-  const visibility = or(
-    and(
-      eq(contentItems.isLibrary, true),
-      or(
-        isNull(contentItems.examTemplateId),
-        eq(contentItems.examTemplateId, examTemplateId),
-      ),
-    ),
-    assignedIds.size > 0
-      ? inArray(contentItems.id, [...assignedIds])
-      : sql`0 = 1`,
-  );
-
   const [row] = await db
     .select({
       total: sql<number>`count(*)`,
@@ -230,7 +236,7 @@ export async function countContentForEnrollment(
         eq(contentViews.enrollmentId, enrollmentId),
       ),
     )
-    .where(visibility);
+    .where(visibleToEnrollment(db, enrollmentId, examTemplateId));
 
   return { total: Number(row?.total ?? 0), unseen: Number(row?.unseen ?? 0) };
 }

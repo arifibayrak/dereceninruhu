@@ -11,6 +11,7 @@ import {
   subjects,
   topics,
 } from "@/db/schema";
+import { selectInChunks } from "@/lib/d1";
 import { daysBetween, weekRange } from "@/lib/dates";
 import { netTrend } from "@/lib/insights";
 
@@ -66,21 +67,29 @@ export async function getCohortScoreboard(
   const enrollmentIds = roster.map((r) => r.enrollmentId);
 
   // 2) Net serisi (yalnız full denemeler), kayıt+deneme bazında toplam net
-  const netRows = await db
-    .select({
-      enrollmentId: mockExams.enrollmentId,
-      takenOn: mockExams.takenOn,
-      net: sql<number>`coalesce(sum(${mockExamResults.net}), 0)`,
-    })
-    .from(mockExams)
-    .leftJoin(mockExamResults, eq(mockExamResults.mockExamId, mockExams.id))
-    .where(
-      and(
-        inArray(mockExams.enrollmentId, enrollmentIds),
-        eq(mockExams.scope, "full"),
-      ),
-    )
-    .groupBy(mockExams.id);
+  // NOT: aşağıdaki sorguların hepsi kayıt (ya da kayıt+ders) bazında
+  // gruplandığı için parçalara bölünüp birleştirilmeleri sonucu değiştirmez —
+  // D1'in sorgu başına 100 parametre sınırı kadro büyüdükçe aşılırdı.
+  const netRows = await selectInChunks(
+    enrollmentIds,
+    (part) =>
+      db
+        .select({
+          enrollmentId: mockExams.enrollmentId,
+          takenOn: mockExams.takenOn,
+          net: sql<number>`coalesce(sum(${mockExamResults.net}), 0)`,
+        })
+        .from(mockExams)
+        .leftJoin(mockExamResults, eq(mockExamResults.mockExamId, mockExams.id))
+        .where(
+          and(
+            inArray(mockExams.enrollmentId, part),
+            eq(mockExams.scope, "full"),
+          ),
+        )
+        .groupBy(mockExams.id),
+    1,
+  );
   const netByEnrollment = new Map<number, { takenOn: Date; net: number }[]>();
   for (const r of netRows) {
     const arr = netByEnrollment.get(r.enrollmentId) ?? [];
@@ -90,41 +99,50 @@ export async function getCohortScoreboard(
 
   // 3) Bu haftanın soru toplamı, kayıt bazında
   const { start, end } = weekRange(now);
-  const weekRows = await db
-    .select({
-      enrollmentId: questionLogs.enrollmentId,
-      total: sql<number>`coalesce(sum(${questionLogs.questionCount}), 0)`,
-    })
-    .from(questionLogs)
-    .where(
-      and(
-        inArray(questionLogs.enrollmentId, enrollmentIds),
-        gte(questionLogs.logDate, start),
-        lt(questionLogs.logDate, end),
-      ),
-    )
-    .groupBy(questionLogs.enrollmentId);
+  const weekRows = await selectInChunks(
+    enrollmentIds,
+    (part) =>
+      db
+        .select({
+          enrollmentId: questionLogs.enrollmentId,
+          total: sql<number>`coalesce(sum(${questionLogs.questionCount}), 0)`,
+        })
+        .from(questionLogs)
+        .where(
+          and(
+            inArray(questionLogs.enrollmentId, part),
+            gte(questionLogs.logDate, start),
+            lt(questionLogs.logDate, end),
+          ),
+        )
+        .groupBy(questionLogs.enrollmentId),
+    2,
+  );
   const weekByEnrollment = new Map<number, number>();
   for (const r of weekRows) weekByEnrollment.set(r.enrollmentId, Number(r.total));
 
   // 4) Son etkinlik: max(soru günü) ve max(deneme günü) — epoch saniye
   const [lastLogRows, lastMockRows] = await Promise.all([
-    db
-      .select({
-        enrollmentId: questionLogs.enrollmentId,
-        last: sql<number | null>`max(${questionLogs.logDate})`,
-      })
-      .from(questionLogs)
-      .where(inArray(questionLogs.enrollmentId, enrollmentIds))
-      .groupBy(questionLogs.enrollmentId),
-    db
-      .select({
-        enrollmentId: mockExams.enrollmentId,
-        last: sql<number | null>`max(${mockExams.takenOn})`,
-      })
-      .from(mockExams)
-      .where(inArray(mockExams.enrollmentId, enrollmentIds))
-      .groupBy(mockExams.enrollmentId),
+    selectInChunks(enrollmentIds, (part) =>
+      db
+        .select({
+          enrollmentId: questionLogs.enrollmentId,
+          last: sql<number | null>`max(${questionLogs.logDate})`,
+        })
+        .from(questionLogs)
+        .where(inArray(questionLogs.enrollmentId, part))
+        .groupBy(questionLogs.enrollmentId),
+    ),
+    selectInChunks(enrollmentIds, (part) =>
+      db
+        .select({
+          enrollmentId: mockExams.enrollmentId,
+          last: sql<number | null>`max(${mockExams.takenOn})`,
+        })
+        .from(mockExams)
+        .where(inArray(mockExams.enrollmentId, part))
+        .groupBy(mockExams.enrollmentId),
+    ),
   ]);
   const lastByEnrollment = new Map<number, number>();
   const bump = (id: number, sec: number | null) => {
@@ -135,18 +153,20 @@ export async function getCohortScoreboard(
   for (const r of lastMockRows) bump(r.enrollmentId, r.last);
 
   // 5) Ders bazlı toplam eksik, kayıt bazında
-  const weakRows = await db
-    .select({
-      enrollmentId: mockExams.enrollmentId,
-      subjectName: subjects.name,
-      total: sql<number>`sum(${mockTopicErrors.errorCount})`,
-    })
-    .from(mockTopicErrors)
-    .innerJoin(mockExams, eq(mockExams.id, mockTopicErrors.mockExamId))
-    .innerJoin(topics, eq(topics.id, mockTopicErrors.topicId))
-    .innerJoin(subjects, eq(subjects.id, topics.subjectId))
-    .where(inArray(mockExams.enrollmentId, enrollmentIds))
-    .groupBy(mockExams.enrollmentId, subjects.id);
+  const weakRows = await selectInChunks(enrollmentIds, (part) =>
+    db
+      .select({
+        enrollmentId: mockExams.enrollmentId,
+        subjectName: subjects.name,
+        total: sql<number>`sum(${mockTopicErrors.errorCount})`,
+      })
+      .from(mockTopicErrors)
+      .innerJoin(mockExams, eq(mockExams.id, mockTopicErrors.mockExamId))
+      .innerJoin(topics, eq(topics.id, mockTopicErrors.topicId))
+      .innerJoin(subjects, eq(subjects.id, topics.subjectId))
+      .where(inArray(mockExams.enrollmentId, part))
+      .groupBy(mockExams.enrollmentId, subjects.id),
+  );
   const weakByEnrollment = new Map<number, { subject: string; errors: number }[]>();
   for (const r of weakRows) {
     const arr = weakByEnrollment.get(r.enrollmentId) ?? [];

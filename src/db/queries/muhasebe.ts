@@ -8,6 +8,7 @@ import {
   payments,
   students,
 } from "@/db/schema";
+import { selectInChunks } from "@/lib/d1";
 import { daysBetween, startOfTrtDay } from "@/lib/dates";
 import {
   trtMonthRange,
@@ -72,14 +73,18 @@ async function paidByInvoice(
 ): Promise<Map<number, number>> {
   if (invoiceIds.length === 0) return new Map();
   const db = getDb();
-  const rows = await db
-    .select({
-      invoiceId: payments.invoiceId,
-      paid: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
-    })
-    .from(payments)
-    .where(inArray(payments.invoiceId, invoiceIds))
-    .groupBy(payments.invoiceId);
+  // D1: sorgu başına 100 parametre — fatura listesi uzadıkça parçalanır.
+  // (Toplam fatura başına gruplandığı için parçalar çakışmadan birleşir.)
+  const rows = await selectInChunks(invoiceIds, (part) =>
+    db
+      .select({
+        invoiceId: payments.invoiceId,
+        paid: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
+      })
+      .from(payments)
+      .where(inArray(payments.invoiceId, part))
+      .groupBy(payments.invoiceId),
+  );
   const map = new Map<number, number>();
   for (const r of rows) if (r.invoiceId != null) map.set(r.invoiceId, Number(r.paid));
   return map;

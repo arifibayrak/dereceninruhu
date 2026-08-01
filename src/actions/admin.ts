@@ -6,6 +6,7 @@ import { eq, inArray } from "drizzle-orm";
 import { getDb, type DB } from "@/db";
 import { enrollments, users } from "@/db/schema";
 import { getAuth } from "@/lib/auth";
+import { selectInChunks } from "@/lib/d1";
 import { isOwnerEmail } from "@/lib/owner";
 import {
   assignStudentCoachSchema,
@@ -170,11 +171,18 @@ export async function bulkAssignStudentCoach(
     const db = getDb();
     if (coachUserId) await assertCoachTarget(db, coachUserId);
 
-    const updated = await db
-      .update(enrollments)
-      .set({ coachUserId, updatedAt: new Date() })
-      .where(inArray(enrollments.id, enrollmentIds))
-      .returning({ id: enrollments.id });
+    // D1: 100 parametre sınırı — `set` iki parametre yer kapladığı için
+    // toplu atama kayıt listesi uzadıkça parçalanır.
+    const updated = await selectInChunks(
+      enrollmentIds,
+      (part) =>
+        db
+          .update(enrollments)
+          .set({ coachUserId, updatedAt: new Date() })
+          .where(inArray(enrollments.id, part))
+          .returning({ id: enrollments.id }),
+      2,
+    );
     if (updated.length === 0) return actionError("Atanacak kayıt bulunamadı.");
 
     revalidateRosterViews();

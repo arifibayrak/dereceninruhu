@@ -8,6 +8,7 @@ import {
   questionLogs,
   students,
 } from "@/db/schema";
+import { selectInChunks } from "@/lib/d1";
 import { normalizePhone } from "@/lib/phone";
 
 /**
@@ -138,37 +139,44 @@ export async function getDuplicateGroups(): Promise<DuplicateGroup[]> {
 
   const ids = groupsRaw.flatMap((g) => g.rows.map((r) => r.studentId));
 
+  // D1: `in (…)` başına 100 parametre — kadro büyüdükçe parçalanır.
   const [enrollmentRows, qCounts, mCounts] = await Promise.all([
-    db
-      .select({
-        studentId: enrollments.studentId,
-        status: enrollments.status,
-        examCode: examTemplates.code,
-      })
-      .from(enrollments)
-      .innerJoin(
-        examTemplates,
-        eq(examTemplates.id, enrollments.examTemplateId),
-      )
-      .where(inArray(enrollments.studentId, ids)),
-    db
-      .select({
-        studentId: enrollments.studentId,
-        n: sql<number>`count(*)`,
-      })
-      .from(questionLogs)
-      .innerJoin(enrollments, eq(enrollments.id, questionLogs.enrollmentId))
-      .where(inArray(enrollments.studentId, ids))
-      .groupBy(enrollments.studentId),
-    db
-      .select({
-        studentId: enrollments.studentId,
-        n: sql<number>`count(*)`,
-      })
-      .from(mockExams)
-      .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
-      .where(inArray(enrollments.studentId, ids))
-      .groupBy(enrollments.studentId),
+    selectInChunks(ids, (part) =>
+      db
+        .select({
+          studentId: enrollments.studentId,
+          status: enrollments.status,
+          examCode: examTemplates.code,
+        })
+        .from(enrollments)
+        .innerJoin(
+          examTemplates,
+          eq(examTemplates.id, enrollments.examTemplateId),
+        )
+        .where(inArray(enrollments.studentId, part)),
+    ),
+    selectInChunks(ids, (part) =>
+      db
+        .select({
+          studentId: enrollments.studentId,
+          n: sql<number>`count(*)`,
+        })
+        .from(questionLogs)
+        .innerJoin(enrollments, eq(enrollments.id, questionLogs.enrollmentId))
+        .where(inArray(enrollments.studentId, part))
+        .groupBy(enrollments.studentId),
+    ),
+    selectInChunks(ids, (part) =>
+      db
+        .select({
+          studentId: enrollments.studentId,
+          n: sql<number>`count(*)`,
+        })
+        .from(mockExams)
+        .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
+        .where(inArray(enrollments.studentId, part))
+        .groupBy(enrollments.studentId),
+    ),
   ]);
 
   const examBy = new Map<number, string>();
