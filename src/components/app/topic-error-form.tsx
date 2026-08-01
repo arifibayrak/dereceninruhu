@@ -81,8 +81,16 @@ export function TopicErrorForm({
       return;
     }
     setSaving(true);
-    const res = await upsertTopicErrors({ mockExamId, entries });
-    setSaving(false);
+    let res;
+    try {
+      res = await upsertTopicErrors({ mockExamId, entries });
+    } catch {
+      // Ağ/sunucu hatasında buton "Kaydediliyor…"da asılı kalmasın.
+      toast.error("Kaydedilemedi — bağlantını kontrol edip tekrar dene.");
+      return;
+    } finally {
+      setSaving(false);
+    }
     if (!res.ok) {
       toast.error(res.error);
       return;

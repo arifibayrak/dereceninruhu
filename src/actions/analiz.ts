@@ -3,6 +3,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { mockExams, mockTopicErrors } from "@/db/schema";
+import { chunkForD1 } from "@/lib/d1";
 import { upsertTopicErrorsSchema } from "@/lib/validation-analiz";
 import {
   actionError,
@@ -39,7 +40,10 @@ export async function upsertTopicErrors(
     const positives = v.entries.filter((e) => e.errorCount > 0);
     const zeros = v.entries.filter((e) => e.errorCount === 0);
 
-    if (zeros.length > 0) {
+    // D1: sorgu başına en fazla 100 parametre. Bir denemede yüzlerce konu
+    // olabildiği için hem silme (konu başına 1 `?` + 1 sabit) hem yazma
+    // (satır başına 4 `?`: exam, topic, error_count, created_at) parçalanır.
+    for (const part of chunkForD1(zeros, 1, 1)) {
       await db
         .delete(mockTopicErrors)
         .where(
@@ -47,16 +51,16 @@ export async function upsertTopicErrors(
             eq(mockTopicErrors.mockExamId, v.mockExamId),
             inArray(
               mockTopicErrors.topicId,
-              zeros.map((e) => e.topicId),
+              part.map((e) => e.topicId),
             ),
           ),
         );
     }
-    if (positives.length > 0) {
+    for (const part of chunkForD1(positives, 4)) {
       await db
         .insert(mockTopicErrors)
         .values(
-          positives.map((e) => ({
+          part.map((e) => ({
             mockExamId: v.mockExamId,
             topicId: e.topicId,
             errorCount: e.errorCount,

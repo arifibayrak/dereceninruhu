@@ -10,6 +10,7 @@ import {
   subjects,
   topics,
 } from "@/db/schema";
+import { chunkForD1 } from "@/lib/d1";
 import {
   combinedMockLabel,
   examScopesOf,
@@ -300,10 +301,15 @@ export async function getMocksWithAnalysis(
 ): Promise<Set<number>> {
   if (mockExamIds.length === 0) return new Set();
   const db = getDb();
-  const rows = await db
-    .select({ mockExamId: mockTopicErrors.mockExamId })
-    .from(mockTopicErrors)
-    .where(inArray(mockTopicErrors.mockExamId, mockExamIds))
-    .groupBy(mockTopicErrors.mockExamId);
-  return new Set(rows.map((r) => r.mockExamId));
+  const out = new Set<number>();
+  // D1: `in (…)` de 100 parametre sınırına tabi — uzun deneme geçmişi böl.
+  for (const part of chunkForD1(mockExamIds, 1)) {
+    const rows = await db
+      .select({ mockExamId: mockTopicErrors.mockExamId })
+      .from(mockTopicErrors)
+      .where(inArray(mockTopicErrors.mockExamId, part))
+      .groupBy(mockTopicErrors.mockExamId);
+    for (const r of rows) out.add(r.mockExamId);
+  }
+  return out;
 }

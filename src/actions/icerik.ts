@@ -1,7 +1,8 @@
 "use server";
 
-import { and, eq, notInArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb, getR2 } from "@/db";
+import { chunkForD1 } from "@/lib/d1";
 import {
   contentItems,
   contentViews,
@@ -58,11 +59,13 @@ export async function createContentItem(
       })
       .returning({ id: contentItems.id });
 
-    if (v.enrollmentIds && v.enrollmentIds.length > 0) {
+    // D1: sorgu başına 100 parametre — satır başına 3 `?` (item, enrollment,
+    // created_at). Öğrenci sayısı büyüdükçe "tümüne ata" bu sınırı aşardı.
+    for (const part of chunkForD1(v.enrollmentIds ?? [], 3)) {
       await db
         .insert(contentVisibility)
         .values(
-          v.enrollmentIds.map((enrollmentId) => ({
+          part.map((enrollmentId) => ({
             contentItemId: item.id,
             enrollmentId,
           })),
@@ -98,23 +101,37 @@ export async function assignContent(
         .delete(contentVisibility)
         .where(eq(contentVisibility.contentItemId, v.contentItemId));
     } else {
-      await db
-        .delete(contentVisibility)
-        .where(
-          and(
-            eq(contentVisibility.contentItemId, v.contentItemId),
-            notInArray(contentVisibility.enrollmentId, v.enrollmentIds),
-          ),
-        );
-      await db
-        .insert(contentVisibility)
-        .values(
-          v.enrollmentIds.map((enrollmentId) => ({
-            contentItemId: v.contentItemId,
-            enrollmentId,
-          })),
-        )
-        .onConflictDoNothing();
+      // `not in (…)` parçalanamaz (her parça diğerinin satırlarını silerdi),
+      // bu yüzden fark JS'te hesaplanıp `in (…)` ile parça parça silinir.
+      const current = await db
+        .select({ enrollmentId: contentVisibility.enrollmentId })
+        .from(contentVisibility)
+        .where(eq(contentVisibility.contentItemId, v.contentItemId));
+      const keep = new Set(v.enrollmentIds);
+      const drop = current
+        .map((r) => r.enrollmentId)
+        .filter((id) => !keep.has(id));
+      for (const part of chunkForD1(drop, 1, 1)) {
+        await db
+          .delete(contentVisibility)
+          .where(
+            and(
+              eq(contentVisibility.contentItemId, v.contentItemId),
+              inArray(contentVisibility.enrollmentId, part),
+            ),
+          );
+      }
+      for (const part of chunkForD1(v.enrollmentIds, 3)) {
+        await db
+          .insert(contentVisibility)
+          .values(
+            part.map((enrollmentId) => ({
+              contentItemId: v.contentItemId,
+              enrollmentId,
+            })),
+          )
+          .onConflictDoNothing();
+      }
     }
     return {
       ok: true,

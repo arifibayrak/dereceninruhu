@@ -12,6 +12,7 @@ import {
   resourceLinks,
   testimonials,
 } from "@/db/schema";
+import { chunkForD1 } from "@/lib/d1";
 import { faqSeeds } from "@/db/seed/cms-content";
 import { resourceLinkSeeds } from "@/db/seed/resource-links";
 import {
@@ -281,14 +282,19 @@ export async function seedMissingFaqs(): Promise<
       .select({ max: sql<number | null>`max(${faqs.sortOrder})` })
       .from(faqs);
     const base = Number(maxRow?.max ?? -1) + 1;
-    await db.insert(faqs).values(
-      missing.map((s, i) => ({
-        question: s.question,
-        answer: s.answer,
-        sortOrder: base + i,
-        isActive: true,
-      })),
-    );
+    // Satır başına 4 `?` (faqs'ta zaman damgası yok).
+    let offset = 0;
+    for (const part of chunkForD1(missing, 4)) {
+      await db.insert(faqs).values(
+        part.map((s, i) => ({
+          question: s.question,
+          answer: s.answer,
+          sortOrder: base + offset + i,
+          isActive: true,
+        })),
+      );
+      offset += part.length;
+    }
     revalidateMarketing();
     return { ok: true, data: { inserted: missing.length } };
   });
@@ -371,19 +377,22 @@ export async function seedResourceLinks(): Promise<
         "Kaynak listesi boş değil — tohum yalnız boş listeye yüklenir.",
       );
     }
-    await db.insert(resourceLinks).values(
-      resourceLinkSeeds.map((s) => ({
-        category: s.category,
-        title: s.title,
-        description: s.description,
-        url: s.url,
-        examCode: s.examCode,
-        provider: s.provider,
-        sortOrder: s.sortOrder,
-        isFeatured: s.isFeatured,
-        isActive: true,
-      })),
-    );
+    // Satır başına 11 `?` — D1'in 100 parametre sınırı için parçala.
+    for (const part of chunkForD1(resourceLinkSeeds, 11)) {
+      await db.insert(resourceLinks).values(
+        part.map((s) => ({
+          category: s.category,
+          title: s.title,
+          description: s.description,
+          url: s.url,
+          examCode: s.examCode,
+          provider: s.provider,
+          sortOrder: s.sortOrder,
+          isFeatured: s.isFeatured,
+          isActive: true,
+        })),
+      );
+    }
     revalidateMarketing();
     return { ok: true, data: { inserted: resourceLinkSeeds.length } };
   });

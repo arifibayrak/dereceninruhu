@@ -11,6 +11,7 @@ import {
   subjects,
 } from "@/db/schema";
 import { getMockForEdit, type MockEditPayload } from "@/db/queries/tracking";
+import { chunkForD1 } from "@/lib/d1";
 import { computeNet, rollUpChildren, type SubjectCounts } from "@/lib/net";
 import { normalizeQuestionEntry } from "@/lib/question-log";
 import { startOfTrtDay } from "@/lib/dates";
@@ -60,24 +61,28 @@ export async function upsertQuestionLogs(
       rows.push({ enrollmentId, logDate: day, subjectId: e.subjectId, ...normalized });
     }
 
-    await db
-      .insert(questionLogs)
-      .values(rows)
-      .onConflictDoUpdate({
-        target: [
-          questionLogs.enrollmentId,
-          questionLogs.logDate,
-          questionLogs.subjectId,
-        ],
-        set: {
-          questionCount: sql`excluded.question_count`,
-          // Kırılım temizlendiğinde NULL'a dönebilmeli — bu yüzden hepsi set.
-          correctCount: sql`excluded.correct_count`,
-          wrongCount: sql`excluded.wrong_count`,
-          blankCount: sql`excluded.blank_count`,
-          updatedAt: new Date(),
-        },
-      });
+    // D1: sorgu başına 100 parametre sınırı — satır başına 9 `?` harcanıyor
+    // (7 sütun + created_at/updated_at), o yüzden ders listesi büyüdükçe böl.
+    for (const part of chunkForD1(rows, 9)) {
+      await db
+        .insert(questionLogs)
+        .values(part)
+        .onConflictDoUpdate({
+          target: [
+            questionLogs.enrollmentId,
+            questionLogs.logDate,
+            questionLogs.subjectId,
+          ],
+          set: {
+            questionCount: sql`excluded.question_count`,
+            // Kırılım temizlendiğinde NULL'a dönebilmeli — bu yüzden hepsi set.
+            correctCount: sql`excluded.correct_count`,
+            wrongCount: sql`excluded.wrong_count`,
+            blankCount: sql`excluded.blank_count`,
+            updatedAt: new Date(),
+          },
+        });
+    }
 
     return { ok: true, data: { count: rows.length } };
   });
@@ -225,9 +230,12 @@ export async function createMock(
       })
       .returning({ id: mockExams.id });
 
-    await db
-      .insert(mockExamResults)
-      .values(rows.map((r) => ({ ...r, mockExamId: exam.id })));
+    // Satır başına 6 `?` — birleşik denemelerde ders sayısı arttıkça böl.
+    for (const part of chunkForD1(rows, 6)) {
+      await db
+        .insert(mockExamResults)
+        .values(part.map((r) => ({ ...r, mockExamId: exam.id })));
+    }
 
     return { ok: true, data: { mockExamId: exam.id } };
   });
@@ -276,9 +284,11 @@ export async function updateMock(
     await db
       .delete(mockExamResults)
       .where(eq(mockExamResults.mockExamId, v.mockExamId));
-    await db
-      .insert(mockExamResults)
-      .values(rows.map((r) => ({ ...r, mockExamId: v.mockExamId })));
+    for (const part of chunkForD1(rows, 6)) {
+      await db
+        .insert(mockExamResults)
+        .values(part.map((r) => ({ ...r, mockExamId: v.mockExamId })));
+    }
 
     // Bölüm/kapsam değiştiyse eski konu-eksik analizi başka bir sınavın
     // konularına aitti — yanlış veri taşımaktansa temizlenir.
