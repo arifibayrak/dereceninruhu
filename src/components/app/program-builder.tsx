@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { callAction } from "@/lib/action-client";
 import {
   addPlanTask,
+  addPlanTasks,
   copyPreviousWeekPlan,
   deletePlanTask,
   publishPlan,
@@ -785,9 +786,9 @@ function TaskRow({
 /* -------------------------------------------------------------------------- */
 
 /**
- * Notun maddelerini toplu göreve çevirir. Görevler `addPlanTask` ile TEK TEK
- * ve SIRAYLA eklenir — `slot` sıralaması mevcut en yüksek slot'tan türetildiği
- * için paralel çağrılar aynı slot'u alabilir (bkz. actions/plans.ts).
+ * Notun maddelerini toplu göreve çevirir. Görevler `addPlanTasks` ile TEK
+ * istekte yazılır; `slot` sıralaması sunucuda tek sorgudan türetilip bellekte
+ * ilerletilir, yani sıra korunur (bkz. actions/plans.ts).
  */
 function NoteConverter({
   enrollmentId,
@@ -820,29 +821,27 @@ function NoteConverter({
     const picked = rows.filter((r) => r.selected);
     if (picked.length === 0) return;
     setSaving(true);
-    let failed = 0;
-    for (const row of picked) {
-      const res = await callAction(addPlanTask, {
-        enrollmentId,
-        weekStart: weekKey,
+    // Görevler TEK istekte yazılır — satır başına ayrı çağrı, uzun bir nottan
+    // onlarca HTTP turu çıkarıyor ve arada kopunca yarısını düşürüyordu.
+    const res = await callAction(addPlanTasks, {
+      enrollmentId,
+      weekStart: weekKey,
+      tasks: picked.map((row) => ({
         day: row.day,
         subjectId: null,
         resourceIds: [],
         description: row.description,
         targetQuestions: null,
-      });
-      if (!res.ok) failed++;
-    }
+      })),
+    });
     setSaving(false);
-    if (failed > 0) {
-      toast.error(
-        `${picked.length - failed} görev eklendi, ${failed} tanesi eklenemedi.`,
-      );
-    } else {
-      toast.success(`${picked.length} görev eklendi`, {
-        description: "Ders ve hedef soru bilgisini görevlerden düzenleyebilirsin.",
-      });
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
     }
+    toast.success(`${res.data.added} görev eklendi`, {
+      description: "Ders ve hedef soru bilgisini görevlerden düzenleyebilirsin.",
+    });
     onDone();
     router.refresh();
   };
