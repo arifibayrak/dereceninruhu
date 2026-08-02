@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { recordAiUsage } from "@/lib/ai/usage";
 import { chatModel, AI_MODELS } from "./openrouter";
 import { buildGroundingText } from "./grounding";
 import { trDayKey } from "@/lib/dates";
@@ -82,11 +83,16 @@ export async function extractFromTranscript(params: {
   const prompt = `${dateCtx}\n\n${grounding}\n\n=== TRANSKRİPT ===\n${params.transcriptText}\n\n=== GÖREV ===\nYukarıdaki şemaya göre SADECE JSON üret.`;
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: chatModel(AI_MODELS.extraction),
       system: SYSTEM,
       prompt,
       temperature: 0,
+    });
+    await recordAiUsage({
+      feature: "transkript-cikarim",
+      model: AI_MODELS.extraction,
+      usage,
     });
     const parsed = parseExtraction(text);
     if (parsed) return parsed;

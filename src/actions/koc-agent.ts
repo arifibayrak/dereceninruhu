@@ -12,6 +12,7 @@ import {
   subjects,
 } from "@/db/schema";
 import { AI_MODELS, chatModel } from "@/lib/ai/openrouter";
+import { recordAiUsage } from "@/lib/ai/usage";
 import { AGENT_WRITE_TOOLS, buildAgentTools } from "@/lib/ai/agent-tools";
 import { getEnrollmentDetailByStudentId } from "@/db/queries/enrollment";
 import { addPlanTask } from "@/actions/plans";
@@ -151,6 +152,11 @@ export async function sendCoachAgentMessage(
       tools,
       stopWhen: stepCountIs(8),
       temperature: 0,
+    });
+    await recordAiUsage({
+      feature: "koc-asistani",
+      model: AI_MODELS.agent,
+      usage: result.usage,
     });
 
     const assistantText = result.text?.trim() ?? "";

@@ -1446,6 +1446,49 @@ export const aiAuditLog = sqliteTable(
 );
 
 /**
+ * AI jeton sayacı — her model çağrısının maliyeti buradan hesaplanır.
+ *
+ * Neden ayrı tablo: `ai_audit_log` koç ajanının ARAÇ çağrılarını (yetki/izlenebilirlik
+ * için) tutar, model kullanımını değil. Maliyet sorusu ("bu ay AI'a ne harcadık")
+ * jeton sayısı olmadan cevaplanamıyordu ve tahmine kalıyordu.
+ *
+ * Fiyat SAKLANMAZ, jeton saklanır: model fiyatları değişir, geçmiş satırları
+ * yeniden yazmak yerine okuma anında `@/lib/maliyet` ile hesaplanır (net
+ * snapshot kuralının tersi — burada tarihsel doğruluk değil, güncel fiyat istenir).
+ */
+export const aiUsageLog = sqliteTable(
+  "ai_usage_log",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** Hangi özellik harcadı — panelde kırılım bunun üzerinden. */
+    feature: text("feature", {
+      enum: [
+        "program-taslak",
+        "koc-asistani",
+        "ogrenci-sohbet",
+        "transkript-cikarim",
+        "ekstre-cikarim",
+        "ses-metin",
+      ],
+    }).notNull(),
+    /** Model slug'ı (ör. anthropic/claude-haiku-4.5) — fiyat buna göre bulunur. */
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    /** Önbellekten okunan girdi (varsa) — girdi fiyatının onda biri. */
+    cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+    /** Ses modelleri jeton değil süre üzerinden ücretlenir. */
+    audioSeconds: integer("audio_seconds"),
+    enrollmentId: integer("enrollment_id").references(() => enrollments.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("ai_usage_log_created_idx").on(t.createdAt),
+    index("ai_usage_log_feature_created_idx").on(t.feature, t.createdAt),
+  ],
+);
+
+/**
  * Tarayıcı eklentisi kimliği: koç-başı uzun-ömürlü bearer token. Cookie
  * oturumu cross-origin (chrome-extension://) çalışmadığından eklenti bu token'ı
  * gönderir. Düz metin YALNIZ üretim anında bir kez gösterilir; DB'de yalnız

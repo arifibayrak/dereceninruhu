@@ -9,6 +9,7 @@
 import { generateText } from "ai";
 import { z } from "zod";
 import { AI_MODELS, chatModel } from "./openrouter";
+import { recordAiUsage } from "@/lib/ai/usage";
 import { parseTryToKurus } from "@/lib/muhasebe";
 import type { RawTransfer } from "@/lib/reconcile";
 
@@ -61,11 +62,16 @@ export async function extractTransfersFromText(
   const prompt = `=== EKSTRE ===\n${statement}\n\n=== GÖREV ===\nGelen işlemleri yukarıdaki şemaya göre SADECE JSON olarak üret.`;
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: chatModel(AI_MODELS.extraction),
       system: SYSTEM,
       prompt,
       temperature: 0,
+    });
+    await recordAiUsage({
+      feature: "ekstre-cikarim",
+      model: AI_MODELS.extraction,
+      usage,
     });
     const parsed = parseAiJson(text);
     if (!parsed) continue;

@@ -6,6 +6,7 @@ import { generateText } from "ai";
 import { getDb } from "@/db";
 import { chatMessages, chatThreads } from "@/db/schema";
 import { AI_MODELS, chatModel } from "@/lib/ai/openrouter";
+import { recordAiUsage } from "@/lib/ai/usage";
 import { buildStudentContextText } from "@/lib/ai/student-context";
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { startOfTrtDay } from "@/lib/dates";
@@ -104,6 +105,12 @@ export async function sendStudentChatMessage(
       system: `${STUDENT_SYSTEM}\n\n=== SENİN VERİN ===\n${context}`,
       messages: [...modelMessages, { role: "user", content: text }],
       temperature: 0.3,
+    });
+    await recordAiUsage({
+      feature: "ogrenci-sohbet",
+      model: AI_MODELS.chat,
+      usage: result.usage,
+      enrollmentId,
     });
     const answer =
       result.text?.trim() || "Şu an cevap veremedim, tekrar dener misin?";

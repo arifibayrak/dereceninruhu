@@ -1,5 +1,6 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { getEnv } from "@/db";
+import { recordAiUsage } from "@/lib/ai/usage";
 
 /**
  * OpenRouter istemcisi — tüm AI (transkript + LLM) tek anahtardan geçer.
@@ -44,6 +45,24 @@ export function chatModel(modelId: string = AI_MODELS.extraction) {
  * uğrayabilir; multipart 25 MB ile sınırlı. Uzun görüşmeler yükleme öncesi
  * parçalara bölünmeli (bkz. transkript hattı). Bu yardımcı TEK bir parçayı çevirir.
  */
+/**
+ * WAV başlığından süre (saniye). Ses modelleri dakika üzerinden ücretlendiği
+ * için maliyet kaydı buna dayanır. Başlık okunamazsa null — kayıt süresiz atılır.
+ */
+function wavSaniye(bytes: ArrayBuffer): number | null {
+  try {
+    if (bytes.byteLength < 44) return null;
+    const dv = new DataView(bytes);
+    // "RIFF" .... "WAVE"
+    if (dv.getUint32(0, false) !== 0x52494646) return null;
+    const byteRate = dv.getUint32(28, true); // bayt/saniye
+    if (!byteRate) return null;
+    return (bytes.byteLength - 44) / byteRate;
+  } catch {
+    return null;
+  }
+}
+
 export async function transcribeChunk(
   bytes: ArrayBuffer,
   format: string,
@@ -73,5 +92,13 @@ export async function transcribeChunk(
     );
   }
   const json = (await res.json()) as { text?: string };
+  const saniye = format === "wav" ? wavSaniye(bytes) : null;
+  if (saniye != null) {
+    await recordAiUsage({
+      feature: "ses-metin",
+      model: AI_MODELS.whisper,
+      audioSeconds: Math.round(saniye),
+    });
+  }
   return json.text ?? "";
 }

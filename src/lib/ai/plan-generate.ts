@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { recordAiUsage } from "@/lib/ai/usage";
 import { z } from "zod";
 import { chatModel, AI_MODELS } from "./openrouter";
 import { buildGroundingText } from "./grounding";
@@ -140,11 +141,16 @@ ${trDayKey(targetMonday)} (pazartesi).${
 Yukarıdaki şemaya göre bu hafta için SADECE JSON program üret.`;
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: chatModel(AI_MODELS.agent),
       system: SYSTEM,
       prompt,
       temperature: 0.3,
+    });
+    await recordAiUsage({
+      feature: "program-taslak",
+      model: AI_MODELS.agent,
+      usage,
     });
     const parsed = parseDraft(text);
     if (parsed) {
