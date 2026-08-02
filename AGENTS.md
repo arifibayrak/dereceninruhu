@@ -43,6 +43,22 @@ Turkish exam-prep coaching (mentorluk) OS. All-Cloudflare. Full plan:
   from `@/lib/d1` (a row costs one `?` per column that has a value or `$defaultFn`; autoincrement `id` is free).
   It silently works in dev with small data and fails in prod ("Failed query: insert into …"). `notInArray`
   can NOT be chunked — read the current rows, diff in JS, then delete with a chunked `inArray`.
+- **D1 allows max 5 terms in a compound SELECT** (`union all` fan-out fails with "too many terms in
+  compound SELECT"). Need one value per row of a list? Use a **correlated scalar subquery** on the driving
+  table, not `union all` and not `max(x) … group by` — the group-by scans the whole index (see
+  `latestPerEnrollment` in `@/db/queries/roster`: 10.806 → 89 rows read for the same result).
+  Rows read is the metric that matters; check a query with
+  `wrangler d1 execute … --remote --json --command "explain query plan …"`.
+
+## Client → Server Action calls
+- **Never `await someAction(...)` directly from a client component — always
+  `await callAction(someAction, ...)` (`@/lib/action-client`).** Transport failures (mobile connection
+  drop, worker 500, a deploy invalidating the tab's action id) REJECT the promise; they never reach
+  `guarded` on the server. An unwrapped `await` skips the rest of the handler, so `setSaving(false)`
+  never runs and the button hangs on "Kaydediliyor…" with no error — the "donuyor, kaydetmiyor" bug.
+  `callAction` turns every failure into an `ActionResult`, so forms only ever read `res.ok`.
+- Writing N rows means ONE action taking an array, never a loop of N action calls: each call is a
+  separate HTTP round trip (see `addPlanTasks`).
 
 ## Domain rules (non-negotiable)
 - **Turkish-first.** All user-facing copy in Turkish. Locale `tr-TR`, timezone `Europe/Istanbul`,

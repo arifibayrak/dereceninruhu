@@ -1,5 +1,17 @@
-import { and, desc, eq, gte, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { getDb } from "@/db";
+import { selectInChunks } from "@/lib/d1";
 import {
   enrollments,
   examSections,
@@ -54,6 +66,52 @@ export type RosterRow = {
   inviteAccepted: boolean;
   inviteCode: string | null;
 };
+
+/**
+ * Kadronun "son aktivite" sütunları: kayıt başına EN SON tarih.
+ *
+ * Doğal yazımı `max(tarih) … group by enrollment_id`'dir — ama o sorgu indeksi
+ * BAŞTAN SONA tarar: kadro her açıldığında ~11 bin satır okunuyor, iki sütun
+ * için günde milyonlarca satır ediyordu (D1'in okuma bütçesi buna gider).
+ *
+ * Bunun yerine kadro listesi sürülür ve tarih, kayıt başına ilişkili bir alt
+ * sorgudan gelir: (enrollment_id, tarih) indeksinde sondan tek adım geriye —
+ * kayıt başına ~1 satır (ölçüm: 10.806 → 89 satır). Sonuç birebir aynıdır.
+ */
+async function latestPerEnrollment(
+  enrollmentIds: readonly number[],
+  latest: SQL<number | null>,
+): Promise<{ enrollmentId: number; last: number | null }[]> {
+  if (enrollmentIds.length === 0) return [];
+  const db = getDb();
+  return selectInChunks(enrollmentIds, (part) =>
+    db
+      .select({ enrollmentId: enrollments.id, last: latest })
+      .from(enrollments)
+      .where(inArray(enrollments.id, part)),
+  );
+}
+
+/*
+ * Alt sorgular ELLE yazılmış SQL: drizzle, `select(...)` alanına gömülen kolon
+ * referanslarının tablo önekini düşürüyor (`"enrollment_id" = "id"`), bu da
+ * ilişkilendirmeyi sessizce YANLIŞ tabloya bağlar. Takma adla (`ql`, `me`)
+ * yazınca hangi `id`nin dıştaki `enrollments` olduğu tartışmasız kalır.
+ */
+
+/** Son soru girişi (boş gün sayılmaz) — kayıt başına ilişkili alt sorgu. */
+const lastQuestionLogAt = sql<number | null>`(
+  select ql.log_date from question_logs ql
+  where ql.enrollment_id = enrollments.id and ql.question_count > 0
+  order by ql.log_date desc limit 1
+)`;
+
+/** Son deneme tarihi — kayıt başına ilişkili alt sorgu. */
+const lastMockAt = sql<number | null>`(
+  select me.taken_on from mock_exams me
+  where me.enrollment_id = enrollments.id
+  order by me.taken_on desc limit 1
+)`;
 
 /** Aktif kadro: öğrenci + kayıt + bu hafta soru + son giriş + davet durumu. */
 export async function getRoster(
@@ -123,22 +181,11 @@ export async function getRoster(
 
   const payments = await getRosterPayments(viewer, now);
 
-  const lastLogs = await db
-    .select({
-      enrollmentId: questionLogs.enrollmentId,
-      last: sql<number>`max(${questionLogs.logDate})`,
-    })
-    .from(questionLogs)
-    .where(sql`${questionLogs.questionCount} > 0`)
-    .groupBy(questionLogs.enrollmentId);
-
-  const lastMocks = await db
-    .select({
-      enrollmentId: mockExams.enrollmentId,
-      last: sql<number>`max(${mockExams.takenOn})`,
-    })
-    .from(mockExams)
-    .groupBy(mockExams.enrollmentId);
+  const enrollmentIds = base.map((r) => r.enrollmentId);
+  const [lastLogs, lastMocks] = await Promise.all([
+    latestPerEnrollment(enrollmentIds, lastQuestionLogAt),
+    latestPerEnrollment(enrollmentIds, lastMockAt),
+  ]);
 
   const totalBy = new Map(weekTotals.map((r) => [r.enrollmentId, Number(r.total)]));
   const studyBy = new Map(

@@ -514,6 +514,14 @@ export const questionLogs = sqliteTable(
       t.subjectId,
     ),
     index("question_logs_enrollment_date_idx").on(t.enrollmentId, t.logDate),
+    /*
+     * Koç kadrosu "bu haftanın soru toplamı"nı TÜM kayıtlar için tek sorguda
+     * okur: `where log_date between … group by enrollment_id`. Bileşik indeksin
+     * ön eki enrollment_id olduğu için o sorgu indeksi KULLANAMIYOR ve tabloyu
+     * baştan sona tarıyordu (sayfa başına ~10 bin satır okuma). Tarihin kendi
+     * indeksi taramayı o haftanın satırlarına indirir.
+     */
+    index("question_logs_date_idx").on(t.logDate),
   ],
 );
 

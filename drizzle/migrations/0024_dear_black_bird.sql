@@ -1,0 +1,1 @@
+CREATE INDEX `question_logs_date_idx` ON `question_logs` (`log_date`);
