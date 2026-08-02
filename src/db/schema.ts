@@ -1489,6 +1489,40 @@ export const aiUsageLog = sqliteTable(
 );
 
 /**
+ * GELİŞTİRME jetonları — projeyi yazarken harcanan Claude Code kullanımı.
+ *
+ * `ai_usage_log` uygulamanın KENDİ AI çağrılarını sayar; geliştirme jetonları
+ * geliştiricinin makinesindeki oturum kayıtlarında durur ve Worker onları
+ * göremez. `scripts/gelistirme-maliyeti.mjs` her dağıtımda o kayıtları tarayıp
+ * buraya bir ANLIK GÖRÜNTÜ yazar — böylece panel elle güncellenmek zorunda kalmaz.
+ *
+ * Aynı ölçümün satırları `measuredAt` ile gruplanır (model başına bir satır);
+ * panel en son `measuredAt`'i okur. Geçmiş ölçümler silinmez: zamanla
+ * geliştirme maliyetinin nasıl büyüdüğü görülebilsin.
+ */
+export const devUsageSnapshot = sqliteTable(
+  "dev_usage_snapshot",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** Ölçümün alındığı an — bir çalıştırmanın tüm satırlarında AYNI. */
+    measuredAt: integer("measured_at", { mode: "timestamp" }).notNull(),
+    /** Taranan oturum kayıtlarındaki ilk/son mesaj — kapsanan dönem. */
+    firstAt: integer("first_at", { mode: "timestamp" }),
+    lastAt: integer("last_at", { mode: "timestamp" }),
+    /** Anthropic model kimliği (ör. claude-opus-4-8). */
+    model: text("model").notNull(),
+    calls: integer("calls").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    /** Önbellek yazımı TTL'e göre farklı fiyatlanır (5 dk %125, 1 sa %200). */
+    cacheWrite5mTokens: integer("cache_write_5m_tokens").notNull().default(0),
+    cacheWrite1hTokens: integer("cache_write_1h_tokens").notNull().default(0),
+  },
+  (t) => [index("dev_usage_snapshot_measured_idx").on(t.measuredAt)],
+);
+
+/**
  * Tarayıcı eklentisi kimliği: koç-başı uzun-ömürlü bearer token. Cookie
  * oturumu cross-origin (chrome-extension://) çalışmadığından eklenti bu token'ı
  * gönderir. Düz metin YALNIZ üretim anında bir kez gösterilir; DB'de yalnız

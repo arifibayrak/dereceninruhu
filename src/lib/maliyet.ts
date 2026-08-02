@@ -15,12 +15,31 @@
 export const USD_TRY = 47.4;
 export const USD_TRY_TARIHI = "2026-08-02";
 
-/** Model fiyatları — milyon jeton başına USD (Anthropic/OpenAI ilan listesi). */
+/**
+ * Model fiyatları — milyon jeton başına USD (Anthropic/OpenAI ilan listesi).
+ *
+ * Hem OpenRouter slug'ları (uygulamanın kendi çağrıları) hem düz Anthropic
+ * kimlikleri (Claude Code geliştirme kayıtları) burada; iki taraf da aynı
+ * fiyat tablosundan geçsin diye.
+ */
 export const MODEL_FIYAT: Record<string, { girdi: number; cikti: number }> = {
   "anthropic/claude-haiku-4.5": { girdi: 1, cikti: 5 },
   "anthropic/claude-sonnet-4.6": { girdi: 3, cikti: 15 },
   "anthropic/claude-opus-4.8": { girdi: 5, cikti: 25 },
+  // Geliştirme (Claude Code) tarafı:
+  "claude-haiku-4-5": { girdi: 1, cikti: 5 },
+  "claude-sonnet-4-6": { girdi: 3, cikti: 15 },
+  "claude-sonnet-5": { girdi: 3, cikti: 15 },
+  "claude-opus-4-6": { girdi: 5, cikti: 25 },
+  "claude-opus-4-7": { girdi: 5, cikti: 25 },
+  "claude-opus-4-8": { girdi: 5, cikti: 25 },
+  "claude-opus-5": { girdi: 5, cikti: 25 },
+  "claude-fable-5": { girdi: 10, cikti: 50 },
 };
+
+/** Önbellek YAZMA çarpanları: 5 dakikalık %125, 1 saatlik %200 (girdi fiyatı üzerinden). */
+export const ONBELLEK_YAZMA_5DK = 1.25;
+export const ONBELLEK_YAZMA_1SA = 2;
 
 /** Ses→metin: dakika başına USD (OpenRouter, whisper-large-v3-turbo). */
 export const SES_FIYAT_DAKIKA = 0.0015;
@@ -38,6 +57,9 @@ export type Kullanim = {
   outputTokens: number;
   cachedInputTokens: number;
   audioSeconds: number | null;
+  /** Önbelleğe YAZILAN jetonlar — yalnız geliştirme kayıtlarında dolu. */
+  cacheWrite5mTokens?: number;
+  cacheWrite1hTokens?: number;
 };
 
 /** Tek bir kullanım satırının USD maliyeti. */
@@ -50,6 +72,8 @@ export function kullanimUsd(k: Kullanim): number {
   return (
     (k.inputTokens / MILYON) * f.girdi +
     (k.cachedInputTokens / MILYON) * f.girdi * ONBELLEK_CARPANI +
+    ((k.cacheWrite5mTokens ?? 0) / MILYON) * f.girdi * ONBELLEK_YAZMA_5DK +
+    ((k.cacheWrite1hTokens ?? 0) / MILYON) * f.girdi * ONBELLEK_YAZMA_1SA +
     (k.outputTokens / MILYON) * f.cikti
   );
 }

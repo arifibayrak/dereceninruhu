@@ -13,6 +13,7 @@ import {
   getAiKullanim,
   getIlkKullanimTarihi,
   getOlcek,
+  getSonGelistirmeOlcumu,
 } from "@/db/queries/maliyet";
 import { formatInt, formatKurus } from "@/lib/format";
 import { trtMonthRange } from "@/lib/muhasebe";
@@ -38,6 +39,15 @@ const dateFmt = new Intl.DateTimeFormat("tr-TR", {
   day: "numeric",
   month: "long",
   year: "numeric",
+});
+
+/** Son ölçüm anı — gün + saat (ne kadar tazelendiği görülsün). */
+const dtFmt = new Intl.DateTimeFormat("tr-TR", {
+  timeZone: "Europe/Istanbul",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
 });
 
 /** USD tutarını TL olarak yazar (proje kuralı: para = kuruş üzerinden formatlanır). */
@@ -80,10 +90,11 @@ export default async function MaliyetPage() {
 
   const now = new Date();
   const { start, end } = trtMonthRange(now);
-  const [kullanim, olcek, ilkKayit] = await Promise.all([
+  const [kullanim, olcek, ilkKayit, gelistirme] = await Promise.all([
     getAiKullanim(start, end),
     getOlcek(),
     getIlkKullanimTarihi(),
+    getSonGelistirmeOlcumu(),
   ]);
 
   const aiUsd = kullanim.reduce((t, k) => t + k.usd, 0);
@@ -393,68 +404,93 @@ export default async function MaliyetPage() {
       <section className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h2 className="font-heading text-lg font-semibold">
-            Geliştirme maliyeti — tek seferlik
+            Geliştirme maliyeti — bugüne kadar
           </h2>
           <p className="text-sm text-muted-foreground">
-            {dateFmt.format(new Date(GELISTIRME.baslangic))} –{" "}
-            {dateFmt.format(new Date(GELISTIRME.bitis))} arası ({GELISTIRME.gun} gün),
-            Claude Code oturum kayıtlarından sayıldı. Bu bir anlık ölçüm; canlı
-            güncellenmez.
+            {gelistirme
+              ? `${gelistirme.firstAt ? dateFmt.format(gelistirme.firstAt) : "başlangıç"} – ${gelistirme.lastAt ? dateFmt.format(gelistirme.lastAt) : "bugün"} arası tüm Claude Code oturumları. Son ölçüm: ${dtFmt.format(gelistirme.measuredAt)} — her dağıtımda kendiliğinden yenilenir.`
+              : "Henüz ölçüm yazılmadı. Bir sonraki `pnpm run deploy` sonunda bu bölüm dolacak."}
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kart
-            icon={BrainCircuitIcon}
-            etiket="Model çağrısı"
-            deger={formatInt(GELISTIRME.cagri)}
-            alt={`${formatInt(GELISTIRME.ciktiJeton)} çıktı jetonu üretildi.`}
-          />
-          <Kart
-            icon={CoinsIcon}
-            etiket="Toplam jeton"
-            deger={`${(GELISTIRME.toplamJeton / 1_000_000_000).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} mlr`}
-            alt="%98'i önbellekten okundu."
-          />
-          <Kart
-            icon={ServerIcon}
-            etiket="Nakit çıkışı"
-            deger={tl(GELISTIRME.nakitUsd)}
-            alt="Abonelik + altyapı + OpenRouter."
-          />
-          <Kart
-            icon={TrendingUpIcon}
-            etiket="Jetonun API değeri"
-            deger={tl(GELISTIRME.apiDegeriUsd)}
-            alt="Aynı jetonlar API'den alınsaydı."
-            vurgu
-          />
-        </div>
-        <div className="overflow-x-auto rounded-xl bg-card ring-1 ring-foreground/10">
-          <table className="w-full min-w-[30rem] text-sm">
-            <thead>
-              <tr className="border-b text-muted-foreground">
-                <th className="px-4 py-2.5 text-left font-medium">Model</th>
-                <th className="px-4 py-2.5 text-right font-medium">Çağrı</th>
-                <th className="px-4 py-2.5 text-right font-medium">Jeton</th>
-                <th className="px-4 py-2.5 text-right font-medium">API değeri</th>
-              </tr>
-            </thead>
-            <tbody>
-              {GELISTIRME.modeller.map((m) => (
-                <tr key={m.ad} className="border-b last:border-0">
-                  <td className="px-4 py-2.5 font-medium">{m.ad}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">
-                    {formatInt(m.cagri)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                    {formatInt(m.jeton)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">{tl(m.usd)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {gelistirme ? (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Kart
+                icon={BrainCircuitIcon}
+                etiket="Model çağrısı"
+                deger={formatInt(gelistirme.cagri)}
+                alt={`${formatInt(gelistirme.ciktiJeton)} çıktı jetonu üretildi.`}
+              />
+              <Kart
+                icon={CoinsIcon}
+                etiket="Toplam jeton"
+                deger={`${(gelistirme.toplamJeton / 1_000_000_000).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} mlr`}
+                alt="Büyük kısmı önbellekten okundu."
+              />
+              <Kart
+                icon={ServerIcon}
+                etiket="Nakit çıkışı"
+                deger={tl(GELISTIRME.nakitUsd)}
+                alt="Abonelik + altyapı. Elle tanımlı."
+              />
+              <Kart
+                icon={TrendingUpIcon}
+                etiket="Jetonun API değeri"
+                deger={tl(gelistirme.usd)}
+                alt="Aynı jetonlar API'den alınsaydı."
+                vurgu
+              />
+            </div>
+            <div className="overflow-x-auto rounded-xl bg-card ring-1 ring-foreground/10">
+              <table className="w-full min-w-[30rem] text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="px-4 py-2.5 text-left font-medium">Model</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Çağrı</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Jeton</th>
+                    <th className="px-4 py-2.5 text-right font-medium">API değeri</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gelistirme.modeller.map((m) => (
+                    <tr key={m.model} className="border-b last:border-0">
+                      <td className="px-4 py-2.5 font-medium">{m.model}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">
+                        {formatInt(m.cagri)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                        {formatInt(m.jeton)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">
+                        {tl(m.usd)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-muted/40 font-semibold">
+                    <td className="px-4 py-2.5">Toplam</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {formatInt(gelistirme.cagri)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {formatInt(gelistirme.toplamJeton)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {tl(gelistirme.usd)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <p className="rounded-xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-foreground/10">
+            Geliştirme ölçümü henüz yazılmadı. Bir sonraki dağıtımda{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+              scripts/gelistirme-maliyeti.mjs
+            </code>{" "}
+            oturum kayıtlarını tarayıp bu bölümü dolduracak.
+          </p>
+        )}
       </section>
     </div>
   );

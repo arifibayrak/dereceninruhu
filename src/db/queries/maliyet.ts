@@ -1,6 +1,11 @@
-import { and, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { aiUsageLog, enrollments, students } from "@/db/schema";
+import {
+  aiUsageLog,
+  devUsageSnapshot,
+  enrollments,
+  students,
+} from "@/db/schema";
 import { kullanimUsd, type Kullanim } from "@/lib/maliyet";
 
 export type FeatureKullanim = {
@@ -84,6 +89,72 @@ export async function getOlcek(): Promise<{ ogrenci: number; kayit: number }> {
     })
     .from(sql`(select 1) as _`);
   return { ogrenci: Number(row?.ogrenci ?? 0), kayit: Number(row?.kayit ?? 0) };
+}
+
+export type GelistirmeOlcum = {
+  measuredAt: Date;
+  firstAt: Date | null;
+  lastAt: Date | null;
+  toplamJeton: number;
+  ciktiJeton: number;
+  cagri: number;
+  usd: number;
+  modeller: { model: string; cagri: number; jeton: number; usd: number }[];
+};
+
+/**
+ * En son geliştirme ölçümü (`scripts/gelistirme-maliyeti.mjs` her dağıtımda yazar).
+ * Hiç ölçüm yoksa null — panel o zaman "henüz ölçülmedi" der.
+ */
+export async function getSonGelistirmeOlcumu(): Promise<GelistirmeOlcum | null> {
+  const db = getDb();
+  const [son] = await db
+    .select({ measuredAt: sql<number | null>`max(${devUsageSnapshot.measuredAt})` })
+    .from(devUsageSnapshot);
+  const anahtar = son?.measuredAt;
+  if (!anahtar) return null;
+
+  const rows = await db
+    .select()
+    .from(devUsageSnapshot)
+    .where(eq(devUsageSnapshot.measuredAt, new Date(Number(anahtar) * 1000)));
+  if (rows.length === 0) return null;
+
+  const modeller = rows
+    .map((r) => {
+      const jeton =
+        r.inputTokens +
+        r.outputTokens +
+        r.cacheReadTokens +
+        r.cacheWrite5mTokens +
+        r.cacheWrite1hTokens;
+      return {
+        model: r.model,
+        cagri: r.calls,
+        jeton,
+        usd: kullanimUsd({
+          model: r.model,
+          inputTokens: r.inputTokens,
+          outputTokens: r.outputTokens,
+          cachedInputTokens: r.cacheReadTokens,
+          cacheWrite5mTokens: r.cacheWrite5mTokens,
+          cacheWrite1hTokens: r.cacheWrite1hTokens,
+          audioSeconds: null,
+        }),
+      };
+    })
+    .sort((a, b) => b.usd - a.usd);
+
+  return {
+    measuredAt: rows[0].measuredAt,
+    firstAt: rows[0].firstAt,
+    lastAt: rows[0].lastAt,
+    toplamJeton: modeller.reduce((t, m) => t + m.jeton, 0),
+    ciktiJeton: rows.reduce((t, r) => t + r.outputTokens, 0),
+    cagri: modeller.reduce((t, m) => t + m.cagri, 0),
+    usd: modeller.reduce((t, m) => t + m.usd, 0),
+    modeller,
+  };
 }
 
 /** Kayıt tutulmaya ne zaman başlandı — panelde "veri bu tarihten itibaren" notu. */

@@ -127,3 +127,43 @@ describe("SABIT_GIDERLER", () => {
     }
   });
 });
+
+describe("önbellek yazma fiyatı (geliştirme kayıtları)", () => {
+  it("5 dakikalık yazma girdinin %125'i", () => {
+    expect(
+      kullanimUsd({
+        model: "claude-opus-4-8",
+        inputTokens: 0,
+        outputTokens: 0,
+        cachedInputTokens: 0,
+        cacheWrite5mTokens: 1_000_000,
+        audioSeconds: null,
+      }),
+    ).toBeCloseTo(5 * 1.25, 6);
+  });
+
+  it("1 saatlik yazma girdinin %200'ü", () => {
+    expect(
+      kullanimUsd({
+        model: "claude-opus-4-8",
+        inputTokens: 0,
+        outputTokens: 0,
+        cachedInputTokens: 0,
+        cacheWrite1hTokens: 1_000_000,
+        audioSeconds: null,
+      }),
+    ).toBeCloseTo(5 * 2, 6);
+  });
+
+  it("alanlar verilmezse maliyete eklenmez", () => {
+    expect(
+      kullanimUsd({
+        model: "claude-opus-4-8",
+        inputTokens: 1_000_000,
+        outputTokens: 0,
+        cachedInputTokens: 0,
+        audioSeconds: null,
+      }),
+    ).toBeCloseTo(5, 6);
+  });
+});
