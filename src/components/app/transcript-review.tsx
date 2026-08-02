@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckIcon, SparklesIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   applyProposal,
   rejectProposal,
@@ -127,7 +128,7 @@ export function TranscriptReview({ transcript, proposals, labels }: Props) {
 
   const runExtraction = () => {
     startTransition(async () => {
-      const res = await runTranscriptExtraction(transcript.id);
+      const res = await callAction(runTranscriptExtraction, transcript.id);
       if (res.ok) {
         toast.success(`${res.data.proposalCount} öneri çıkarıldı.`);
         router.refresh();
@@ -140,7 +141,7 @@ export function TranscriptReview({ transcript, proposals, labels }: Props) {
   const approve = (id: number) => {
     setBusyId(id);
     startTransition(async () => {
-      const res = await applyProposal(id);
+      const res = await callAction(applyProposal, id);
       if (res.ok) toast.success("Uygulandı.");
       else toast.error(res.error);
       setBusyId(null);
@@ -151,7 +152,7 @@ export function TranscriptReview({ transcript, proposals, labels }: Props) {
   const reject = (id: number) => {
     setBusyId(id);
     startTransition(async () => {
-      const res = await rejectProposal(id);
+      const res = await callAction(rejectProposal, id);
       if (res.ok) toast.success("Reddedildi.");
       else toast.error(res.error);
       setBusyId(null);

@@ -8,6 +8,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { createInvoice } from "@/actions/muhasebe";
 import { trDayKey } from "@/lib/dates";
 import { createInvoiceSchema } from "@/lib/validation-muhasebe";
@@ -83,7 +84,7 @@ export function InvoiceCreateDialog({
 
   const onSubmit = async (values: FormOutput) => {
     setSubmitting(true);
-    const res = await createInvoice(values);
+    const res = await callAction(createInvoice, values);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error);

@@ -7,6 +7,7 @@ import { GeistMono } from "geist/font/mono";
 import "@fontsource-variable/bricolage-grotesque";
 import "./globals.css";
 
+import { StaleVersionWatch } from "@/components/app/stale-version-watch";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -80,6 +81,7 @@ export default function RootLayout({
         >
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster position="top-center" />
+          <StaleVersionWatch />
         </ThemeProvider>
       </body>
     </html>

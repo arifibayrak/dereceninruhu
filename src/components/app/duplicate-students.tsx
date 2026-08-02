@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CopyCheckIcon, KeyRoundIcon, MergeIcon, PhoneIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { mergeStudents } from "@/actions/merge-students";
 import type { DuplicateGroup } from "@/db/queries/students";
 import { formatInt } from "@/lib/format";
@@ -64,7 +65,7 @@ function GroupRow({ group }: { group: DuplicateGroup }) {
   const doMerge = () => {
     startTransition(async () => {
       for (const d of drops) {
-        const res = await mergeStudents({
+        const res = await callAction(mergeStudents, {
           keepStudentId: keepId,
           dropStudentId: d.studentId,
         });

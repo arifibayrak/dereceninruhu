@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RefreshCwIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { runBillingNow } from "@/actions/muhasebe";
 import { Button } from "@/components/ui/button";
 
@@ -18,7 +19,7 @@ export function BillingRunButton() {
 
   const run = async () => {
     setBusy(true);
-    const res = await runBillingNow();
+    const res = await callAction(runBillingNow);
     setBusy(false);
     if (!res.ok) {
       toast.error(res.error);

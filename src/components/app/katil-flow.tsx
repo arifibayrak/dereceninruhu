@@ -14,6 +14,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { activateByPhone, lookupActivation } from "@/actions/katil";
 import { createLead } from "@/actions/leads";
 import { authClient } from "@/lib/auth-client";
@@ -93,7 +94,7 @@ function PhoneStep({
 
   const onSubmit = async (values: PhoneStepValues) => {
     setSubmitting(true);
-    const res = await lookupActivation(values);
+    const res = await callAction(lookupActivation, values);
     setSubmitting(false);
     if (!res.ok) {
       form.setError("phone", { message: res.error });
@@ -233,7 +234,7 @@ function ActivateStep({ phone, onBack }: { phone: string; onBack: () => void }) 
 
   const onSubmit = async (values: ActivateStepValues) => {
     setSubmitting(true);
-    const res = await activateByPhone({
+    const res = await callAction(activateByPhone, {
       phone,
       pin: values.pin,
       pinConfirm: values.pinConfirm,
@@ -348,7 +349,7 @@ function JoinStep({
 
   const onSubmit = async (values: JoinStepValues) => {
     setSubmitting(true);
-    const res = await createLead({
+    const res = await callAction(createLead, {
       name: values.name,
       phone,
       exam: values.exam,

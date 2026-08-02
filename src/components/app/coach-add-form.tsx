@@ -6,6 +6,7 @@ import { UserPlusIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { createCoach } from "@/actions/setup";
 import { createCoachSchema, type CreateCoachInput } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export function CoachAddForm({
 
   const onSubmit = async (values: CreateCoachInput) => {
     setSubmitting(true);
-    const res = await createCoach(values);
+    const res = await callAction(createCoach, values);
     setSubmitting(false);
     if (!res.ok) {
       if (res.fieldErrors) {

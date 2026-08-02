@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   deleteExtensionToken,
   mintExtensionToken,
@@ -53,7 +54,7 @@ export function ExtensionTokensManager({
 
   const create = () => {
     startTransition(async () => {
-      const res = await mintExtensionToken(label.trim() || undefined);
+      const res = await callAction(mintExtensionToken, label.trim() || undefined);
       if (res.ok) {
         setFreshToken(res.data.token);
         setLabel("");
@@ -67,7 +68,7 @@ export function ExtensionTokensManager({
 
   const revoke = (id: number) => {
     startTransition(async () => {
-      const res = await revokeExtensionToken(id);
+      const res = await callAction(revokeExtensionToken, id);
       if (res.ok) {
         toast.success("Token iptal edildi.");
         router.refresh();
@@ -79,7 +80,7 @@ export function ExtensionTokensManager({
 
   const remove = (id: number) => {
     startTransition(async () => {
-      const res = await deleteExtensionToken(id);
+      const res = await callAction(deleteExtensionToken, id);
       if (res.ok) {
         toast.success("Token silindi.");
         router.refresh();

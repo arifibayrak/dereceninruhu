@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   deleteMessageTemplate,
   upsertMessageTemplate,
@@ -115,7 +116,7 @@ export function TemplateManager({
   const save = async () => {
     if (!draft) return;
     setSaving(true);
-    const res = await upsertMessageTemplate(draft);
+    const res = await callAction(upsertMessageTemplate, draft);
     setSaving(false);
     if (!res.ok) {
       toast.error(firstError(res));
@@ -128,7 +129,7 @@ export function TemplateManager({
 
   const remove = async (t: MessageTemplate) => {
     if (!window.confirm(`"${t.label}" şablonu silinsin mi?`)) return;
-    const res = await deleteMessageTemplate(t.id);
+    const res = await callAction(deleteMessageTemplate, t.id);
     if (!res.ok) {
       toast.error(res.error);
       return;

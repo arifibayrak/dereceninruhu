@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { updateMyProfile, updateStudent } from "@/actions/students";
 import {
   updateStudentProfileSchema,
@@ -80,8 +81,8 @@ export function StudentProfileForm({
     setSubmitting(true);
     const res =
       variant === "coach"
-        ? await updateStudent(studentId as number, values)
-        : await updateMyProfile(values);
+        ? await callAction(updateStudent, studentId as number, values)
+        : await callAction(updateMyProfile, values);
     setSubmitting(false);
 
     if (!res.ok) {

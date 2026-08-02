@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { PencilIcon, PlusIcon, Trash2Icon, TrophyIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   deleteFaq,
   deletePackage,
@@ -153,7 +154,7 @@ export function TestimonialManager({ rows }: { rows: TestimonialRow[] }) {
   const save = async () => {
     if (!draft) return;
     setSaving(true);
-    const res = await upsertTestimonial({
+    const res = await callAction(upsertTestimonial, {
       id: draft.id,
       studentName: draft.studentName,
       exam: draft.exam,
@@ -178,7 +179,7 @@ export function TestimonialManager({ rows }: { rows: TestimonialRow[] }) {
 
   const remove = async (row: TestimonialRow) => {
     if (!window.confirm(`"${row.studentName}" yorumu silinsin mi?`)) return;
-    const res = await deleteTestimonial(row.id);
+    const res = await callAction(deleteTestimonial, row.id);
     if (!res.ok) {
       toast.error(res.error);
       return;
@@ -441,7 +442,7 @@ function ProofImageField({
     setUploading(true);
     const fd = new FormData();
     fd.append("file", file);
-    const res = await uploadProfileImage(fd);
+    const res = await callAction(uploadProfileImage, fd);
     setUploading(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -547,7 +548,7 @@ export function ResourceLinkManager({ rows }: { rows: ResourceLinkRow[] }) {
   const save = async () => {
     if (!draft) return;
     setSaving(true);
-    const res = await upsertResourceLink({
+    const res = await callAction(upsertResourceLink, {
       id: draft.id,
       category: draft.category,
       title: draft.title,
@@ -571,7 +572,7 @@ export function ResourceLinkManager({ rows }: { rows: ResourceLinkRow[] }) {
 
   const remove = async (row: ResourceLinkRow) => {
     if (!window.confirm(`"${row.title}" kaynağı silinsin mi?`)) return;
-    const res = await deleteResourceLink(row.id);
+    const res = await callAction(deleteResourceLink, row.id);
     if (!res.ok) {
       toast.error(res.error);
       return;
@@ -582,7 +583,7 @@ export function ResourceLinkManager({ rows }: { rows: ResourceLinkRow[] }) {
 
   const seed = async () => {
     setSeeding(true);
-    const res = await seedResourceLinks();
+    const res = await callAction(seedResourceLinks);
     setSeeding(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -870,7 +871,7 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
       return;
     }
     setSaving(true);
-    const res = await upsertPackage({
+    const res = await callAction(upsertPackage, {
       id: draft.id,
       name: draft.name,
       priceKurus,
@@ -894,7 +895,7 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
 
   const remove = async (row: PackageRow) => {
     if (!window.confirm(`"${row.name}" paketi silinsin mi?`)) return;
-    const res = await deletePackage(row.id);
+    const res = await callAction(deletePackage, row.id);
     if (!res.ok) {
       toast.error(res.error);
       return;
@@ -1089,7 +1090,7 @@ export function FaqManager({ rows }: { rows: FaqRow[] }) {
 
   const addMissing = async () => {
     setSeeding(true);
-    const res = await seedMissingFaqs();
+    const res = await callAction(seedMissingFaqs);
     setSeeding(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -1102,7 +1103,7 @@ export function FaqManager({ rows }: { rows: FaqRow[] }) {
   const save = async () => {
     if (!draft) return;
     setSaving(true);
-    const res = await upsertFaq({
+    const res = await callAction(upsertFaq, {
       id: draft.id,
       question: draft.question,
       answer: draft.answer,
@@ -1121,7 +1122,7 @@ export function FaqManager({ rows }: { rows: FaqRow[] }) {
 
   const remove = async (row: FaqRow) => {
     if (!window.confirm("Bu soru silinsin mi?")) return;
-    const res = await deleteFaq(row.id);
+    const res = await callAction(deleteFaq, row.id);
     if (!res.ok) {
       toast.error(res.error);
       return;

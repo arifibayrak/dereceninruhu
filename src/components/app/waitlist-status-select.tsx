@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { updateWaitlistStatus } from "@/actions/waitlist";
 import type { WaitlistStatus } from "@/lib/validation";
 import {
@@ -37,7 +38,7 @@ export function WaitlistStatusSelect({
     const previous = value;
     setValue(next);
     startTransition(async () => {
-      const res = await updateWaitlistStatus({ entryId, status: next });
+      const res = await callAction(updateWaitlistStatus, { entryId, status: next });
       if (!res.ok) {
         setValue(previous);
         toast.error(res.error);

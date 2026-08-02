@@ -6,6 +6,7 @@ import { CircleCheckIcon, SendIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { createCoachApplication } from "@/actions/coach-applications";
 import {
   createCoachApplicationSchema,
@@ -55,7 +56,7 @@ export function CoachApplicationForm() {
 
   const onSubmit = async (values: CreateCoachApplicationInput) => {
     setSubmitting(true);
-    const res = await createCoachApplication(values);
+    const res = await callAction(createCoachApplication, values);
     setSubmitting(false);
     if (!res.ok) {
       if (res.fieldErrors) {

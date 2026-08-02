@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { MicIcon, SquareIcon, SaveIcon, PlayIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   appendLiveTranscript,
   createLiveTranscript,
@@ -512,13 +513,13 @@ export function LiveTranscribe({
       try {
         let tid = transcriptId ?? null;
         if (tid != null) {
-          const res = await appendLiveTranscript({
+          const res = await callAction(appendLiveTranscript, {
             transcriptId: tid,
             addedText: fullText,
           });
           if (!res.ok) throw new Error(res.error);
         } else {
-          const res = await createLiveTranscript({
+          const res = await callAction(createLiveTranscript, {
             enrollmentId,
             coachingSessionId: coachingSessionId ?? undefined,
             rawText: fullText,

@@ -11,6 +11,7 @@ import {
   subjects,
   weeklyPlans,
 } from "@/db/schema";
+import { chunkForD1, selectInChunks } from "@/lib/d1";
 import { addDays, mondayOf, trDayKey } from "@/lib/dates";
 import { isDayColorKey, serializeSubjectIds } from "@/lib/plan-layout";
 import { serializeResourceIds } from "@/lib/plan-resources";
@@ -25,6 +26,7 @@ import {
   copyPreviousWeekSchema,
   planTaskCreateSchema,
   planTaskIdSchema,
+  planTasksCreateSchema,
   planTaskUpdateSchema,
   publishPlanSchema,
   savePlanDayLayoutSchema,
@@ -68,18 +70,37 @@ async function taskResourceIdsFor(
       ...(input.resourceId != null ? [input.resourceId] : []),
     ]),
   ];
-  if (wanted.length === 0) return [];
-  const rows = await db
-    .select({ id: resources.id })
-    .from(resources)
-    .where(
-      and(
-        eq(resources.enrollmentId, enrollmentId),
-        inArray(resources.id, wanted),
-      ),
-    );
-  const owned = new Set(rows.map((r) => r.id));
+  const owned = await ownedResourceIdsFor(db, enrollmentId, wanted);
   return wanted.filter((id) => owned.has(id));
+}
+
+/**
+ * Verilen id'lerden GERÇEKTEN bu kayda ait olanlar. Liste toplu yazımlarda
+ * uzayabildiği için sorgu D1'in parametre sınırına göre bölünür.
+ */
+async function ownedResourceIdsFor(
+  db: DB,
+  enrollmentId: number,
+  ids: readonly number[],
+): Promise<Set<number>> {
+  const wanted = [...new Set(ids)];
+  if (wanted.length === 0) return new Set();
+  const rows = await selectInChunks(
+    wanted,
+    (part) =>
+      db
+        .select({ id: resources.id })
+        .from(resources)
+        .where(
+          and(
+            eq(resources.enrollmentId, enrollmentId),
+            inArray(resources.id, part),
+          ),
+        ),
+    // `enrollment_id = ?` sabit parametresi.
+    1,
+  );
+  return new Set(rows.map((r) => r.id));
 }
 
 /**
@@ -256,6 +277,107 @@ export async function addPlanTask(
     await autoPublishCoachPlan(db, { ...plan, proposedByStudent });
 
     return { ok: true, data: { taskId: task.id, planId: plan.id } };
+  });
+}
+
+/**
+ * Görevleri TEK ÇAĞRIDA ekler (AI taslağının onaylanması gibi toplu yazımlar).
+ *
+ * `addPlanTask`'ı döngüde çağırmak istemciden görev başına ayrı bir Server
+ * Action isteği demekti: 40 konuluk bir taslak 40 HTTP turu + her turda ~6 D1
+ * sorgusu ediyordu; telefonda dakikalarca "kaydediliyor"da kalıyor, aradaki tek
+ * bir kopma da geri kalan konuları düşürüyordu. Burada yetki/plan/slot bir kez
+ * çözülür, satırlar D1'in parametre sınırına göre parça parça yazılır.
+ */
+export async function addPlanTasks(
+  input: unknown,
+): Promise<ActionResult<{ added: number; planId: number }>> {
+  return guarded(async () => {
+    const user = await requireUser();
+    const parsed = planTasksCreateSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
+    }
+    const v = parsed.data;
+    const db = getDb();
+
+    const enrollment = await db.query.enrollments.findFirst({
+      where: eq(enrollments.id, v.enrollmentId),
+    });
+    if (!enrollment) return actionError("Kayıt bulunamadı.");
+
+    const weekStart = mondayOf(v.weekStart);
+    const existing = await db.query.weeklyPlans.findFirst({
+      where: and(
+        eq(weeklyPlans.enrollmentId, v.enrollmentId),
+        eq(weeklyPlans.weekStart, weekStart),
+      ),
+    });
+    await assertPlanWritable(db, v.enrollmentId, user, existing ?? null);
+
+    const plan =
+      existing ?? (await getOrCreateWeeklyPlan(db, v.enrollmentId, v.weekStart));
+    const proposedByStudent = plan.proposedByStudent || isStudentRole(user);
+    if (isStudentRole(user) && !plan.proposedByStudent) {
+      await db
+        .update(weeklyPlans)
+        .set({ proposedByStudent: true, updatedAt: new Date() })
+        .where(eq(weeklyPlans.id, plan.id));
+    }
+
+    // Gün başına sıradaki slot — tek sorguda, sonra bellekte ilerletilir.
+    const slotRows = await db
+      .select({ day: planTasks.day, max: sql<number | null>`max(${planTasks.slot})` })
+      .from(planTasks)
+      .where(eq(planTasks.weeklyPlanId, plan.id))
+      .groupBy(planTasks.day);
+    const nextSlot = new Map<number, number>();
+    for (const r of slotRows) {
+      // Haftalık konular (`day = null`) tek kovada toplanır; anahtar 0.
+      nextSlot.set(r.day ?? 0, Number(r.max ?? -1) + 1);
+    }
+
+    // Kaynak sahipliği bir kez doğrulanır — görev başına sorgu atmaya gerek yok.
+    const ownedResourceIds = await ownedResourceIdsFor(
+      db,
+      v.enrollmentId,
+      v.tasks.flatMap((t) => [
+        ...(t.resourceIds ?? []),
+        ...(t.resourceId != null ? [t.resourceId] : []),
+      ]),
+    );
+
+    const rows = v.tasks.map((t) => {
+      const day = t.day ?? null;
+      const bucket = day ?? 0;
+      const slot = nextSlot.get(bucket) ?? 0;
+      nextSlot.set(bucket, slot + 1);
+      const resourceIds = [
+        ...new Set([
+          ...(t.resourceIds ?? []),
+          ...(t.resourceId != null ? [t.resourceId] : []),
+        ]),
+      ].filter((id) => ownedResourceIds.has(id));
+      return {
+        weeklyPlanId: plan.id,
+        day,
+        slot,
+        subjectId: t.subjectId ?? null,
+        resourceId: resourceIds[0] ?? null,
+        resourceIds: serializeResourceIds(resourceIds),
+        description: clean(t.description),
+        targetQuestions: t.targetQuestions ?? null,
+      };
+    });
+
+    // Satır başına 10 `?` — D1'in 100 parametre sınırı (bkz. param-budget.test).
+    for (const part of chunkForD1(rows, 10)) {
+      await db.insert(planTasks).values(part);
+    }
+
+    await autoPublishCoachPlan(db, { ...plan, proposedByStudent });
+
+    return { ok: true, data: { added: rows.length, planId: plan.id } };
   });
 }
 

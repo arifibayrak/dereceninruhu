@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   createPlanFromSession,
   createSession,
@@ -92,7 +93,7 @@ export function SessionsPanel({
 
   const setStatus = (s: SessionItem, status: "held" | "missed") => {
     startTransition(async () => {
-      const res = await updateSession({ sessionId: s.id, status });
+      const res = await callAction(updateSession, { sessionId: s.id, status });
       if (res.ok) {
         toast.success(
           status === "held"
@@ -110,7 +111,7 @@ export function SessionsPanel({
     startTransition(async () => {
       const base = s.scheduledAtMs ? new Date(s.scheduledAtMs) : new Date();
       const weekStart = trDayKey(addDays(mondayOf(base), 7));
-      const res = await createPlanFromSession({ sessionId: s.id, weekStart });
+      const res = await callAction(createPlanFromSession, { sessionId: s.id, weekStart });
       if (res.ok) {
         toast.success("Haftalık program oluşturuldu", {
           description: "Görev ekler eklemez program öğrenciye açılır.",
@@ -387,13 +388,13 @@ function SessionForm({
     setSaving(true);
     const res =
       mode === "create"
-        ? await createSession({
+        ? await callAction(createSession, {
             enrollmentId,
             scheduledAt,
             studentVisibleNote: note,
             meetingUrl,
           })
-        : await updateSession({
+        : await callAction(updateSession, {
             sessionId: session!.id,
             scheduledAt,
             studentVisibleNote: note,

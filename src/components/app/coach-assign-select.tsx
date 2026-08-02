@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { assignStudentCoach } from "@/actions/admin";
 import {
   Select,
@@ -43,7 +44,7 @@ export function CoachAssignSelect({
     if (next === previous) return;
     setValue(next);
     startTransition(async () => {
-      const res = await assignStudentCoach({
+      const res = await callAction(assignStudentCoach, {
         enrollmentId,
         coachUserId: next === UNASSIGNED ? null : next,
       });

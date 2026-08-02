@@ -8,6 +8,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { upsertFeePlan } from "@/actions/muhasebe";
 import { trDayKey } from "@/lib/dates";
 import {
@@ -92,7 +93,7 @@ export function FeePlanDialog({
 
   const onSubmit = async (values: FormOutput) => {
     setSubmitting(true);
-    const res = await upsertFeePlan(values);
+    const res = await callAction(upsertFeePlan, values);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error);

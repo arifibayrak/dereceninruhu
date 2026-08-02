@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { logResourceQuestions } from "@/actions/konular";
 import { formatInt } from "@/lib/format";
 
@@ -49,7 +50,7 @@ export function ResourceQuestionLogger({
     const value = Math.max(0, Math.min(5000, Math.round(raw) || 0));
     setCounts((c) => ({ ...c, [resourceId]: value }));
     startTransition(async () => {
-      const res = await logResourceQuestions({
+      const res = await callAction(logResourceQuestions, {
         enrollmentId,
         resourceId,
         logDate: dayKey,

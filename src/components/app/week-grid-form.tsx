@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { upsertQuestionLogs } from "@/actions/tracking";
 import { DAY_NAMES_TR, DAY_NAMES_TR_SHORT } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
@@ -191,7 +192,7 @@ export function WeekGridForm({
           };
         });
       if (entries.length === 0) continue;
-      const res = await upsertQuestionLogs({
+      const res = await callAction(upsertQuestionLogs, {
         enrollmentId,
         logDate: dayKey,
         entries,

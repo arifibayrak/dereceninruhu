@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { updateCoachApplicationStatus } from "@/actions/coach-applications";
 import type { CoachApplicationStatus } from "@/lib/validation";
 import {
@@ -38,7 +39,7 @@ export function ApplicationStatusSelect({
     const previous = value;
     setValue(next);
     startTransition(async () => {
-      const res = await updateCoachApplicationStatus({
+      const res = await callAction(updateCoachApplicationStatus, {
         applicationId,
         status: next,
       });

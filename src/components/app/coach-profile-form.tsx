@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { saveMyProfile, uploadProfileImage } from "@/actions/cms";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,7 +54,7 @@ function ImageField({
     const fd = new FormData();
     fd.append("file", file);
     setUploading(true);
-    const res = await uploadProfileImage(fd);
+    const res = await callAction(uploadProfileImage, fd);
     setUploading(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -162,7 +163,7 @@ export function CoachProfileForm({ profile }: { profile: CoachProfileValues }) {
 
   const save = async () => {
     setSaving(true);
-    const res = await saveMyProfile({
+    const res = await callAction(saveMyProfile, {
       displayName: values.displayName,
       title: values.title,
       location: values.location,

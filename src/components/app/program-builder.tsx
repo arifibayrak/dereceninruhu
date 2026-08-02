@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   addPlanTask,
   copyPreviousWeekPlan,
@@ -193,7 +194,7 @@ export function ProgramBuilder({
 
   const saveMeta = async () => {
     setSavingMeta(true);
-    const res = await upsertWeeklyPlan({
+    const res = await callAction(upsertWeeklyPlan, {
       enrollmentId,
       weekStart: weekKey,
       motto,
@@ -211,7 +212,7 @@ export function ProgramBuilder({
   const publish = async () => {
     if (!plan) return;
     setPublishing(true);
-    const res = await publishPlan({ planId: plan.id });
+    const res = await callAction(publishPlan, { planId: plan.id });
     setPublishing(false);
     if (res.ok) {
       toast.success("Öğrencinin önerisi onaylandı 🎉", {
@@ -225,7 +226,7 @@ export function ProgramBuilder({
 
   const copyPrevious = async () => {
     setCopying(true);
-    const res = await copyPreviousWeekPlan({ enrollmentId, weekStart: weekKey });
+    const res = await callAction(copyPreviousWeekPlan, { enrollmentId, weekStart: weekKey });
     setCopying(false);
     if (res.ok) {
       toast.success(`${res.data.added} konu geçen haftadan kopyalandı`);
@@ -237,7 +238,7 @@ export function ProgramBuilder({
 
   const toggleTask = (task: BuilderTask) => {
     startToggle(async () => {
-      const res = await togglePlanTaskDone({
+      const res = await callAction(togglePlanTaskDone, {
         taskId: task.id,
         isDone: !task.isDone,
       });
@@ -248,7 +249,7 @@ export function ProgramBuilder({
 
   const removeTask = (task: BuilderTask) => {
     startToggle(async () => {
-      const res = await deletePlanTask({ taskId: task.id });
+      const res = await callAction(deletePlanTask, { taskId: task.id });
       if (res.ok) {
         toast.success("Görev silindi");
         router.refresh();
@@ -821,7 +822,7 @@ function NoteConverter({
     setSaving(true);
     let failed = 0;
     for (const row of picked) {
-      const res = await addPlanTask({
+      const res = await callAction(addPlanTask, {
         enrollmentId,
         weekStart: weekKey,
         day: row.day,
@@ -973,8 +974,8 @@ function TaskForm({
     };
     setSaving(true);
     const res = editTask
-      ? await updatePlanTask({ taskId: editTask.id, ...shared })
-      : await addPlanTask({ enrollmentId, weekStart: weekKey, ...shared });
+      ? await callAction(updatePlanTask, { taskId: editTask.id, ...shared })
+      : await callAction(addPlanTask, { enrollmentId, weekStart: weekKey, ...shared });
     setSaving(false);
     if (res.ok) {
       toast.success(editTask ? "Görev güncellendi" : "Görev eklendi");

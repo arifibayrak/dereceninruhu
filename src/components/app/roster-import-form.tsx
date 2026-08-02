@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { importRoster, type ImportSummary } from "@/actions/roster-import";
 import { formatInt } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export function RosterImportForm() {
 
   const runPreview = async () => {
     setLoading("preview");
-    const res = await importRoster({ csv, commit: false });
+    const res = await callAction(importRoster, { csv, commit: false });
     setLoading(null);
     if (!res.ok) {
       toast.error(res.error);
@@ -59,7 +60,7 @@ export function RosterImportForm() {
   const runCommit = async () => {
     setConfirmOpen(false);
     setLoading("commit");
-    const res = await importRoster({ csv, commit: true });
+    const res = await callAction(importRoster, { csv, commit: true });
     setLoading(null);
     if (!res.ok) {
       toast.error(res.error);

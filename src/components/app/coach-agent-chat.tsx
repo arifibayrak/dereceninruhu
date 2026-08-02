@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { CheckIcon, SendIcon, SparklesIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   confirmCoachAgentWrite,
   rejectCoachAgentWrite,
@@ -50,7 +51,7 @@ export function CoachAgentChat({
     scrollToEnd();
     startTransition(async () => {
       try {
-        const res = await sendCoachAgentMessage({ threadId, text: trimmed });
+        const res = await callAction(sendCoachAgentMessage, { threadId, text: trimmed });
         if (!res.ok) {
           toast.error(res.error);
           return;
@@ -72,7 +73,7 @@ export function CoachAgentChat({
 
   const confirm = (w: PendingWrite) => {
     startTransition(async () => {
-      const res = await confirmCoachAgentWrite({
+      const res = await callAction(confirmCoachAgentWrite, {
         threadId: threadId!,
         toolName: w.toolName,
         argsJson: w.argsJson,
@@ -92,7 +93,7 @@ export function CoachAgentChat({
 
   const reject = (w: PendingWrite) => {
     startTransition(async () => {
-      await rejectCoachAgentWrite({
+      await callAction(rejectCoachAgentWrite, {
         threadId: threadId!,
         toolName: w.toolName,
         argsJson: w.argsJson,

@@ -8,6 +8,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { createStudent, type CreatedStudent } from "@/actions/students";
 import {
   createStudentSchema,
@@ -114,7 +115,7 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
 
   const onSubmit = async (values: CreateStudentInput) => {
     setSubmitting(true);
-    const res = await createStudent(values);
+    const res = await callAction(createStudent, values);
     setSubmitting(false);
     if (!res.ok) {
       if (res.fieldErrors) {

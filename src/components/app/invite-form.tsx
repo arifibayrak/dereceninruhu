@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { acceptInvite } from "@/actions/invite";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ export function InviteForm({ inviteCode }: { inviteCode: string }) {
 
   const onSubmit = async (values: PinFormValues) => {
     setSubmitting(true);
-    const res = await acceptInvite({
+    const res = await callAction(acceptInvite, {
       inviteCode,
       pin: values.pin,
       pinConfirm: values.pinConfirm,

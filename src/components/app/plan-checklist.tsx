@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2Icon, ChevronRightIcon, CircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { togglePlanTaskDone } from "@/actions/plans";
 import { formatInt } from "@/lib/format";
 import { DAY_COLORS, type DayColorKey } from "@/lib/plan-layout";
@@ -40,7 +41,7 @@ function useTaskToggle() {
   const toggle = async (t: ChecklistTask) => {
     const next = !doneOf(t);
     setOverrides((prev) => ({ ...prev, [t.id]: next }));
-    const res = await togglePlanTaskDone({ taskId: t.id, isDone: next });
+    const res = await callAction(togglePlanTaskDone, { taskId: t.id, isDone: next });
     if (!res.ok) {
       setOverrides((prev) => ({ ...prev, [t.id]: !next }));
       toast.error(res.error);

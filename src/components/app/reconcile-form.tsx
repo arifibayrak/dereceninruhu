@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   commitReconciliation,
   previewStatement,
@@ -73,7 +74,7 @@ export function ReconcileForm() {
 
   const runPreview = async () => {
     setLoading("preview");
-    const res = await previewStatement({ text, mode });
+    const res = await callAction(previewStatement, { text, mode });
     setLoading(null);
     if (!res.ok) {
       toast.error(res.error);
@@ -104,7 +105,7 @@ export function ReconcileForm() {
   const runCommit = async () => {
     setConfirmOpen(false);
     setLoading("commit");
-    const res = await commitReconciliation({
+    const res = await callAction(commitReconciliation, {
       rows: selected.map((r) => ({
         enrollmentId: r.enrollmentId,
         amountKurus: r.amountKurus,

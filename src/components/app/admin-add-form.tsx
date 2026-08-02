@@ -6,6 +6,7 @@ import { ShieldPlusIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { createAdmin } from "@/actions/admin";
 import {
   createAdminSchema,
@@ -31,7 +32,7 @@ export function AdminAddForm() {
 
   const onSubmit = async (values: CreateAdminInput) => {
     setSubmitting(true);
-    const res = await createAdmin(values);
+    const res = await callAction(createAdmin, values);
     setSubmitting(false);
     if (!res.ok) {
       if (res.fieldErrors) {

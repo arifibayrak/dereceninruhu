@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { EyeOffIcon, RotateCcwIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { hideStudent, restoreStudent } from "@/actions/students";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +37,7 @@ export function HideStudentButton({
 
   const doHide = () => {
     startTransition(async () => {
-      const res = await hideStudent({ studentId });
+      const res = await callAction(hideStudent, { studentId });
       if (!res.ok) {
         toast.error(res.error);
         return;
@@ -104,7 +105,7 @@ export function RestoreStudentButton({
 
   const doRestore = () => {
     startTransition(async () => {
-      const res = await restoreStudent({ studentId });
+      const res = await callAction(restoreStudent, { studentId });
       if (!res.ok) {
         toast.error(res.error);
         return;

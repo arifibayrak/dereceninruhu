@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { deleteStudyLog } from "@/actions/study";
 import { Button } from "@/components/ui/button";
 
@@ -14,7 +15,7 @@ export function StudyLogDelete({ id }: { id: number }) {
 
   const onDelete = async () => {
     setBusy(true);
-    const res = await deleteStudyLog(id);
+    const res = await callAction(deleteStudyLog, id);
     setBusy(false);
     if (!res.ok) {
       toast.error(res.error);

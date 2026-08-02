@@ -6,6 +6,7 @@ import { MicIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { fileToWavChunks } from "@/lib/audio-wav";
+import { callAction } from "@/lib/action-client";
 import {
   createAudioTranscript,
   saveAudioTranscript,
@@ -41,7 +42,7 @@ export function AudioTranscribe({
       const chunks = await fileToWavChunks(file, 45, setProgress);
       if (chunks.length === 0) throw new Error("Ses çok kısa ya da boş.");
 
-      const created = await createAudioTranscript({
+      const created = await callAction(createAudioTranscript, {
         enrollmentId,
         coachingSessionId: coachingSessionId ?? undefined,
         consentGranted: true,
@@ -52,7 +53,7 @@ export function AudioTranscribe({
       const texts: string[] = [];
       for (let i = 0; i < chunks.length; i++) {
         setProgress(`Çevriliyor ${i + 1}/${chunks.length}…`);
-        const res = await transcribeAudioChunk({
+        const res = await callAction(transcribeAudioChunk, {
           transcriptId,
           chunkIndex: i,
           dataBase64: chunks[i],
@@ -62,7 +63,7 @@ export function AudioTranscribe({
       }
 
       setProgress("Kaydediliyor…");
-      const saved = await saveAudioTranscript({
+      const saved = await callAction(saveAudioTranscript, {
         transcriptId,
         fullText: texts.join("\n"),
       });

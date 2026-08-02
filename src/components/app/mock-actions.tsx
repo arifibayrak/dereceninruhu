@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { deleteMock, loadMockForEdit } from "@/actions/tracking";
 import type { MockEditPayload } from "@/db/queries/tracking";
 import { MockForm } from "@/components/app/mock-form";
@@ -43,7 +44,7 @@ export function MockActions({
     // Her açılışta taze çek — düzenleme sonrası eski değerleri göstermemek için.
     setPayload(null);
     setEditOpen(true);
-    const res = await loadMockForEdit(mockExamId);
+    const res = await callAction(loadMockForEdit, mockExamId);
     if (!res.ok) {
       toast.error(res.error);
       setEditOpen(false);
@@ -54,7 +55,7 @@ export function MockActions({
 
   const remove = async () => {
     setBusy(true);
-    const res = await deleteMock(mockExamId);
+    const res = await callAction(deleteMock, mockExamId);
     setBusy(false);
     if (!res.ok) {
       toast.error(res.error);

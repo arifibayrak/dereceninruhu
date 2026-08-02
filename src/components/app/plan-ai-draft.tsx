@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { addPlanTask, upsertWeeklyPlan } from "@/actions/plans";
+import { callAction } from "@/lib/action-client";
+import { addPlanTasks, upsertWeeklyPlan } from "@/actions/plans";
 import { generatePlanDraft } from "@/actions/plan-ai";
 import type { ProgramDraft } from "@/lib/ai/plan-generate";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,7 @@ export function PlanAiDraft({
 
   const generate = async () => {
     setLoading(true);
-    const res = await generatePlanDraft({
+    const res = await callAction(generatePlanDraft, {
       studentId,
       weekStart: weekKey,
       focus,
@@ -99,31 +100,32 @@ export function PlanAiDraft({
     setApplying(true);
     // Motto/not (koç notu yalnız koç önerisinde yazılır).
     if (draft.motto || (isCoach && draft.note)) {
-      await upsertWeeklyPlan({
+      await callAction(upsertWeeklyPlan, {
         enrollmentId,
         weekStart: weekKey,
         motto: draft.motto ?? "",
         coachNote: isCoach ? (draft.note ?? "") : "",
       });
     }
-    let added = 0;
-    for (const t of picked) {
-      const res = await addPlanTask({
-        enrollmentId,
-        weekStart: weekKey,
+    // Konular TEK istekte yazılır — görev başına ayrı çağrı, 40 konuluk bir
+    // taslakta dakikalarca süren (ve ortasında kopabilen) bir kuyruk demekti.
+    const res = await callAction(addPlanTasks, {
+      enrollmentId,
+      weekStart: weekKey,
+      tasks: picked.map((t) => ({
         day: t.day,
         subjectId: t.subjectId,
         resourceIds: [],
         description: t.description,
         targetQuestions: t.targetQuestions,
-      });
-      if (res.ok) added++;
-    }
+      })),
+    });
     setApplying(false);
-    if (added === 0) {
-      toast.error("Konular eklenemedi.");
+    if (!res.ok) {
+      toast.error(res.error);
       return;
     }
+    const added = res.data.added;
     toast.success(`${added} konu eklendi`, {
       description: isCoach
         ? "Taslak hazır — düzenleyip yayınlayabilirsin."

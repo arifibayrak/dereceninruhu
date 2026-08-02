@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileTextIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { createPastedTranscript } from "@/actions/transcripts";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
@@ -33,7 +34,7 @@ export function TranscriptPasteForm({
       return;
     }
     startTransition(async () => {
-      const res = await createPastedTranscript({
+      const res = await callAction(createPastedTranscript, {
         enrollmentId,
         coachingSessionId: coachingSessionId ?? undefined,
         rawText: text,

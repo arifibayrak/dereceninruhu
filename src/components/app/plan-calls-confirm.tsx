@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarCheckIcon, CheckCircle2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { markCallsScheduled } from "@/actions/gorusme";
 import { Button } from "@/components/ui/button";
 
@@ -31,7 +32,7 @@ export function PlanCallsConfirm({ planned }: { planned: boolean }) {
 
   const onConfirm = async () => {
     setSubmitting(true);
-    const res = await markCallsScheduled();
+    const res = await callAction(markCallsScheduled);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error);

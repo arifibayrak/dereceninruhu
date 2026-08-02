@@ -7,6 +7,7 @@ import { SaveIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { updateMyContact } from "@/actions/setup";
 import {
   updateMyContactSchema,
@@ -45,7 +46,7 @@ export function CoachContactForm({
 
   const onSubmit = async (values: UpdateMyContactInput) => {
     setSubmitting(true);
-    const res = await updateMyContact(values);
+    const res = await callAction(updateMyContact, values);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CopyIcon, LayoutGridIcon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { copyPlanDayLayout, savePlanDayLayout } from "@/actions/plans";
 import {
   DAY_COLORS,
@@ -89,7 +90,7 @@ export function DayLayoutDialog({
 
   const save = async () => {
     setSaving(true);
-    const res = await savePlanDayLayout({ enrollmentId, days: draft });
+    const res = await callAction(savePlanDayLayout, { enrollmentId, days: draft });
     setSaving(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -105,7 +106,7 @@ export function DayLayoutDialog({
   const copy = async () => {
     if (copyFrom === 0) return;
     setCopying(true);
-    const res = await copyPlanDayLayout({
+    const res = await callAction(copyPlanDayLayout, {
       enrollmentId,
       sourceEnrollmentId: copyFrom,
     });

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CopyIcon, KeyRoundIcon, MessageCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { resetStudentPin, type PinResetResult } from "@/actions/pin";
 import { buildWaLink, waTemplates } from "@/lib/whatsapp";
 import {
@@ -57,7 +58,7 @@ export function PinResetButton({
       return;
     }
     setLoading(true);
-    const res = await resetStudentPin({ studentId, pin });
+    const res = await callAction(resetStudentPin, { studentId, pin });
     setLoading(false);
     if (!res.ok) {
       toast.error(res.error);

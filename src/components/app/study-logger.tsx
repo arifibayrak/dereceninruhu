@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { createStudyLog, uploadStudyProof } from "@/actions/study";
 import {
   elapsedOf,
@@ -274,7 +275,7 @@ function TimerPane({
       return;
     }
     setSaving(true);
-    const res = await createStudyLog({
+    const res = await callAction(createStudyLog, {
       enrollmentId,
       logDate: todayKey,
       subjectId: toSubjectId(subject),
@@ -384,7 +385,7 @@ function ManualPane({
       const fd = new FormData();
       fd.set("enrollmentId", String(enrollmentId));
       fd.set("file", file);
-      const up = await uploadStudyProof(fd);
+      const up = await callAction(uploadStudyProof, fd);
       if (!up.ok) {
         setSaving(false);
         toast.error(up.error);
@@ -393,7 +394,7 @@ function ManualPane({
       proofKey = up.data.key;
     }
 
-    const res = await createStudyLog({
+    const res = await callAction(createStudyLog, {
       enrollmentId,
       logDate: date,
       subjectId: toSubjectId(subject),

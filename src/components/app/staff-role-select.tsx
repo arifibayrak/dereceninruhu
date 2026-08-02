@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { updateUserRole } from "@/actions/admin";
 import type { StaffRole } from "@/lib/validation-admin";
 import {
@@ -39,7 +40,7 @@ export function StaffRoleSelect({
     if (next === previous) return;
     setValue(next);
     startTransition(async () => {
-      const res = await updateUserRole({ userId, role: next });
+      const res = await callAction(updateUserRole, { userId, role: next });
       if (!res.ok) {
         setValue(previous);
         toast.error(res.error);

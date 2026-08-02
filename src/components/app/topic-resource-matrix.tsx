@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { CheckIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { toggleTopicResourceDone } from "@/actions/konular";
 import { cn } from "@/lib/utils";
 import {
@@ -74,7 +75,7 @@ export function TopicResourceMatrix({
     const next = !done[key];
     setDone((prev) => ({ ...prev, [key]: next }));
     startTransition(async () => {
-      const res = await toggleTopicResourceDone({
+      const res = await callAction(toggleTopicResourceDone, {
         enrollmentId,
         topicId,
         resourceId,

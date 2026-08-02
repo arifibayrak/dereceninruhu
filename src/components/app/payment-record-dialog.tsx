@@ -8,6 +8,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { recordPayment } from "@/actions/muhasebe";
 import { trDayKey } from "@/lib/dates";
 import {
@@ -110,7 +111,7 @@ export function PaymentRecordDialog({
 
   const onSubmit = async (values: FormOutput) => {
     setSubmitting(true);
-    const res = await recordPayment(values);
+    const res = await callAction(recordPayment, values);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error);

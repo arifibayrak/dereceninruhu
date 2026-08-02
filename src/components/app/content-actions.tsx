@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CircleCheckIcon, Trash2Icon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   assignContent,
   deleteContentItem,
@@ -45,7 +46,7 @@ export function ContentAssignDialog({
 
   const save = async () => {
     setSaving(true);
-    const res = await assignContent({ contentItemId, enrollmentIds: ids });
+    const res = await callAction(assignContent, { contentItemId, enrollmentIds: ids });
     setSaving(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -106,7 +107,7 @@ export function ContentDeleteButton({
     if (!window.confirm("Bu içerik silinsin mi? Atamalar ve izlenme kayıtları da silinir."))
       return;
     startTransition(async () => {
-      const res = await deleteContentItem({ contentItemId });
+      const res = await callAction(deleteContentItem, { contentItemId });
       if (res.ok) {
         toast.success("İçerik silindi");
         router.refresh();
@@ -145,7 +146,7 @@ export function ContentViewedButton({
 
   const toggle = () => {
     startTransition(async () => {
-      const res = await toggleContentViewed({
+      const res = await callAction(toggleContentViewed, {
         contentItemId,
         enrollmentId,
         viewed: !viewed,

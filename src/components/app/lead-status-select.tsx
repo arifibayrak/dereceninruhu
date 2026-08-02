@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { updateLeadStatus } from "@/actions/leads";
 import type { LeadStatus } from "@/lib/validation";
 import {
@@ -37,7 +38,7 @@ export function LeadStatusSelect({
     const previous = value;
     setValue(next);
     startTransition(async () => {
-      const res = await updateLeadStatus({ leadId, status: next });
+      const res = await callAction(updateLeadStatus, { leadId, status: next });
       if (!res.ok) {
         setValue(previous);
         toast.error(res.error);

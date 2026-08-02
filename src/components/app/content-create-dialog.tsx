@@ -8,6 +8,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { createContentItem } from "@/actions/icerik";
 import {
   CONTENT_TYPE_LABELS,
@@ -322,7 +323,7 @@ export function ContentCreateDialog({
 
   const onSubmit = async (values: FormOutput) => {
     setSubmitting(true);
-    const res = await createContentItem({ ...values, enrollmentIds: assignIds });
+    const res = await callAction(createContentItem, { ...values, enrollmentIds: assignIds });
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error);

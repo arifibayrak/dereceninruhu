@@ -8,6 +8,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { createPaymentNotice } from "@/actions/muhasebe";
 import { trDayKey } from "@/lib/dates";
 import { PAYMENT_METHOD_LABELS, type PaymentMethod } from "@/lib/muhasebe";
@@ -96,7 +97,7 @@ export function PaymentNoticeDialog({
 
   const onSubmit = async (values: FormOutput) => {
     setSubmitting(true);
-    const res = await createPaymentNotice(values);
+    const res = await callAction(createPaymentNotice, values);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error);

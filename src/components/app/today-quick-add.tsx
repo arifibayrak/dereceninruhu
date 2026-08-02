@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDownIcon, MinusIcon, PlusIcon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { upsertQuestionLogs } from "@/actions/tracking";
 import { formatInt, formatNet } from "@/lib/format";
 import {
@@ -184,7 +185,7 @@ export function TodayQuickAdd({
       });
     if (entries.length === 0) return;
     setSaving(true);
-    const res = await upsertQuestionLogs({
+    const res = await callAction(upsertQuestionLogs, {
       enrollmentId,
       logDate: dayKey,
       entries,

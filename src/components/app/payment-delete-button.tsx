@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { deletePayment } from "@/actions/muhasebe";
 import { Button } from "@/components/ui/button";
 
@@ -16,7 +17,7 @@ export function PaymentDeleteButton({ paymentId }: { paymentId: number }) {
   const remove = () => {
     if (!window.confirm("Bu ödeme kaydı silinsin mi?")) return;
     startTransition(async () => {
-      const res = await deletePayment(paymentId);
+      const res = await callAction(deletePayment, paymentId);
       if (res.ok) {
         toast.success("Ödeme silindi");
         router.refresh();

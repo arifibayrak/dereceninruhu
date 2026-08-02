@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { MoreHorizontalIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { updateInvoiceStatus, voidInvoice } from "@/actions/muhasebe";
 import {
   INVOICE_STATUS_LABELS,
@@ -70,7 +71,7 @@ export function InvoiceStatusMenu({
 
   const setStatus = (next: InvoiceStatus) => {
     startTransition(async () => {
-      const res = await updateInvoiceStatus({ invoiceId, status: next });
+      const res = await callAction(updateInvoiceStatus, { invoiceId, status: next });
       if (res.ok) {
         toast.success(`Fatura ${INVOICE_STATUS_LABELS[next].toLocaleLowerCase("tr")} olarak işaretlendi`);
         router.refresh();
@@ -82,7 +83,7 @@ export function InvoiceStatusMenu({
 
   const doVoid = () => {
     startTransition(async () => {
-      const res = await voidInvoice({ invoiceId });
+      const res = await callAction(voidInvoice, { invoiceId });
       if (res.ok) {
         toast.success("Fatura iptal edildi");
         router.refresh();

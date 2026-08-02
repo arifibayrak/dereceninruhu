@@ -6,6 +6,7 @@ import {
   contentVisibility,
   mockExamResults,
   mockTopicErrors,
+  planTasks,
   questionLogs,
 } from "@/db/schema";
 import { chunkForD1, D1_MAX_BOUND_PARAMS } from "@/lib/d1";
@@ -71,6 +72,23 @@ const CASES = [
     build: (n: number) =>
       db.insert(contentVisibility).values(
         rowsOf(n, (i) => ({ contentItemId: 1, enrollmentId: i + 1 })),
+      ),
+  },
+  {
+    name: "plan_tasks (src/actions/plans.ts)",
+    paramsPerRow: 10,
+    build: (n: number) =>
+      db.insert(planTasks).values(
+        rowsOf(n, (i) => ({
+          weeklyPlanId: 1,
+          day: 1,
+          slot: i,
+          subjectId: 2,
+          resourceId: null,
+          resourceIds: "[]",
+          description: "Konu",
+          targetQuestions: 20,
+        })),
       ),
   },
   {

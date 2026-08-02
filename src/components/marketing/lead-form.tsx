@@ -7,6 +7,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { createLead } from "@/actions/leads";
 import { createLeadSchema, type CreateLeadInput } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,7 @@ export function LeadForm() {
 
   const onSubmit = async (values: CreateLeadInput) => {
     setSubmitting(true);
-    const res = await createLead(values);
+    const res = await callAction(createLead, values);
     setSubmitting(false);
     if (!res.ok) {
       if (res.fieldErrors) {

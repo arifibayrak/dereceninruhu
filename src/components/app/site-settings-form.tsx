@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { EyeIcon, ExternalLinkIcon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { updateSiteSettings } from "@/actions/site-settings";
 import { buildWaLink, DEFAULT_WA_PHONE } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
@@ -61,7 +62,7 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettingsValues }) {
 
   const save = async () => {
     setSaving(true);
-    const res = await updateSiteSettings({
+    const res = await callAction(updateSiteSettings, {
       whatsappPhone: values.whatsappPhone,
       whatsappMessage: values.whatsappMessage,
       whatsappVisible: values.whatsappVisible,

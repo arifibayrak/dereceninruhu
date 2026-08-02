@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { UserRoundCheckIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { bulkAssignStudentCoach } from "@/actions/admin";
 import type { RosterPayment } from "@/db/queries/muhasebe";
 import { formatInt } from "@/lib/format";
@@ -106,7 +107,7 @@ export function RosterTable({
   const applyBulk = () => {
     if (!bulkTarget || selectedVisible.length === 0) return;
     startTransition(async () => {
-      const res = await bulkAssignStudentCoach({
+      const res = await callAction(bulkAssignStudentCoach, {
         enrollmentIds: selectedVisible,
         coachUserId: bulkTarget === UNASSIGNED ? null : bulkTarget,
       });

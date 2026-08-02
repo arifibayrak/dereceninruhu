@@ -7,6 +7,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { createWaitlistEntry } from "@/actions/waitlist";
 import { createWaitlistSchema, type CreateWaitlistInput } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,7 @@ export function WaitlistForm() {
 
   const onSubmit = async (values: CreateWaitlistInput) => {
     setSubmitting(true);
-    const res = await createWaitlistEntry(values);
+    const res = await callAction(createWaitlistEntry, values);
     setSubmitting(false);
     if (!res.ok) {
       if (res.fieldErrors) {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { EyeIcon, SaveIcon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { updateCohortSettings } from "@/actions/cohort";
 import type { CohortStatus } from "@/lib/validation-admin";
 import { Button } from "@/components/ui/button";
@@ -84,7 +85,7 @@ export function CohortSettingsForm({
 
   const save = async () => {
     setSaving(true);
-    const res = await updateCohortSettings({
+    const res = await callAction(updateCohortSettings, {
       donemLabel: values.donemLabel,
       displayCapacity: capacityNum,
       displayFilled: filledNum,

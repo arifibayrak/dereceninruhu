@@ -277,6 +277,34 @@ export const planTaskCreateSchema = z.object({
 });
 export type PlanTaskCreateInput = z.infer<typeof planTaskCreateSchema>;
 
+/**
+ * Program görevi — TOPLU ekleme (AI taslağının onaylanması, şablon uygulama).
+ * Tek tek `addPlanTask` çağırmak istemciden N ayrı Server Action isteği demek:
+ * 40 konuluk bir taslak telefonda dakikalarca "kaydediliyor"da kalır.
+ */
+export const planTasksCreateSchema = z.object({
+  enrollmentId: z.coerce.number().int().positive(),
+  weekStart: z.coerce.date(),
+  tasks: z
+    .array(
+      z.object({
+        day: z.coerce.number().int().min(1).max(7).nullish(),
+        subjectId: z.coerce.number().int().positive().nullish(),
+        ...planTaskResourceFields,
+        description: z
+          .string()
+          .trim()
+          .min(1, "Görev açıklaması gerekli.")
+          .max(300),
+        targetQuestions: z.coerce.number().int().min(0).max(2000).nullish(),
+      }),
+    )
+    // AI taslağının üst sınırı 40; şablonlar da bu bandın altında kalır.
+    .min(1, "En az bir görev gerekli.")
+    .max(60),
+});
+export type PlanTasksCreateInput = z.infer<typeof planTasksCreateSchema>;
+
 /** Program görevi — düzenleme. `day` boşsa haftalık konuya çevirir. */
 export const planTaskUpdateSchema = z.object({
   taskId: z.coerce.number().int().positive(),

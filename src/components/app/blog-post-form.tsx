@@ -8,6 +8,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { deleteBlogPost, upsertBlogPost } from "@/actions/cms";
 import { slugifyTr } from "@/lib/slug";
 import {
@@ -85,7 +86,7 @@ export function BlogPostForm({ post }: { post?: BlogPostFormValues }) {
 
   const onSubmit = async (values: UpsertBlogPostInput) => {
     setSubmitting(true);
-    const res = await upsertBlogPost(values);
+    const res = await callAction(upsertBlogPost, values);
     setSubmitting(false);
     if (!res.ok) {
       if (res.fieldErrors) {
@@ -107,7 +108,7 @@ export function BlogPostForm({ post }: { post?: BlogPostFormValues }) {
     if (!post) return;
     if (!window.confirm(`"${post.title}" kalıcı olarak silinsin mi?`)) return;
     setDeleting(true);
-    const res = await deleteBlogPost(post.id);
+    const res = await callAction(deleteBlogPost, post.id);
     setDeleting(false);
     if (!res.ok) {
       toast.error(res.error);

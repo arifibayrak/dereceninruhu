@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { TargetIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { createMock, updateMock } from "@/actions/tracking";
 import type { MockEditData } from "@/db/queries/tracking";
 import { trDayKey } from "@/lib/dates";
@@ -290,8 +291,8 @@ export function MockForm({
       results,
     };
     const res = initial
-      ? await updateMock({ ...payload, mockExamId: initial.mockExamId })
-      : await createMock(payload);
+      ? await callAction(updateMock, { ...payload, mockExamId: initial.mockExamId })
+      : await callAction(createMock, payload);
     setSaving(false);
     if (!res.ok) {
       toast.error(res.error);

@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { CircleCheckIcon, ClockIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { setAnalysisDone } from "@/actions/tracking";
 import { Button } from "@/components/ui/button";
 
@@ -21,7 +22,7 @@ export function AnalysisToggle({
 
   const toggle = () => {
     startTransition(async () => {
-      const res = await setAnalysisDone(mockExamId, !done);
+      const res = await callAction(setAnalysisDone, mockExamId, !done);
       if (res.ok) {
         toast.success(
           !done ? "Analiz yapıldı olarak işaretlendi" : "Analiz bekliyor",

@@ -14,6 +14,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { callAction } from "@/lib/action-client";
 import { createResource, updateResource } from "@/actions/konular";
 import {
   createResourceSchema,
@@ -166,7 +167,7 @@ function ResourceCreateDialog({
 
   const onSubmit = async (values: FormOutput) => {
     setSubmitting(true);
-    const res = await createResource(values);
+    const res = await callAction(createResource, values);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -237,7 +238,7 @@ function ResourceEditDialog({
       url: values.url,
       subjectId: values.subjectId,
     };
-    const res = await updateResource(payload);
+    const res = await callAction(updateResource, payload);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error);
@@ -279,7 +280,7 @@ function ResourceArchiveButton({ resource }: { resource: ResourceRow }) {
   const [pending, setPending] = useState(false);
   const toggle = async () => {
     setPending(true);
-    const res = await updateResource({
+    const res = await callAction(updateResource, {
       resourceId: resource.id,
       name: resource.name,
       author: resource.author ?? "",

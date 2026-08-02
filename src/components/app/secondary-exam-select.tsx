@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { setSecondaryExam } from "@/actions/students";
 import {
   Select,
@@ -57,7 +58,7 @@ export function SecondaryExamSelect({
     // YKS ikinci sınavsa alan seçilene kadar kaydetme — sunucu da reddeder.
     if (nextExam === "YKS" && !nextTrack) return;
     startTransition(async () => {
-      const res = await setSecondaryExam({
+      const res = await callAction(setSecondaryExam, {
         studentId,
         secondaryExamCode: nextExam === NONE ? "" : nextExam,
         secondaryTrackCode: nextExam === "YKS" ? nextTrack : "",

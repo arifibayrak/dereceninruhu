@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import {
   addPlanTask,
   deletePlanTask,
@@ -134,7 +135,7 @@ function useDoneToggle() {
   const toggle = async (t: GridTask) => {
     const next = !doneOf(t);
     setOverrides((prev) => ({ ...prev, [t.id]: next }));
-    const res = await togglePlanTaskDone({ taskId: t.id, isDone: next });
+    const res = await callAction(togglePlanTaskDone, { taskId: t.id, isDone: next });
     if (!res.ok) {
       setOverrides((prev) => ({ ...prev, [t.id]: !next }));
       toast.error(res.error);
@@ -397,7 +398,7 @@ function DeleteTopicButton({ taskId }: { taskId: number }) {
   const [pending, setPending] = useState(false);
   const remove = async () => {
     setPending(true);
-    const res = await deletePlanTask({ taskId });
+    const res = await callAction(deletePlanTask, { taskId });
     setPending(false);
     if (res.ok) {
       toast.success("Konu silindi");
@@ -580,8 +581,8 @@ function TopicForm({
     };
     setSaving(true);
     const res = editTask
-      ? await updatePlanTask({ taskId: editTask.id, ...shared })
-      : await addPlanTask({ enrollmentId, weekStart: weekKey, ...shared });
+      ? await callAction(updatePlanTask, { taskId: editTask.id, ...shared })
+      : await callAction(addPlanTask, { enrollmentId, weekStart: weekKey, ...shared });
     setSaving(false);
     if (res.ok) {
       toast.success(editTask ? "Konu güncellendi" : "Konu eklendi");

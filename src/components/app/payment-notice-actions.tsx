@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { resolvePaymentNotice } from "@/actions/muhasebe";
 import { Button } from "@/components/ui/button";
 
@@ -18,7 +19,7 @@ export function PaymentNoticeActions({ noticeId }: { noticeId: number }) {
 
   const run = async (action: "onayla" | "reddet") => {
     setBusy(action);
-    const res = await resolvePaymentNotice({ noticeId, action });
+    const res = await callAction(resolvePaymentNotice, { noticeId, action });
     setBusy(null);
     if (!res.ok) {
       toast.error(res.error);

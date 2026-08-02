@@ -6,6 +6,7 @@ import { RocketIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { setupFirstAdmin } from "@/actions/setup";
 import { authClient } from "@/lib/auth-client";
 import { setupAdminSchema, type SetupAdminInput } from "@/lib/validation";
@@ -29,7 +30,7 @@ export function SetupForm() {
 
   const onSubmit = async (values: SetupAdminInput) => {
     setSubmitting(true);
-    const res = await setupFirstAdmin(values);
+    const res = await callAction(setupFirstAdmin, values);
     if (!res.ok) {
       setSubmitting(false);
       if (res.fieldErrors) {

@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { SendIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { sendStudentChatMessage } from "@/actions/student-chat";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ export function StudentChat({
     setMessages((m) => [...m, { role: "user", content: trimmed }]);
     setInput("");
     startTransition(async () => {
-      const res = await sendStudentChatMessage({ threadId, text: trimmed });
+      const res = await callAction(sendStudentChatMessage, { threadId, text: trimmed });
       if (!res.ok) {
         toast.error(res.error);
         return;

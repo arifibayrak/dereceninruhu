@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { upsertTopicErrors } from "@/actions/analiz";
 import { formatInt } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -81,16 +82,10 @@ export function TopicErrorForm({
       return;
     }
     setSaving(true);
-    let res;
-    try {
-      res = await upsertTopicErrors({ mockExamId, entries });
-    } catch {
-      // Ağ/sunucu hatasında buton "Kaydediliyor…"da asılı kalmasın.
-      toast.error("Kaydedilemedi — bağlantını kontrol edip tekrar dene.");
-      return;
-    } finally {
-      setSaving(false);
-    }
+    // Ağ/sunucu hatası da `callAction` içinde ActionResult'a döner — buton
+    // "Kaydediliyor…"da asılı kalmaz.
+    const res = await callAction(upsertTopicErrors, { mockExamId, entries });
+    setSaving(false);
     if (!res.ok) {
       toast.error(res.error);
       return;

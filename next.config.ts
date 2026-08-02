@@ -5,6 +5,16 @@ const nextConfig: NextConfig = {
   // Home-dizinindeki package-lock.json'ın workspace-root sanılmasını engelle
   // (aksi halde Turbopack yanlış kökü izleyip sürekli yeniden derliyor).
   turbopack: { root: import.meta.dirname },
+  /*
+   * Sürüm uyuşmazlığı (version skew) koruması. Yeni sürüm yayınlandığında
+   * telefonlarda AÇIK KALMIŞ sekmeler eski JS ile çalışmaya devam eder; oradan
+   * yapılan her Server Action çağrısı sunucuda tanınmaz ve reddedilir
+   * (kullanıcı için: "kaydet"e basınca donma). deploymentId tanımlıysa Next
+   * istemcinin sürümünü yanıt başlığıyla karşılaştırıp gezinmede TAM SAYFA
+   * yenilemesi yapar — sekme eski derlemede takılı kalmaz.
+   * `pnpm run deploy` bunu commit sha'sından geçirir.
+   */
+  deploymentId: process.env.NEXT_DEPLOYMENT_ID,
   // transformers.js canlı-transkript YALNIZ tarayıcıda (WebGPU) dinamik import
   // edilir; sunucu/Cloudflare Worker paketine GİRMEMELİ. onnxruntime-node native
   // .node ikilisi içerir (esbuild yükleyemez) → dışsal tut.

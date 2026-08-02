@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarDaysIcon, QuoteIcon, SendIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { callAction } from "@/lib/action-client";
 import { submitPlanForReview } from "@/actions/plans";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -115,7 +116,7 @@ export function StudentProgram({
   const submit = async () => {
     if (!planId) return;
     setSubmitting(true);
-    const res = await submitPlanForReview({ planId });
+    const res = await callAction(submitPlanForReview, { planId });
     setSubmitting(false);
     if (res.ok) {
       toast.success("Programın koçuna gönderildi", {
