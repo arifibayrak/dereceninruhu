@@ -163,7 +163,9 @@ export function TopicErrorForm({
         })}
       </div>
 
-      <div className="sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-xl bg-background/90 p-3 ring-1 ring-foreground/10 backdrop-blur">
+      {/* Alt nav'ın üstünde kal — `bottom-4` çubuğu nav'ın ALTINA sokuyordu ve
+          "Analizi kaydet" dokunuşunu nav yutuyordu (analiz sessizce kayboluyordu). */}
+      <div className="sticky bottom-[calc(var(--app-bottom-nav,0px)+1rem)] z-10 flex items-center justify-between gap-3 rounded-xl bg-background/90 p-3 ring-1 ring-foreground/10 backdrop-blur">
         <span className="text-sm text-muted-foreground">
           Toplam <strong className="text-foreground">{formatInt(total)}</strong>{" "}
           eksik

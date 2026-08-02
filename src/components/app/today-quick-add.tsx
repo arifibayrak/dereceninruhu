@@ -357,7 +357,9 @@ export function TodayQuickAdd({
         );
       })}
 
-      <div className="sticky bottom-16 mt-2 flex items-center justify-between gap-3 rounded-xl bg-background/95 p-2 backdrop-blur">
+      {/* `bottom-16` çentikli telefonlarda yetmiyordu: nav `env(safe-area-inset-bottom)`
+          kadar daha uzun, çubuk altında kalıyordu (bkz. topic-error-form). */}
+      <div className="sticky bottom-[calc(var(--app-bottom-nav,0px)+1rem)] mt-2 flex items-center justify-between gap-3 rounded-xl bg-background/95 p-2 backdrop-blur">
         <span className="pl-2 text-sm text-muted-foreground">
           Bugün toplam{" "}
           <span className="font-semibold text-foreground tabular-nums">
