@@ -99,6 +99,35 @@ All copy and UX should read that way — calm and credible, never bargain-y or h
   admin-tracker feature: public action (no auth) with Zod + `website` honeypot, then a role-gated status
   pipeline. Don't invent a new shape.
 
+## Performance (mobile is the target — students are on phones)
+- **NEVER let the LCP element depend on JS to become visible.** A `motion.div` with
+  `initial={{opacity:0}}` renders `style="opacity:0"` into the SSR HTML, so the element cannot paint until
+  the whole bundle downloads and React hydrates. This cost the hero `<h1>` **4.5 s of LCP** (mobile 68).
+  Above-the-fold entrance animations are **CSS only** (`.hero-in` in `globals.css`); `HeroReveal` is a
+  Server Component and must stay one. The check that matters: `observedLCP` should equal `observedFCP`.
+- **Fonts are preloaded from `public/fonts/` with stable filenames.** Importing a font package puts a
+  content-hash in the filename, so no `<link rel="preload">` can be written and the browser only discovers
+  the font *after* parsing CSS (HTML → CSS → font). Bricolage `@font-face` rules live in `globals.css`;
+  the woff2 files are copied out of `@fontsource-variable/bricolage-grotesque` (re-copy both on upgrade).
+  `crossOrigin` on the preload is **required** or the file downloads twice.
+- **Only load a font where it is used.** `GeistMono` in the root layout downloaded 70KB at *High* priority
+  on marketing pages with no monospace text — it lives in `/koc`, `/ogrenci`, `/marka` layouts instead.
+- Keep heavyweight client libs off marketing routes. `motion` was 44KB gzip for two animations; `sonner`
+  needs BOTH the `<Toaster>` and `StaleVersionWatch` to avoid a static import or it stays in the bundle.
+- **Measuring:** the anonymous PageSpeed API returns 429 (`quota_limit_value: 0`). Run Lighthouse locally
+  and **take the median of 3** — TTFB variance swings the score ~8 points. Measured origin cost is only
+  ~100 ms over a pure edge asset, so caching the marketing pages is not the lever it looks like.
+- **Marketing pages cannot use ISR/`revalidate`.** They read D1, and D1 is not bound during `next build`;
+  making the shell non-dynamic turns its children static and the build fails with
+  "getCloudflareContext … route is not static". `force-dynamic` there is deliberate, not an oversight.
+
+## Structured data (JSON-LD)
+- **`aggregateRating` and `Review.itemReviewed` may ONLY hang off `Course`.** Google's review-snippet
+  support list excludes `Service` and `Person`, and the self-serving-review policy excludes
+  `Organization`/`LocalBusiness` for reviews hosted on the entity's own site. Anything else silently
+  invalidates the item in Search Console. Use `coachingCourseSchema()`; do not re-add a `withRating`
+  option to `serviceSchema`/`personSchema`.
+
 ## Style
 - Mobile-first (students are on phones). Server Components by default; Server Actions for mutations; `"use client"`
   only where interactivity is needed. Validate every action input with Zod. Keep components small and typed.
