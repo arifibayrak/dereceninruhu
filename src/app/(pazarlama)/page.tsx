@@ -38,7 +38,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildMetadata } from "@/lib/seo";
-import { faqPageSchema, serviceSchema } from "@/lib/schema";
+import { coachingCourseSchema, faqPageSchema, serviceSchema } from "@/lib/schema";
 
 // CMS içeriği D1'den okunur → istek başına render (bkz. AGENTS.md).
 export const dynamic = "force-dynamic";
@@ -122,10 +122,13 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-20 px-4 py-10 sm:px-6 md:gap-28 md:py-16">
-      {/* Yapısal veri: koçluk hizmeti (5,0★/77 puan sayfada görünür) + SSS. */}
+      {/* Yapısal veri: koçluk hizmeti + puanlı program (5,0★/77 sayfada
+          görünür) + SSS. Puan Service'e DEĞİL Course'a bağlanır — bkz.
+          @/lib/schema dosya başı notu. */}
       <JsonLd
         data={[
-          serviceSchema({ withRating: true }),
+          serviceSchema(),
+          coachingCourseSchema({ withRating: true }),
           faqPageSchema(faqs.slice(0, 4)),
         ]}
       />

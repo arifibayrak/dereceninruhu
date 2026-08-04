@@ -3,9 +3,22 @@
  * görüntüleme modellerini alır; DB'ye erişmez. `@id` çapalarıyla varlıklar
  * (Organization / WebSite / Person) birbirine bağlanır.
  *
- * ⚠️ Google "kendi kendine verilen puan" politikası: `aggregateRating` ASLA
- * Organization/LocalBusiness üzerine konmaz — yalnız Service / Course / Person
- * üzerinde ve yorumların sayfada göründüğü yerlerde kullanılır.
+ * ⚠️ PUAN/YORUM İŞARETLEMESİ — İKİ AYRI KURAL VAR, İKİSİ DE BAĞLAYICI:
+ *
+ * 1) Google'ın "review snippet" desteklediği tipler SAYILIDIR: Book, Course,
+ *    Event, LocalBusiness, Movie, Organization, Product, Recipe, HowTo,
+ *    SoftwareApplication, Game, Episode, MediaObject, Music*, CreativeWork*.
+ *    `Service` ve `Person` bu listede YOKTUR. Bunlara `aggregateRating` /
+ *    `review` takılırsa Search Console "Invalid object type for field
+ *    '<parent_node>'", `itemReviewed: {"@type":"Service"}` ise "Invalid object
+ *    type for field 'itemReviewed'" hatası verir (2026-08'de 12 geçersiz öğe
+ *    tam olarak buydu).
+ * 2) "Kendi kendine verilen puan" politikası: bir varlığın KENDİ sitesindeki
+ *    yorumlar Organization/LocalBusiness için kabul EDİLMEZ.
+ *
+ * (1) ∩ (2) → bu sitede puan/yorum taşıyabilecek tek doğru tip `Course`.
+ * Bu yüzden tüm `aggregateRating` ve `Review.itemReviewed` bağlamaları
+ * `Course` üzerinedir. Service/Person/Organization'a puan EKLEME.
  */
 import type {
   PublicCoach,
@@ -25,6 +38,8 @@ import {
 export const ORG_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
 export const PERSON_ID = `${SITE_URL}/#ahmet-hakan-almak`;
+/** Puan/yorumların bağlandığı kanonik koçluk programı (bkz. dosya başı notu). */
+export const COURSE_ID = `${SITE_URL}/#kocluk-programi`;
 
 const EXAM_KNOWS = [
   "LGS koçluğu",
@@ -36,7 +51,7 @@ const EXAM_KNOWS = [
   "Net takibi",
 ];
 
-/** 5,0★ / 77 — yalnız Service/Course/Person üzerinde kullanılır. */
+/** 5,0★ / 77 — YALNIZ Course üzerinde kullanılır (bkz. dosya başı notu). */
 function aggregateRating() {
   return {
     "@type": "AggregateRating",
@@ -125,12 +140,16 @@ function alumniOf(achievements: string[]) {
 }
 
 /**
- * Person — bir koç profili. `withRating` yalnız yorumların sayfada göründüğü
- * rotalarda (/koclar, /hakkinda) true verilir.
+ * Person — bir koç profili.
+ *
+ * ⚠️ `aggregateRating` YOK: Google review snippet'i `Person` tipinde de
+ * desteklemiyor (Search Console: "Invalid object type for '<parent_node>'").
+ * Koç sayfalarında puan göstermek gerekirse `coachingCourseSchema()` ayrı bir
+ * öğe olarak eklenir.
  */
 export function personSchema(
   coach: PublicCoach,
-  opts: { withRating?: boolean; profilePath?: string; id?: string } = {},
+  opts: { profilePath?: string; id?: string } = {},
 ) {
   const extraSame = coach.links.map((l) => l.url);
   return {
@@ -152,14 +171,13 @@ export function personSchema(
     // Ekipte birden çok koç var; sabit bir okul her profile yanlış bilgi basar.
     alumniOf: alumniOf(coach.achievements),
     sameAs: sameAsLinks([coach.proofUrl ?? "", ...extraSame]),
-    ...(opts.withRating ? { aggregateRating: aggregateRating() } : {}),
   };
 }
 
 /** ProfilePage sarmalayıcı — /koclar ve /hakkinda için Person'ı ana varlık yapar. */
 export function profilePageSchema(
   coach: PublicCoach,
-  opts: { withRating?: boolean; profilePath?: string; id?: string } = {},
+  opts: { profilePath?: string; id?: string } = {},
 ) {
   return {
     "@context": "https://schema.org",
@@ -170,11 +188,14 @@ export function profilePageSchema(
 }
 
 /**
- * Service — koçluk hizmeti. `withRating` yorumların göründüğü sayfalarda true.
- * `packages` verilirse Offer kataloğu eklenir (/fiyatlar).
+ * Service — koçluk hizmeti. `packages` verilirse Offer kataloğu eklenir
+ * (/fiyatlar).
+ *
+ * ⚠️ Burada `aggregateRating` YOK ve olmamalı: Google review snippet'i `Service`
+ * tipinde desteklemiyor, eklendiğinde tüm öğe geçersiz sayılıyor. Puan
+ * `coachingCourseSchema()` ile Course üzerinden verilir.
  */
 export function serviceSchema(opts: {
-  withRating?: boolean;
   packages?: PublicPackage[];
   serviceType?: string;
   name?: string;
@@ -193,7 +214,6 @@ export function serviceSchema(opts: {
       availableLanguage: "Turkish",
     },
     ...(offers?.length ? { offers } : {}),
-    ...(opts.withRating ? { aggregateRating: aggregateRating() } : {}),
   };
 }
 
@@ -229,6 +249,35 @@ export function courseSchema(opts: {
     provider: { "@id": ORG_ID },
     inLanguage: "tr-TR",
     about: `${opts.exam} sınavı hazırlık`,
+    hasCourseInstance: {
+      "@type": "CourseInstance",
+      courseMode: "online",
+      courseWorkload: "PT4H",
+      location: { "@type": "VirtualLocation", url: SITE_URL },
+    },
+    ...(opts.withRating ? { aggregateRating: aggregateRating() } : {}),
+  };
+}
+
+/**
+ * Kanonik koçluk programı (Course) — puanı ve yorumları TAŞIYAN varlık.
+ *
+ * Google'ın review snippet desteklediği tipler arasında bu sitenin gerçekten
+ * karşıladığı tek tip `Course`. Sınava özel açılış sayfaları kendi
+ * `courseSchema()`'sını kullanır; bu ise genel koçluk programını temsil eder ve
+ * yorumların SAYFADA GÖRÜNDÜĞÜ rotalarda (ana sayfa, /basarilar) yayınlanır.
+ */
+export function coachingCourseSchema(opts: { withRating?: boolean } = {}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    "@id": COURSE_ID,
+    name: "Birebir Sınav Koçluğu",
+    description:
+      "LGS, YKS ve KPSS için birebir online sınav koçluğu: haftalık program, soru takibi ve deneme analizi.",
+    url: SITE_URL,
+    provider: { "@id": ORG_ID },
+    inLanguage: "tr-TR",
     hasCourseInstance: {
       "@type": "CourseInstance",
       courseMode: "online",
@@ -302,13 +351,24 @@ export function breadcrumbSchema(items: { name: string; path: string }[]) {
 
 /**
  * Review dizisi — /basarilar (yorumlar sayfada görünür → politika uyumlu).
- * itemReviewed olarak koçluk Service'i işaretlenir.
+ *
+ * ⚠️ `itemReviewed` COURSE olmalı. Önceden `Service` idi ve Search Console her
+ * yorumu "Invalid object type for field 'itemReviewed'" ile eliyordu — Google
+ * review snippet'i Service tipinde desteklemiyor. `Organization` de çözüm
+ * değil: kendi sitendeki kendi yorumların ("self-serving") o tipte kabul
+ * edilmiyor. Sayfada ayrıca `coachingCourseSchema()` yayınlanır; `@id` ikisini
+ * aynı varlıkta birleştirir.
  */
 export function reviewsSchema(testimonials: PublicTestimonial[]) {
   return testimonials.slice(0, 20).map((t) => ({
     "@context": "https://schema.org",
     "@type": "Review",
-    itemReviewed: { "@type": "Service", name: "Sınav Koçluğu" },
+    itemReviewed: {
+      "@type": "Course",
+      "@id": COURSE_ID,
+      name: "Birebir Sınav Koçluğu",
+      provider: { "@id": ORG_ID },
+    },
     author: { "@type": "Person", name: t.displayName },
     reviewRating: { "@type": "Rating", ratingValue: 5, bestRating: 5 },
     reviewBody: t.quote,

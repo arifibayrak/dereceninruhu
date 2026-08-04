@@ -13,7 +13,12 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { formatDelta, formatInt } from "@/lib/format";
 import { buildMetadata } from "@/lib/seo";
-import { breadcrumbSchema, reviewsSchema, serviceSchema } from "@/lib/schema";
+import {
+  breadcrumbSchema,
+  coachingCourseSchema,
+  reviewsSchema,
+  serviceSchema,
+} from "@/lib/schema";
 
 // Yorumlar D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
@@ -59,10 +64,13 @@ export default async function BasarilarPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-10 sm:px-6 md:gap-16 md:py-16">
-      {/* Yapısal veri: puanlı hizmet + görünen yorumlar (Review — politika uyumlu). */}
+      {/* Yapısal veri: hizmet + puanlı program + görünen yorumlar (Review —
+          politika uyumlu). Puan ve itemReviewed Course üzerinedir; aynı `@id`
+          yorumları programa bağlar (bkz. @/lib/schema dosya başı notu). */}
       <JsonLd
         data={[
-          serviceSchema({ withRating: true }),
+          serviceSchema(),
+          coachingCourseSchema({ withRating: true }),
           ...reviewsSchema(testimonials),
           breadcrumbSchema([
             { name: "Ana Sayfa", path: "/" },

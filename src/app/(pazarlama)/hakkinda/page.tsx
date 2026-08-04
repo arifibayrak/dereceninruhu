@@ -17,7 +17,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildMetadata } from "@/lib/seo";
-import { breadcrumbSchema, profilePageSchema } from "@/lib/schema";
+import {
+  breadcrumbSchema,
+  coachingCourseSchema,
+  profilePageSchema,
+} from "@/lib/schema";
 
 // Koç profili D1'den okunur → istek başına render.
 export const dynamic = "force-dynamic";
@@ -45,13 +49,13 @@ export default async function HakkindaPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 px-4 py-10 sm:px-6 md:gap-20 md:py-16">
-      {/* Yapısal veri: kurucu koç profili (5,0★/77 puan sayfada görünür). */}
+      {/* Yapısal veri: kurucu koç profili + puanlı program. Puan Person'a
+          DEĞİL Course'a bağlanır (Google review snippet'i Person'ı desteklemez
+          — bkz. @/lib/schema dosya başı notu); 5,0★/77 sayfada görünür. */}
       <JsonLd
         data={[
-          profilePageSchema(coach, {
-            withRating: true,
-            profilePath: "/hakkinda",
-          }),
+          profilePageSchema(coach, { profilePath: "/hakkinda" }),
+          coachingCourseSchema({ withRating: true }),
           breadcrumbSchema([
             { name: "Ana Sayfa", path: "/" },
             { name: "Hakkında", path: "/hakkinda" },
