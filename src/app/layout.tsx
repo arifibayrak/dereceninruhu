@@ -7,6 +7,7 @@ import { GeistMono } from "geist/font/mono";
 import "@fontsource-variable/bricolage-grotesque";
 import "./globals.css";
 
+import { GoogleAnalytics } from "@/components/app/google-analytics";
 import { StaleVersionWatch } from "@/components/app/stale-version-watch";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -83,6 +84,7 @@ export default function RootLayout({
           <Toaster position="top-center" />
           <StaleVersionWatch />
         </ThemeProvider>
+        <GoogleAnalytics />
       </body>
     </html>
   );
