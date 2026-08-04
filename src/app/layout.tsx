@@ -2,15 +2,19 @@ import type { Metadata, Viewport } from "next";
 // Self-hosted (bundled woff2, no Google fetch) — works offline & on Workers.
 // Geist includes latin-ext, covering Turkish glyphs (ğ ş ı İ ö ü ç).
 import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
-// Başlık yüzü: Bricolage Grotesque (self-hosted @fontsource-variable, latin-ext).
-import "@fontsource-variable/bricolage-grotesque";
+// ⚠️ GeistMono BİLEREK burada DEĞİL. Kök layout'ta olduğunda Next onu her rotanın
+// font manifestine yazıyor ve tarayıcı 70KB'lık woff2'yi TEK BİR monospace metin
+// içermeyen pazarlama sayfalarında bile "High" öncelikle indiriyordu — CSS
+// paketinden bile büyük, tam da LCP penceresinde. `font-mono` yalnız uygulama
+// yüzeylerinde (/koc, /ogrenci, /marka) kullanılıyor; font da oralarda yükleniyor.
+// Başlık yüzü: Bricolage Grotesque — @font-face'leri globals.css'te, dosyaları
+// public/fonts/ altında (SABİT yol; aşağıda preload edilebilsin diye).
 import "./globals.css";
 
 import { GoogleAnalytics } from "@/components/app/google-analytics";
+import { LazyToaster } from "@/components/app/lazy-toaster";
 import { StaleVersionWatch } from "@/components/app/stale-version-watch";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OG_IMAGE, SITE_LOCALE, SITE_NAME, SITE_URL } from "@/lib/seo";
 
@@ -63,8 +67,27 @@ export default function RootLayout({
     <html
       lang="tr"
       suppressHydrationWarning
-      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      className={`${GeistSans.variable} h-full antialiased`}
     >
+      {/* Başlık fontunu CSS ayrıştırılmasını BEKLEMEDEN indirmeye başla.
+          LCP öğesi <h1> `font-heading` kullanıyor; preload olmadan zincir
+          HTML → CSS → font şeklinde üçe uzuyor ve son boyama gecikiyordu.
+          `crossOrigin` ŞART: fontlar CORS kipinde çekilir, öznitelik olmazsa
+          preload eşleşmez ve dosya İKİ KEZ inerdi. React <head>'e taşır. */}
+      <link
+        rel="preload"
+        href="/fonts/bricolage-latin.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      />
+      <link
+        rel="preload"
+        href="/fonts/bricolage-latin-ext.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      />
       <body className="flex min-h-full flex-col">
         {/* OpenNext esbuild, next-themes'in prepaint script'ine __name(...) enjekte
             ediyor; tarayıcıda tanımsız olduğu için tema script'i patlıyordu (FOUC +
@@ -81,7 +104,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>{children}</TooltipProvider>
-          <Toaster position="top-center" />
+          <LazyToaster />
           <StaleVersionWatch />
         </ThemeProvider>
         <GoogleAnalytics />

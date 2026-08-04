@@ -2,6 +2,46 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* ---------------------------------------------------------------------------
+ * Başlık yüzü — Bricolage Grotesque (kendi sunucumuzda, SABİT yol).
+ *
+ * Neden `@fontsource-variable/bricolage-grotesque` paketi import EDİLMİYOR:
+ * paket import edildiğinde dosya adları derlemede hash'leniyor (…1iqnhac4m3hwo
+ * .woff2) ve URL'yi önceden bilemediğimiz için `<link rel="preload">` yazmak
+ * mümkün olmuyordu. Sonuç: tarayıcı fontu ancak CSS'i indirip AYRIŞTIRDIKTAN
+ * sonra keşfediyor → HTML → CSS → font şeklinde üç adımlı zincir; LCP öğesi
+ * olan <h1> son boyamasını en sonda yapıyordu.
+ *
+ * Dosyalar `public/fonts/` altına kopyalandı (kaynak: aynı paketin `wght`
+ * ekseni). Böylece yol sabit ve layout.tsx onları preload edebiliyor.
+ * `unicode-range` değerleri fontsource'un wght.css'inden birebir alındı.
+ * Türkçe için İKİSİ de gerekli: ı/ö/ü/ç → latin, ğ/ş/İ → latin-ext.
+ * Vietnamca alt kümesi bilerek alınmadı (hiç kullanılmıyor).
+ *
+ * Font güncellenecekse: paketi güncelle, iki dosyayı yeniden kopyala.
+ * ------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Bricolage Grotesque Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("/fonts/bricolage-latin.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("/fonts/bricolage-latin-ext.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------------
@@ -205,5 +245,37 @@
   }
   ::selection {
     background-color: color-mix(in oklab, var(--primary) 24%, transparent);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Kahraman girişi — SALT CSS (JS'siz).
+ *
+ * ⚠️ Bu animasyon bilerek JS kullanmaz. Daha önce `motion` ile yapılıyordu ve
+ * sunucudan gelen HTML'e `style="opacity:0"` basıyordu: LCP öğesi olan <h1>
+ * hidrasyon bitene kadar GÖRÜNMEZ kalıyordu (mobilde ~4,5 sn "render delay",
+ * LCP 6,2 sn). CSS animasyonu tarayıcıda ilk boyamada başlar — paket
+ * indirilmesini, React'i, hiçbir şeyi beklemez.
+ *
+ * Bu yüzden buraya JS tabanlı bir "reveal" GERİ EKLENMEMELİ.
+ * ------------------------------------------------------------------------- */
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility hero-in {
+  animation: hero-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-in {
+    animation: none;
   }
 }

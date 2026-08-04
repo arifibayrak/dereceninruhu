@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { GeistMono } from "geist/font/mono";
 
 import { getSession, type Role } from "@/lib/session";
 import { CoachNav } from "@/components/app/coach-nav";
@@ -28,7 +29,7 @@ export default async function KocLayout({
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className={`${GeistMono.variable} flex min-h-full flex-1 flex-col`}>
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           {/* Üst şerit: marka solda, kullanıcı sağda */}

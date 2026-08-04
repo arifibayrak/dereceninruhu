@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { GeistMono } from "geist/font/mono";
 import { UserRoundIcon } from "lucide-react";
 
 import { getSession, type Role } from "@/lib/session";
@@ -39,7 +40,7 @@ export default async function OgrenciLayout({
      * Koç tarafında değişken tanımlı değildir (alt nav yok), 0px'e düşer.
      */
     <div
-      className="flex min-h-full flex-1 flex-col [--app-bottom-nav:calc(3.5rem+env(safe-area-inset-bottom))]"
+      className={`${GeistMono.variable} flex min-h-full flex-1 flex-col [--app-bottom-nav:calc(3.5rem+env(safe-area-inset-bottom))]`}
     >
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-13 w-full max-w-lg items-center justify-between gap-2 px-4">
