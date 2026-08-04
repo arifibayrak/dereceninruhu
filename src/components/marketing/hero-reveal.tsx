@@ -1,11 +1,18 @@
-"use client";
-
 import type { ReactNode } from "react";
-import { motion, useReducedMotion } from "motion/react";
+
+import { cn } from "@/lib/utils";
 
 /**
- * Kahraman metin sütununu ilk yüklemede yumuşakça belirtir (fade-up). Sunucuda
- * render edilen CTA/Link çocukları prop olarak geçer — etkileşim bozulmaz.
+ * Kahraman metin sütununu ilk yüklemede yumuşakça belirtir (fade-up).
+ *
+ * ⚠️ SUNUCU BİLEŞENİ — bilerek. Burası sayfanın LCP öğesini (<h1>) sarar.
+ * Önceden `motion.div` idi ve `initial={{opacity:0}}` sunucudan gelen HTML'e
+ * `style="opacity:0;transform:translateY(16px)"` yazıyordu; başlık ancak ~320KB
+ * JS inip React hidrate olduktan sonra görünür oluyordu. Mobilde LCP'nin
+ * 6,2 sn'sinin 4,5 sn'si bu bekleyişti.
+ *
+ * Şimdi giriş animasyonu salt CSS (`.hero-in`, globals.css): tarayıcı ilk
+ * boyamada başlatır, JS beklemez. Buraya "use client" / motion GERİ EKLEME.
  */
 export function HeroReveal({
   children,
@@ -14,15 +21,5 @@ export function HeroReveal({
   children: ReactNode;
   className?: string;
 }) {
-  const reduce = useReducedMotion();
-  return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: reduce ? 0 : 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className={cn("hero-in", className)}>{children}</div>;
 }

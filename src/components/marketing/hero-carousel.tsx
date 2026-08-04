@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import {
   CalendarCheckIcon,
   CalendarPlusIcon,
@@ -303,8 +307,30 @@ const AUTOPLAY_MS = 4200;
  * bilerek sola hizalı. Motion ile yumuşak geçiş; hover/focus'ta durur;
  * azaltılmış-hareket tercihine saygılı.
  */
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia(REDUCED_MOTION);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+/**
+ * `prefers-reduced-motion` — `motion` kütüphanesi yerine tarayıcı API'siyle.
+ * Yalnız OTOMATİK GEÇİŞİ durdurmak için gerekli; görsel geçişin kendisi CSS'te
+ * `motion-reduce:` varyantıyla zaten kapanıyor. Sunucuda tercih bilinemez →
+ * `false` (autoplay istemcide devreye girer).
+ */
+function usePrefersReducedMotion() {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia(REDUCED_MOTION).matches,
+    () => false,
+  );
+}
+
 export function HeroCarousel() {
-  const reduce = useReducedMotion();
+  const reduce = usePrefersReducedMotion();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const count = SLIDES.length;
@@ -314,9 +340,6 @@ export function HeroCarousel() {
     const t = setInterval(() => setIndex((i) => (i + 1) % count), AUTOPLAY_MS);
     return () => clearInterval(t);
   }, [reduce, paused, count]);
-
-  const slide = SLIDES[index];
-  const offset = reduce ? 0 : 28;
 
   return (
     <div
@@ -335,19 +358,32 @@ export function HeroCarousel() {
         <div className="absolute -right-6 bottom-0 size-36 rounded-full bg-gold/20 blur-2xl" />
       </div>
 
-      <div className="relative flex min-h-[344px] items-center sm:min-h-[360px]">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={slide.key}
-            className="w-full"
-            initial={{ opacity: 0, x: offset }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -offset }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      {/* Slaytlar ÜST ÜSTE tek grid hücresinde durur (`[grid-area:1/1]`):
+          kapsayıcı en uzun slayta göre boyutlanır, geçiş salt CSS opaklık +
+          kaydırmadır. `motion`/AnimatePresence bilerek kullanılmıyor — 44KB
+          gzip'lik kütüphane yalnız bu geçiş için ana sayfaya giriyordu. */}
+      <div className="relative grid min-h-[344px] items-center sm:min-h-[360px]">
+        {SLIDES.map((s, i) => (
+          <div
+            key={s.key}
+            // Görünmeyen slaytlar odak/ekran okuyucu dışı kalır.
+            inert={i !== index}
+            aria-hidden={i !== index}
+            // Giden slayt ÖNCE söner (0–180ms), gelen SONRA belirir
+            // (180–480ms). Aynı anda ikisi birden yarı saydam kalırsa metinler
+            // üst üste binip bulanık görünüyor; bu gecikme eski
+            // `AnimatePresence mode="wait"` davranışını CSS'le birebir taklit
+            // eder — iki slayt asla aynı anda okunur durumda olmaz.
+            className={cn(
+              "[grid-area:1/1] w-full transition-[opacity,translate] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none motion-reduce:delay-0",
+              i === index
+                ? "translate-x-0 opacity-100 duration-300 delay-[180ms]"
+                : "pointer-events-none translate-x-7 opacity-0 duration-200 delay-0",
+            )}
           >
-            {slide.render()}
-          </motion.div>
-        </AnimatePresence>
+            {s.render()}
+          </div>
+        ))}
       </div>
 
       {/* Noktalar — görsel çubuk küçük, dokunma hedefi 24px (WCAG 2.2 §2.5.8). */}

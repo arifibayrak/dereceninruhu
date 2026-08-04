@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GeistMono } from "geist/font/mono";
 import { ExternalLinkIcon, StarIcon } from "lucide-react";
 
 import { Logo, LogoMark } from "@/components/brand/logo";
@@ -130,7 +131,7 @@ const DENEME_ROWS = [
 
 export default function MarkaPage() {
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className={`${GeistMono.variable} flex min-h-full flex-1 flex-col`}>
       {/* Üst çubuk */}
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
