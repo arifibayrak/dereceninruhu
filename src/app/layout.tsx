@@ -12,6 +12,10 @@ import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 
 import { GoogleAnalytics } from "@/components/app/google-analytics";
+import {
+  GoogleTagManager,
+  GoogleTagManagerNoScript,
+} from "@/components/app/google-tag-manager";
 import { LazyToaster } from "@/components/app/lazy-toaster";
 import { StaleVersionWatch } from "@/components/app/stale-version-watch";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -89,6 +93,7 @@ export default function RootLayout({
         crossOrigin="anonymous"
       />
       <body className="flex min-h-full flex-col">
+        <GoogleTagManagerNoScript />
         {/* OpenNext esbuild, next-themes'in prepaint script'ine __name(...) enjekte
             ediyor; tarayıcıda tanımsız olduğu için tema script'i patlıyordu (FOUC +
             konsol hatası). Tema script'inden ÖNCE çalışan minik bir polyfill. */}
@@ -108,6 +113,7 @@ export default function RootLayout({
           <StaleVersionWatch />
         </ThemeProvider>
         <GoogleAnalytics />
+        <GoogleTagManager />
       </body>
     </html>
   );
