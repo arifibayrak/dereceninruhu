@@ -892,7 +892,7 @@ export const ogrenciRehberi: Guide = {
       blocks: [
         {
           kind: "para",
-          text: "Bu ekran alt barda yoktur; Gelişim ekranındaki karttan ya da analiz kaydettikten sonra otomatik açılır. İki bölümü vardır: “Toplam eksik sıralaması” en çok soru kaçırdığın konuları sıralar — çalışma önceliğin budur. “Konu ısı haritası” ise eksikleri deneme deneme gösterir: koyulaşan hücre, aynı konudan tekrar tekrar kaçırdığın anlamına gelir.",
+          text: "Bu ekran alt barda yoktur; Gelişim ekranındaki karttan ya da analiz kaydettikten sonra otomatik açılır. Üç bölümü vardır: “Ders ders eksikler” her dersten en çok kaçırdığın 5 konuyu ayrı ayrı gösterir (üstteki çiplerden tek derse de odaklanabilirsin) — böylece güçlü olduğun dersteki zayıf konu, baskın dersin altında kaybolmaz. “Toplam eksik sıralaması” ders ayırmadan tek sıralama verir; çalışma önceliğin budur. “Konu ısı haritası” ise eksikleri deneme deneme gösterir: koyulaşan hücre, aynı konudan tekrar tekrar kaçırdığın anlamına gelir.",
         },
         {
           kind: "steps",

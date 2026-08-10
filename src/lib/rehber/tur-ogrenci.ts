@@ -684,11 +684,15 @@ export const ogrenciTuru: Tour = {
       route: "/ogrenci/analiz",
       target: "analiz-siralama",
       purpose:
-        "Tüm deneme analizlerin tek yerde toplanır: en çok kaçırdığın konuların sıralaması ve deneme deneme ısı haritası. “Neye çalışayım?” sorusunun cevabı.",
+        "Tüm deneme analizlerin tek yerde toplanır: ders ders eksiklerin, genel sıralaman ve deneme deneme ısı haritası. “Neye çalışayım?” sorusunun cevabı.",
       highlights: [
         {
+          label: "Ders ders eksikler",
+          text: "Her dersten en çok kaçırdığın 5 konu ayrı ayrı listelenir — üstteki çiplerden bir ders seçip yalnız ona odaklanabilirsin. Baskın ders (çoğu zaman Türkçe) listeyi yemez, zayıf olduğun her dersi görürsün.",
+        },
+        {
           label: "Toplam eksik sıralaması",
-          text: "En çok soru kaçırdığın konular en üstte — tepedeki 2-3 konuyu haftalık programına almak en akıllı hamledir.",
+          text: "Ders ayırmadan tek sıralama — en çok soru kaçırdığın konular en üstte. Tepedeki 2-3 konuyu haftalık programına almak en akıllı hamledir.",
         },
         {
           label: "Isı haritası",

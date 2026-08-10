@@ -468,7 +468,7 @@ export const kocRehberi: Guide = {
         },
         {
           kind: "note",
-          text: "Sekmenin altındaki \"Toplam eksik\" ve \"Konu ısı haritası\" panoları tüm deneme analizlerinden beslenir — analiz girdikçe dolar.",
+          text: "Sekmenin altındaki \"Ders ders eksikler\", \"Toplam eksik\" ve \"Konu ısı haritası\" panoları tüm deneme analizlerinden beslenir — analiz girdikçe dolar. İlk panoda her dersten en çok eksik verilen 5 konu ayrı ayrı görünür; üstteki çiplerden tek derse odaklanabilirsiniz.",
         },
       ],
     },
@@ -482,7 +482,7 @@ export const kocRehberi: Guide = {
       blocks: [
         {
           kind: "para",
-          text: "Analiz ekranı denemedeki hataları konuya bağlar: her ders bir kart, her konu bir satırdır. Satıra o konudan kaçan soru sayısını yazarsın; eksik girilen satırlar kızarır, ders başlığında toplam eksik görünür. Bu veriler kokpitteki \"Toplam eksik\" sıralamasını, ısı haritasını ve Konular sekmesindeki \"En zayıf konular\"ı besler.",
+          text: "Analiz ekranı denemedeki hataları konuya bağlar: her ders bir kart, her konu bir satırdır. Satıra o konudan kaçan soru sayısını yazarsın; eksik girilen satırlar kızarır, ders başlığında toplam eksik görünür. Bu veriler kokpitteki \"Ders ders eksikler\" panosunu, \"Toplam eksik\" sıralamasını, ısı haritasını ve Konular sekmesindeki \"En zayıf konular\"ı besler.",
         },
         {
           kind: "steps",

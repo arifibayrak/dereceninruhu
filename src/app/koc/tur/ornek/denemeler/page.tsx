@@ -15,6 +15,16 @@ export const metadata: Metadata = { title: "Örnek öğrenci · Denemeler" };
 
 export default function OrnekDenemelerPage() {
   const maxEksik = Math.max(...ornekEksikler.map((e) => e.eksik));
+  // Gerçek ekrandaki "Ders ders eksikler" panosunun statik karşılığı.
+  const dersler = [...new Set(ornekEksikler.map((e) => e.ders))]
+    .map((ders) => ({
+      ders,
+      konular: ornekEksikler.filter((e) => e.ders === ders),
+      toplam: ornekEksikler
+        .filter((e) => e.ders === ders)
+        .reduce((acc, e) => acc + e.eksik, 0),
+    }))
+    .sort((a, b) => b.toplam - a.toplam);
 
   return (
     <>
@@ -64,6 +74,48 @@ export default function OrnekDenemelerPage() {
               ))}
             </tbody>
           </table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Ders ders eksikler</CardTitle>
+          <CardDescription>
+            Her dersten en çok eksik verilen konular · tüm dersler aynı ölçekte.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {dersler.map((d) => (
+            <section
+              key={d.ders}
+              className="flex flex-col gap-2 border-t pt-3 first:border-t-0 first:pt-0"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-sm font-medium">{d.ders}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {d.toplam} eksik
+                </span>
+              </div>
+              <ul className="flex flex-col gap-2">
+                {d.konular.map((e) => (
+                  <li key={e.konu} className="flex items-center gap-3">
+                    <span className="min-w-0 flex-1 truncate text-sm">
+                      {e.konu}
+                    </span>
+                    <span className="h-1.5 w-32 overflow-hidden rounded-full bg-muted sm:w-48">
+                      <span
+                        className="block h-full rounded-full bg-destructive/60"
+                        style={{ width: `${(e.eksik / maxEksik) * 100}%` }}
+                      />
+                    </span>
+                    <span className="w-8 shrink-0 text-right text-sm font-semibold tabular-nums">
+                      {e.eksik}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
         </CardContent>
       </Card>
 

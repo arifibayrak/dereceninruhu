@@ -1,4 +1,5 @@
 import { asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import { getDb } from "@/db";
 import {
   enrollments,
@@ -175,12 +176,22 @@ export async function getMockTopicErrors(
 export type TopicDeficit = {
   topicId: number;
   topicName: string;
+  /**
+   * Konunun KENDİ dersi — alt ders olabilir (Geometri, Kimya…). Üst derse
+   * katlanmaz: "Fen Bilimleri" altında toplanınca baskın alt ders (Fizik)
+   * listeyi yer ve Biyoloji hiç görünmez — ders ders ayırmanın amacı buydu.
+   * Analiz GİRİŞ ekranı da (getTopicGroupsForExam) alt dersleri ayrı gösterir.
+   */
   subjectId: number;
   subjectName: string;
+  /** Alt derslerin kendi rengi yok — üst dersin rengi kullanılır. */
   chartColor: string | null;
   /** TOPLAM EKSİK = SUM(error_count) tüm denemelerde. */
   total: number;
 };
+
+/** Yalnız renk devralmak için: alt derslerin chart_color'ı NULL'dur. */
+const parentSubject = alias(subjects, "parent_subject");
 
 /** Konu bazlı toplam eksik sıralaması (çoktan aza). */
 export async function getTopicDeficits(
@@ -193,13 +204,16 @@ export async function getTopicDeficits(
       topicName: topics.name,
       subjectId: subjects.id,
       subjectName: subjects.name,
-      chartColor: subjects.chartColor,
+      chartColor: sql<
+        string | null
+      >`coalesce(${subjects.chartColor}, ${parentSubject.chartColor})`,
       total: sql<number>`sum(${mockTopicErrors.errorCount})`,
     })
     .from(mockTopicErrors)
     .innerJoin(mockExams, eq(mockExams.id, mockTopicErrors.mockExamId))
     .innerJoin(topics, eq(topics.id, mockTopicErrors.topicId))
     .innerJoin(subjects, eq(subjects.id, topics.subjectId))
+    .leftJoin(parentSubject, eq(parentSubject.id, subjects.parentSubjectId))
     .where(eq(mockExams.enrollmentId, enrollmentId))
     .groupBy(topics.id)
     .orderBy(

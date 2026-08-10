@@ -6,8 +6,10 @@ import { ChevronRightIcon, LibraryIcon } from "lucide-react";
 import { getTopicDeficits, getTopicHeatmap } from "@/db/queries/analiz";
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
 import { getCurrentUser, type Role } from "@/lib/session";
+import { groupDeficitsBySubject } from "@/lib/deficit";
 import { formatInt } from "@/lib/format";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
+import { SubjectDeficitPanel } from "@/components/app/subject-deficit-panel";
 import { TopicDeficitList } from "@/components/app/topic-deficit-list";
 import { TopicHeatmap } from "@/components/app/topic-heatmap";
 import {
@@ -36,6 +38,9 @@ export default async function OgrenciAnalizPage() {
     getTopicHeatmap(enrollmentId),
   ]);
   const totalDeficit = deficits.reduce((acc, d) => acc + d.total, 0);
+  const groups = groupDeficitsBySubject(deficits, 5);
+  // Ortak ölçek: sorgu çoktan aza sıralı, ilk satır en yüksek tek konu eksiği.
+  const max = deficits[0]?.total ?? 0;
 
   return (
     <>
@@ -50,17 +55,27 @@ export default async function OgrenciAnalizPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Toplam eksik sıralaması</CardTitle>
+          <CardTitle>Ders ders eksikler</CardTitle>
           <CardDescription>
-            En çok soru kaçırdığın konular — çalışma önceliğin.
+            Her dersten en çok kaçırdığın 5 konu — önce bunlara çalış.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TopicDeficitList
-            data-tour="analiz-siralama"
-            deficits={deficits}
-            limit={10}
-          />
+          <SubjectDeficitPanel groups={groups} max={max} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Toplam eksik sıralaması</CardTitle>
+          <CardDescription>
+            En çok soru kaçırdığın konular — ders ayırmadan tek sıralama.
+          </CardDescription>
+        </CardHeader>
+        {/* data-tour gerçek bir DOM elemanında olmalı: TopicDeficitList
+            props'u yaymıyor, bileşene verilince tur hedefi hiç çözülmüyordu. */}
+        <CardContent data-tour="analiz-siralama">
+          <TopicDeficitList deficits={deficits} limit={10} />
         </CardContent>
       </Card>
 
