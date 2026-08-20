@@ -5,7 +5,7 @@ import { ArrowLeftIcon } from "lucide-react";
 
 import { getSession, type Role } from "@/lib/session";
 import { LoginForm } from "@/components/app/login-form";
-import { Logo } from "@/components/brand/logo";
+import { LogoLink } from "@/components/brand/logo";
 import { WhatsappFabSlot } from "@/components/marketing/whatsapp-fab-slot";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -45,7 +45,7 @@ export default async function GirisPage() {
 
       <div className="flex w-full max-w-sm flex-col gap-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <Logo size={40} />
+          <LogoLink size={40} />
           <p className="text-sm text-muted-foreground">
             Netlerini artır, hedefine ulaş.
           </p>

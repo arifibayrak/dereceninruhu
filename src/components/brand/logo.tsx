@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { cn } from "@/lib/utils";
 
 /**
@@ -114,5 +116,41 @@ export function Logo({
       <LogoMark size={size} />
       {wordmark}
     </span>
+  );
+}
+
+type LogoLinkProps = LogoProps & {
+  /** Varsayılan ana sayfa; panellerde `/koc` veya `/ogrenci` verilebilir. */
+  href?: string;
+  label?: string;
+  /** Mobil çekmece gibi kapanması gereken kaplar için. */
+  onClick?: () => void;
+};
+
+/**
+ * Marka + ana sayfa bağlantısı — tek aria-label, tek hover davranışı.
+ *
+ * Çıplak `<Logo>` tıklanabilir görünmüyordu; `hover:opacity-80` bilinçli bir
+ * imleç ipucu. Hook kullanmadığı için sunucu bileşenlerinden de çağrılabilir.
+ */
+export function LogoLink({
+  href = "/",
+  label = "Derecenin Ruhu — ana sayfa",
+  className,
+  onClick,
+  ...logo
+}: LogoLinkProps) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        "shrink-0 rounded-lg transition-opacity hover:opacity-80",
+        className,
+      )}
+    >
+      <Logo {...logo} />
+    </Link>
   );
 }

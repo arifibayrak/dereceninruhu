@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
 import { ExternalLinkIcon, StarIcon } from "lucide-react";
 
-import { Logo, LogoMark } from "@/components/brand/logo";
+import { Logo, LogoLink, LogoMark } from "@/components/brand/logo";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { StatTile } from "@/components/brand/stat-tile";
 import { TestimonialCard } from "@/components/brand/testimonial-card";
@@ -135,7 +135,7 @@ export default function MarkaPage() {
       {/* Üst çubuk */}
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Logo size={28} />
+          <LogoLink size={28} />
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="hidden sm:inline-flex">
               Marka Rehberi v1

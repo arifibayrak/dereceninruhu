@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogInIcon, MenuIcon, SparklesIcon } from "lucide-react";
 
-import { Logo } from "@/components/brand/logo";
+import { LogoLink } from "@/components/brand/logo";
 import {
   SocialIconRow,
   SocialIconScroller,
@@ -38,10 +38,14 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:px-6">
-        <Link href="/" aria-label="Derecenin Ruhu — ana sayfa" className="shrink-0">
-          <Logo size={28} />
-        </Link>
+      {/*
+        Tam genişlik (ortalanmış `max-w-6xl` ray DEĞİL): 2100px ekranda marka
+        soldan 498px içeride kalıyordu. Artık sol kenardan 32px. Mobilde
+        davranış aynı — ekran zaten rayın altında kaldığı için `max-w` etkisizdi.
+        Ödünleşme bilinçli: başlık, sayfa içeriğinin 1152px rayıyla hizalı değil.
+      */}
+      <div className="flex h-16 w-full items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <LogoLink size={28} />
 
         {/* Masaüstü gezinme */}
         <nav className="ml-4 hidden items-center gap-0.5 lg:flex">
@@ -109,7 +113,7 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
             <SheetContent side="right" className="w-[19rem]">
               <SheetHeader>
                 <SheetTitle>
-                  <Logo size={26} />
+                  <LogoLink size={26} onClick={() => setOpen(false)} />
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 px-4">

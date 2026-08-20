@@ -4,7 +4,7 @@ import { CircleAlertIcon } from "lucide-react";
 
 import { getInviteInfo } from "@/actions/invite";
 import { InviteForm } from "@/components/app/invite-form";
-import { Logo } from "@/components/brand/logo";
+import { LogoLink } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
@@ -35,7 +35,7 @@ export default async function DavetPage({
 
       <div className="flex w-full max-w-sm flex-col gap-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <Logo size={40} />
+          <LogoLink size={40} />
         </div>
 
         {info ? (

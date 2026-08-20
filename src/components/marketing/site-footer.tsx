@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ExternalLinkIcon, MapPinIcon, StarIcon } from "lucide-react";
 
 import { coachStats } from "@/db/seed/cms-content";
-import { Logo } from "@/components/brand/logo";
+import { LogoLink } from "@/components/brand/logo";
 import {
   SocialIconRow,
   type SocialUrls,
@@ -56,7 +56,7 @@ export function SiteFooter({ social }: { social: SocialUrls }) {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-10 sm:px-6 md:py-12">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div className="flex flex-col items-start gap-3">
-            <Logo size={28} />
+            <LogoLink size={28} />
             <p className="max-w-xs text-sm text-pretty text-muted-foreground">
               LGS, YKS ve KPSS için birebir koçluk: haftalık program, soru
               takibi ve deneme analiziyle görünür net artışı.

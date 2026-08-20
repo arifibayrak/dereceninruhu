@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { hasAnyCoach } from "@/actions/setup";
 import { SetupForm } from "@/components/app/setup-form";
-import { Logo } from "@/components/brand/logo";
+import { LogoLink } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export const metadata: Metadata = {
@@ -29,7 +29,7 @@ export default async function KurulumPage() {
 
       <div className="flex w-full max-w-sm flex-col gap-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <Logo size={40} />
+          <LogoLink size={40} />
           <div className="flex flex-col gap-1">
             <h1 className="font-heading text-title">İlk kurulum</h1>
             <p className="text-sm text-muted-foreground">
