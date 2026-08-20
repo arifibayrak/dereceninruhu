@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronDownIcon, MinusIcon, PlusIcon, SaveIcon } from "lucide-react";
-import { toast } from "sonner";
+import { useState } from "react";
+import { ChevronDownIcon, MinusIcon, PlusIcon } from "lucide-react";
 
-import { callAction } from "@/lib/action-client";
-import { upsertQuestionLogs } from "@/actions/tracking";
+import { AutosaveStatus } from "@/components/app/autosave-status";
+import {
+  useQuestionAutosave,
+  type AutosaveEntry,
+} from "@/components/app/use-question-autosave";
 import { formatInt, formatNet } from "@/lib/format";
 import {
   accuracyPct,
@@ -72,6 +73,15 @@ function draftTotal(d: Draft): number {
   return numOrNull(d.total) ?? 0;
 }
 
+function sameDraft(a: Draft, b: Draft): boolean {
+  return (
+    draftTotal(a) === draftTotal(b) &&
+    a.correct === b.correct &&
+    a.wrong === b.wrong &&
+    a.blank === b.blank
+  );
+}
+
 const hasBreakdown = (d: Draft) =>
   breakdownState({
     correctCount: numOrNull(d.correct),
@@ -79,11 +89,28 @@ const hasBreakdown = (d: Draft) =>
     blankCount: numOrNull(d.blank),
   }) === "full";
 
+/** Taslağı sunucunun beklediği hücre satırına çevirir. */
+function entryOf(subjectId: number, d: Draft): AutosaveEntry {
+  const full = hasBreakdown(d);
+  return {
+    subjectId,
+    questionCount: draftTotal(d),
+    correctCount: full ? numOrNull(d.correct) : null,
+    wrongCount: full ? numOrNull(d.wrong) : null,
+    blankCount: full ? numOrNull(d.blank) : null,
+  };
+}
+
 /**
  * Bugün ekranı — ders başına hızlı soru girişi, büyük dokunma alanları.
  *
  * Varsayılan yol tek sayı (toplam) girmektir; "D/Y/B" düğmesi satırı açıp
  * doğru/yanlış/boş alanlarını gösterir ve toplamı otomatik hesaplar.
+ *
+ * KAYDET DÜĞMESİ YOKTUR: `+/−` dokunuşu anında, yazılan sayı ise kutudan
+ * çıkınca (`onBlur`) sunucuya gider. Eski akışta öğrenci sayıyı girip klavyenin
+ * onay tuşuna basıyor, kaydettiğini sanıyor ve "Kaydet"e basmadan çıkınca
+ * girdiği her şeyi kaybediyordu.
  */
 export function TodayQuickAdd({
   enrollmentId,
@@ -91,8 +118,12 @@ export function TodayQuickAdd({
   subjects,
   initial,
 }: Props) {
-  const router = useRouter();
-  const [saving, setSaving] = useState(false);
+  const { status, queue, retry } = useQuestionAutosave({
+    enrollmentId,
+    // Ana sayfadaki seri/özet kartları bu veriden türüyor — düzenleme bitince
+    // bir kez tazele.
+    refreshAfterSave: true,
+  });
   const [drafts, setDrafts] = useState<Record<number, Draft>>(() => {
     const out: Record<number, Draft> = {};
     for (const [id, cell] of Object.entries(initial)) {
@@ -113,35 +144,34 @@ export function TodayQuickAdd({
   const at = (id: number): Draft => drafts[id] ?? draftOf(initial[id]);
   const totalOf = (id: number) => draftTotal(at(id));
 
-  const dirty = useMemo(
-    () =>
-      subjects.some((s) => {
-        const a = at(s.id);
-        const b = draftOf(initial[s.id]);
-        return (
-          draftTotal(a) !== draftTotal(b) ||
-          a.correct !== b.correct ||
-          a.wrong !== b.wrong ||
-          a.blank !== b.blank
-        );
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [drafts, subjects, initial],
-  );
-
   const total = subjects.reduce((acc, s) => acc + totalOf(s.id), 0);
-  const invalid = subjects.some((s) => {
-    const d = at(s.id);
-    const state = breakdownState({
-      correctCount: numOrNull(d.correct),
-      wrongCount: numOrNull(d.wrong),
-      blankCount: numOrNull(d.blank),
-    });
-    return state === "partial" || draftTotal(d) > MAX_QUESTIONS_PER_CELL;
-  });
+  /** Yarım kalmış D/Y/B — sunucu reddeder, o yüzden gönderilmez, uyarılır. */
+  const halfFilled = subjects.some(
+    (s) =>
+      breakdownState({
+        correctCount: numOrNull(at(s.id).correct),
+        wrongCount: numOrNull(at(s.id).wrong),
+        blankCount: numOrNull(at(s.id).blank),
+      }) === "partial",
+  );
 
   const setDraft = (id: number, next: Draft) =>
     setDrafts((prev) => ({ ...prev, [id]: next }));
+
+  /** Taslağı yaz VE kayıt kuyruğuna al — "Kaydet" düğmesinin yerini tutar. */
+  const commit = (id: number, next: Draft) => {
+    setDraft(id, next);
+    const state = breakdownState({
+      correctCount: numOrNull(next.correct),
+      wrongCount: numOrNull(next.wrong),
+      blankCount: numOrNull(next.blank),
+    });
+    // Üçü tamamlanınca kaydedilecek; yarım satır sunucuda tüm günü reddeder.
+    if (state === "partial") return;
+    if (draftTotal(next) > MAX_QUESTIONS_PER_CELL) return;
+    if (sameDraft(next, draftOf(initial[id]))) return;
+    queue(dayKey, [entryOf(id, next)]);
+  };
 
   const bump = (id: number, delta: number) => {
     const d = at(id);
@@ -151,14 +181,14 @@ export function TodayQuickAdd({
         0,
         Math.min(MAX_QUESTIONS_PER_CELL, (numOrNull(d.correct) ?? 0) + delta),
       );
-      setDraft(id, { ...d, correct: String(next) });
+      commit(id, { ...d, correct: String(next) });
       return;
     }
     const next = Math.max(
       0,
       Math.min(MAX_QUESTIONS_PER_CELL, draftTotal(d) + delta),
     );
-    setDraft(id, { ...d, total: String(next) });
+    commit(id, { ...d, total: String(next) });
   };
 
   const toggleExpand = (id: number) =>
@@ -168,36 +198,6 @@ export function TodayQuickAdd({
       else next.add(id);
       return next;
     });
-
-  const save = async () => {
-    const entries = subjects
-      .filter((s) => totalOf(s.id) > 0 || initial[s.id] !== undefined)
-      .map((s) => {
-        const d = at(s.id);
-        const full = hasBreakdown(d);
-        return {
-          subjectId: s.id,
-          questionCount: draftTotal(d),
-          correctCount: full ? numOrNull(d.correct) : null,
-          wrongCount: full ? numOrNull(d.wrong) : null,
-          blankCount: full ? numOrNull(d.blank) : null,
-        };
-      });
-    if (entries.length === 0) return;
-    setSaving(true);
-    const res = await callAction(upsertQuestionLogs, {
-      enrollmentId,
-      logDate: dayKey,
-      entries,
-    });
-    setSaving(false);
-    if (res.ok) {
-      toast.success("Bugünkü sorular kaydedildi 🔥");
-      router.refresh();
-    } else {
-      toast.error(res.error);
-    }
-  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -268,6 +268,9 @@ export function TodayQuickAdd({
                       total: e.target.value.replace(/\D/g, "").slice(0, 4),
                     })
                   }
+                  // Kutudan çıkınca kaydedilir — klavyenin onay tuşu da odağı
+                  // bıraktığı için öğrencinin alışkanlığı doğrudan işe yarar.
+                  onBlur={() => commit(subject.id, at(subject.id))}
                   className={cn(
                     "h-10 w-14 shrink-0 rounded-lg border border-input bg-transparent text-center text-base font-medium tabular-nums outline-none placeholder:text-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
                     full && "border-dashed text-muted-foreground",
@@ -325,6 +328,7 @@ export function TodayQuickAdd({
                                 .slice(0, 4),
                             })
                           }
+                          onBlur={() => commit(subject.id, at(subject.id))}
                           className="h-10 w-full rounded-lg border border-input bg-transparent text-center text-base font-medium tabular-nums outline-none placeholder:text-muted-foreground/40 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
                         />
                       </label>
@@ -359,7 +363,7 @@ export function TodayQuickAdd({
 
       {/* `bottom-16` çentikli telefonlarda yetmiyordu: nav `env(safe-area-inset-bottom)`
           kadar daha uzun, çubuk altında kalıyordu (bkz. topic-error-form). */}
-      <div className="sticky bottom-[calc(var(--app-bottom-nav,0px)+1rem)] mt-2 flex items-center justify-between gap-3 rounded-xl bg-background/95 p-2 backdrop-blur">
+      <div className="sticky bottom-[calc(var(--app-bottom-nav,0px)+1rem)] mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl bg-background/95 p-2 backdrop-blur">
         <span className="pl-2 text-sm text-muted-foreground">
           Bugün toplam{" "}
           <span className="font-semibold text-foreground tabular-nums">
@@ -367,15 +371,13 @@ export function TodayQuickAdd({
           </span>{" "}
           soru
         </span>
-        <Button
-          size="lg"
-          onClick={save}
-          disabled={saving || !dirty || invalid}
-          className="h-11"
-        >
-          <SaveIcon data-icon="inline-start" />
-          {saving ? "Kaydediliyor…" : "Kaydet"}
-        </Button>
+        {halfFilled ? (
+          <span className="pr-1 text-xs font-medium text-destructive">
+            Doğru, yanlış ve boş birlikte girilmeli
+          </span>
+        ) : (
+          <AutosaveStatus status={status} onRetry={retry} className="pr-1" />
+        )}
       </div>
     </div>
   );

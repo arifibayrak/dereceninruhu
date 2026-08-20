@@ -194,7 +194,7 @@ export const ogrenciRehberi: Guide = {
           title: "Günlük rutin",
           items: [
             "“Bugünün programı” listesinde günün görevlerini gör; bitirdiklerine dokunarak işaretle.",
-            "Gün sonunda “Bugün kaç soru çözdün?” bölümüne ders ders sayılarını gir ve “Kaydet”e bas.",
+            "Gün sonunda “Bugün kaç soru çözdün?” bölümüne ders ders sayılarını gir — kutudan çıktığın anda kendiliğinden kaydedilir.",
             "Yaklaşan görüşmen varsa kartında saati görürsün; görüşme saatinde “Katıl” ile bağlanırsın.",
           ],
         },
@@ -227,9 +227,9 @@ export const ogrenciRehberi: Guide = {
               does: "Haftalık program ekranına gider.",
             },
             {
-              label: "Kaydet",
-              where: "Hızlı soru girişinin altındaki yapışkan barda",
-              does: "Girdiğin soru sayılarını bugüne kaydeder.",
+              label: "Tekrar dene",
+              where: "Hızlı soru girişinin altındaki yapışkan barda, yalnız kayıt başarısızsa",
+              does: "Kaydedilemeyen girişi yeniden gönderir (bağlantı koptuğunda çıkar).",
             },
           ],
         },
@@ -260,7 +260,7 @@ export const ogrenciRehberi: Guide = {
             "Dersin satırında sayı kutusuna toplamı yaz ya da + / − ile 5'er 5'er ayarla.",
             "Kırılım gireceksen ok'a dokun, Doğru / Yanlış / Boş alanlarının üçünü de doldur.",
             "Diğer dersler için aynısını yap; alttaki bar günün toplamını gösterir.",
-            "“Kaydet”e bas — basmadan hiçbir şey kaydolmaz.",
+            "Hepsi bu — Kaydet düğmesi yoktur: + / − dokunuşu anında, elle yazdığın sayı ise kutudan çıkınca kaydedilir.",
           ],
         },
         {
@@ -287,9 +287,9 @@ export const ogrenciRehberi: Guide = {
               does: "Doğru / Yanlış / Boş alanlarını açıp kapatır.",
             },
             {
-              label: "Kaydet",
-              where: "Alt bar, listenin sonunda",
-              does: "Tüm satırları bugüne kaydeder; başarıda “Bugünkü sorular kaydedildi 🔥” bildirimi çıkar.",
+              label: "Tekrar dene",
+              where: "Alt bar, yalnız kayıt başarısız olduğunda",
+              does: "Kaydedilemeyen girişi yeniden gönderir; normalde alt barda “Kaydedildi” yazar.",
             },
           ],
         },
@@ -317,8 +317,8 @@ export const ogrenciRehberi: Guide = {
           items: [
             "Doldurmak istediğin hücreye dokun — alttan düzenleme paneli açılır.",
             "Doğru / Yanlış / Boş üçünü birden gir ya da hepsini boş bırakıp alttaki toplam alanını doldur.",
-            "“Tamam” ile paneli kapat; istediğin kadar hücre düzenle.",
-            "İşin bitince tablonun altındaki “Kaydet”e bas — panel kapatmak kaydetmez.",
+            "“Tamam” ile paneli kapat — hücre o anda kaydedilir.",
+            "Sıradaki hücreye geç; ayrıca basılacak bir Kaydet düğmesi yoktur.",
           ],
         },
         {
@@ -342,23 +342,23 @@ export const ogrenciRehberi: Guide = {
             {
               label: "Temizle",
               where: "Hücre paneli, alt solda",
-              does: "Hücredeki tüm değerleri siler (Kaydet'e basınca kayıttan da silinir).",
+              does: "Hücredeki tüm değerleri siler ve paneli kapatır; silme anında kaydedilir.",
             },
             {
               label: "Tamam",
               where: "Hücre paneli, alt sağda",
-              does: "Paneli kapatır; girdiğin değerler taslakta bekler.",
+              does: "Paneli kapatır ve hücreyi kaydeder. Panelin dışına dokunmak da aynı şeyi yapar.",
             },
             {
-              label: "Kaydet",
-              where: "Tablonun altında, sağda",
-              does: "Değişen tüm günleri birden kaydeder; alttaki yazı kaç günde kaydedilmemiş değişiklik olduğunu söyler.",
+              label: "Tekrar dene",
+              where: "Tablonun altında, yalnız kayıt başarısız olduğunda",
+              does: "Kaydedilemeyen hücreyi yeniden gönderir; normalde orada “Kaydedildi” yazar.",
             },
           ],
         },
         {
           kind: "warning",
-          text: "Bir hücreye en fazla 2.000 soru yazılabilir. Ayrıca “Kaydet”e basmadan sayfadan ayrılırsan panelde girdiklerin kaybolur.",
+          text: "Bir hücreye en fazla 2.000 soru yazılabilir. Doğru/yanlış/boş'tan yalnız birini doldurup paneli kapatırsan o giriş kaydedilmez — üçünü birden gir ya da üçünü de boş bırak.",
         },
         {
           kind: "tip",
@@ -592,7 +592,7 @@ export const ogrenciRehberi: Guide = {
       blocks: [
         {
           kind: "para",
-          text: "Soru girişinin aksine burada Kaydet düğmesi yoktur: bir göreve dokunduğun anda işaret sunucuya yazılır. Yanlışlıkla işaretlediysen tekrar dokun, geri alınır. Koçun tamamlanma oranını kendi ekranında görür.",
+          text: "Burada da Kaydet düğmesi yoktur: bir göreve dokunduğun anda işaret sunucuya yazılır. Yanlışlıkla işaretlediysen tekrar dokun, geri alınır. Koçun tamamlanma oranını kendi ekranında görür.",
         },
         {
           kind: "steps",
@@ -1399,17 +1399,17 @@ export const ogrenciRehberi: Guide = {
       blocks: [
         {
           kind: "para",
-          text: "Çoğu “kayboldu” vakası aslında iki şeyden birindendir: Kaydet'e basmadan çıkmak ya da yanlış haftaya/ekrana bakmak. Aşağıdaki liste sık soruları toplar.",
+          text: "Çoğu “kayboldu” vakası aslında yanlış haftaya ya da yanlış ekrana bakmaktan olur. Aşağıdaki liste sık soruları toplar.",
         },
         {
           kind: "faq",
           items: [
             {
               q: "Soru girdim ama kaybolmuş.",
-              a: "Soru takibi ve hızlı giriş “Kaydet”e basmadan kaydolmaz. Girişten sonra “Bugünkü sorular kaydedildi 🔥” ya da “Soru girişleri kaydedildi 💪” bildirimini gördüğünden emin ol. Bir de doğru haftaya baktığını kontrol et — hafta Pazartesi başlar.",
+              a: "Soru girişi artık kendiliğinden kaydedilir; alt barda “Kaydedildi” yazısını gördüysen veri sunucudadır. Kırmızı “Kaydedilemedi” uyarısı çıktıysa bağlantın kopmuş demektir — “Tekrar dene”ye bas. Bir de doğru haftaya baktığını kontrol et; hafta Pazartesi başlar.",
             },
             {
-              q: "Hücre kaydetmiyor / Kaydet basılamıyor.",
+              q: "Hücre kaydetmiyor / “Tamam” basılamıyor.",
               a: "Doğru/yanlış/boş üçlüsünden yalnız birini ya da ikisini doldurmuşsundur. Ya üçünü birden doldur ya üçünü de silip sadece toplamı yaz. Bir hücrenin üst sınırı 2.000'dir.",
             },
             {
@@ -1438,7 +1438,7 @@ export const ogrenciRehberi: Guide = {
             },
             {
               q: "Yanlış güne soru/süre girdim.",
-              a: "Soru için: Sorular sekmesinde ilgili haftaya git, yanlış hücreyi açıp “Temizle” de, doğru hücreyi doldur, “Kaydet”e bas. Süre için: yanlış kaydı “Bugünkü oturumlar”dan sil, manuel girişte doğru günü seçerek yeniden ekle.",
+              a: "Soru için: Sorular sekmesinde ilgili haftaya git, yanlış hücreyi açıp “Temizle” de, sonra doğru hücreyi doldur — ikisi de kapanınca kaydedilir. Süre için: yanlış kaydı “Bugünkü oturumlar”dan sil, manuel girişte doğru günü seçerek yeniden ekle.",
             },
             {
               q: "Denemeyi yanlış girdim, nasıl düzeltirim?",

@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { callAction } from "@/lib/action-client";
-import { upsertQuestionLogs } from "@/actions/tracking";
+import { AutosaveStatus } from "@/components/app/autosave-status";
+import {
+  useQuestionAutosave,
+  type AutosaveEntry,
+} from "@/components/app/use-question-autosave";
 import { DAY_NAMES_TR, DAY_NAMES_TR_SHORT } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
 import {
@@ -99,13 +100,34 @@ function sameDraft(a: Draft, b: Draft): boolean {
   );
 }
 
+/** Taslağı sunucunun beklediği hücre satırına çevirir. */
+function entryOf(subjectId: number, d: Draft): AutosaveEntry {
+  const full =
+    breakdownState({
+      correctCount: numOrNull(d.correct),
+      wrongCount: numOrNull(d.wrong),
+      blankCount: numOrNull(d.blank),
+    }) === "full";
+  return {
+    subjectId,
+    questionCount: draftTotal(d),
+    correctCount: full ? numOrNull(d.correct) : null,
+    wrongCount: full ? numOrNull(d.wrong) : null,
+    blankCount: full ? numOrNull(d.blank) : null,
+  };
+}
+
 /**
- * Haftalık soru takibi ızgarası — günler × dersler, gün bazlı upsert.
+ * Haftalık soru takibi ızgarası — günler × dersler, hücre bazlı upsert.
  * Hem öğrenci hem koç aynı bileşeni kullanır (yetki aksiyon katmanında).
  *
  * Hücreye dokunmak doğru/yanlış/boş panelini açar; kırılım girilirse toplam
  * otomatik hesaplanır ve net önizlenir. Kırılım opsiyoneldir — sadece toplam
  * yazmak da geçerlidir (bkz. `@/lib/question-log`).
+ *
+ * KAYDET DÜĞMESİ YOKTUR. Panel kapandığı anda o hücre sunucuya yazılır.
+ * Eskiden panelin "Tamam"ı yalnız paneli kapatıyordu; öğrenci kaydettiğini
+ * sanıp ızgaranın altındaki "Kaydet"e basmadan çıkınca gün kayboluyordu.
  */
 export function WeekGridForm({
   enrollmentId,
@@ -114,8 +136,7 @@ export function WeekGridForm({
   sections,
   initial,
 }: Props) {
-  const router = useRouter();
-  const [saving, setSaving] = useState(false);
+  const { status, queue, retry } = useQuestionAutosave({ enrollmentId });
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() => {
     const out: Record<string, Draft> = {};
     for (const [k, cell] of Object.entries(initial)) out[k] = draftOf(cell);
@@ -146,66 +167,44 @@ export function WeekGridForm({
   const totalAt = (dayKey: string, subjectId: number) =>
     draftTotal(at(dayKey, subjectId));
 
-  const dirtyDays = useMemo(() => {
-    const days: string[] = [];
-    for (const dayKey of dayKeys) {
-      const dirty = allSubjects.some((s) => {
-        const k = keyOf(dayKey, s.id);
-        return !sameDraft(
-          drafts[k] ?? draftOf(initial[k]),
-          draftOf(initial[k]),
-        );
-      });
-      if (dirty) days.push(dayKey);
-    }
-    return days;
-  }, [drafts, dayKeys, allSubjects, initial]);
-
   const setDraft = (dayKey: string, subjectId: number, next: Draft) => {
     setDrafts((prev) => ({ ...prev, [keyOf(dayKey, subjectId)]: next }));
   };
 
-  const save = async () => {
-    if (dirtyDays.length === 0) return;
-    setSaving(true);
-    let failed = 0;
-    for (const dayKey of dirtyDays) {
-      const entries = allSubjects
-        .filter((s) => {
-          const k = keyOf(dayKey, s.id);
-          // Değeri olan ya da daha önce kaydedilmiş (silinebilir) hücreler.
-          return totalAt(dayKey, s.id) > 0 || k in initial;
-        })
-        .map((s) => {
-          const d = at(dayKey, s.id);
-          const hasBreakdown = breakdownState({
-            correctCount: numOrNull(d.correct),
-            wrongCount: numOrNull(d.wrong),
-            blankCount: numOrNull(d.blank),
-          }) === "full";
-          return {
-            subjectId: s.id,
-            questionCount: draftTotal(d),
-            correctCount: hasBreakdown ? numOrNull(d.correct) : null,
-            wrongCount: hasBreakdown ? numOrNull(d.wrong) : null,
-            blankCount: hasBreakdown ? numOrNull(d.blank) : null,
-          };
-        });
-      if (entries.length === 0) continue;
-      const res = await callAction(upsertQuestionLogs, {
-        enrollmentId,
-        logDate: dayKey,
-        entries,
-      });
-      if (!res.ok) failed++;
+  /**
+   * Panel kapanışının TEK yolu — "Tamam", "Temizle", dışına dokunma ve Escape
+   * hepsi buradan geçer. Kapanış = kayıt; başka bir düğme beklenmez.
+   */
+  const closeEditor = (next: Draft) => {
+    if (!editing) return;
+    const { dayKey, subject } = editing;
+    const k = keyOf(dayKey, subject.id);
+    const saved = draftOf(initial[k]);
+
+    const state = breakdownState({
+      correctCount: numOrNull(next.correct),
+      wrongCount: numOrNull(next.wrong),
+      blankCount: numOrNull(next.blank),
+    });
+    /*
+     * Yarım kırılım ve sınır aşımı sunucuda REDDEDİLİR (normalizeQuestionEntry
+     * → null). "Tamam" bu durumda zaten kapalı; buraya yalnız dışarı dokunarak
+     * gelinir. Sessizce kaybetmek yerine son kayıtlı değere dön ve söyle.
+     */
+    if (state === "partial" || draftTotal(next) > MAX_QUESTIONS_PER_CELL) {
+      setDraft(dayKey, subject.id, saved);
+      toast.error(
+        "Yarım giriş kaydedilmedi — doğru, yanlış ve boş birlikte girilmeli.",
+      );
+      setEditing(null);
+      return;
     }
-    setSaving(false);
-    if (failed > 0) {
-      toast.error("Bazı günler kaydedilemedi, tekrar dene.");
-    } else {
-      toast.success("Soru girişleri kaydedildi 💪");
-    }
-    router.refresh();
+
+    setDraft(dayKey, subject.id, next);
+    setEditing(null);
+    // Hiç değişmediyse boşuna yazma (yeni ve boş hücre de buraya düşer).
+    if (sameDraft(next, saved)) return;
+    queue(dayKey, [entryOf(subject.id, next)]);
   };
 
   const dayTotal = (dayKey: string) =>
@@ -220,7 +219,7 @@ export function WeekGridForm({
     <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground">
         Hücreye dokun → doğru / yanlış / boş gir. İstersen sadece toplamı da
-        yazabilirsin.
+        yazabilirsin. Panel kapanınca kendiliğinden kaydedilir.
       </p>
 
       <div className="overflow-x-auto rounded-xl bg-card ring-1 ring-foreground/10">
@@ -294,20 +293,8 @@ export function WeekGridForm({
         </table>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-muted-foreground">
-          {dirtyDays.length > 0
-            ? `${dirtyDays.length} günde kaydedilmemiş değişiklik var`
-            : "Tüm değişiklikler kayıtlı"}
-        </span>
-        <Button
-          onClick={save}
-          disabled={saving || dirtyDays.length === 0}
-          size="lg"
-        >
-          <SaveIcon data-icon="inline-start" />
-          {saving ? "Kaydediliyor…" : "Kaydet"}
-        </Button>
+      <div className="flex items-center justify-end gap-3">
+        <AutosaveStatus status={status} onRetry={retry} />
       </div>
 
       {editing && (
@@ -320,7 +307,7 @@ export function WeekGridForm({
           onChange={(next) =>
             setDraft(editing.dayKey, editing.subject.id, next)
           }
-          onClose={() => setEditing(null)}
+          onDone={closeEditor}
         />
       )}
     </div>
@@ -425,7 +412,7 @@ function CellSheet({
   divisor,
   draft,
   onChange,
-  onClose,
+  onDone,
 }: {
   dayKey: string;
   dayIndex: number;
@@ -433,7 +420,8 @@ function CellSheet({
   divisor: number;
   draft: Draft;
   onChange: (next: Draft) => void;
-  onClose: () => void;
+  /** Kapat + kaydet. Panelin kapanmasının tek yolu budur. */
+  onDone: (final: Draft) => void;
 }) {
   const clean = (raw: string) => raw.replace(/\D/g, "").slice(0, 4);
   const c = numOrNull(draft.correct);
@@ -454,7 +442,7 @@ function CellSheet({
   const dayNum = parseInt(dayKey.slice(8), 10);
 
   return (
-    <Sheet open onOpenChange={(open) => !open && onClose()}>
+    <Sheet open onOpenChange={(open) => !open && onDone(draft)}>
       <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>
@@ -547,17 +535,14 @@ function CellSheet({
           <Button
             variant="outline"
             className="flex-1"
-            onClick={() => {
-              onChange({ ...EMPTY_DRAFT });
-              onClose();
-            }}
+            onClick={() => onDone({ ...EMPTY_DRAFT })}
           >
             Temizle
           </Button>
           <Button
             className="flex-1"
             disabled={state === "partial" || overLimit}
-            onClick={onClose}
+            onClick={() => onDone(draft)}
           >
             Tamam
           </Button>

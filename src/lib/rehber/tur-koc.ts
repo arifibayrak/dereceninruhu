@@ -355,8 +355,8 @@ export const kocTuru: Tour = {
       ],
       buttons: [
         {
-          label: "Kaydet",
-          does: "Izgaradaki tüm değişiklikleri tek seferde yazar.",
+          label: "Tamam",
+          does: "Hücre panelini kapatır ve o hücreyi kaydeder — ayrıca basılacak bir Kaydet düğmesi yoktur.",
         },
       ],
       tip: "Hızlı yol tek sayı (toplam) girmektir; D/Y/B'yi yalnız doğruluk analizi istediğin derslerde aç.",

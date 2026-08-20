@@ -390,7 +390,7 @@ export const kocRehberi: Guide = {
       no: 9,
       chapter: "Takip",
       title: "Soru Takibi sekmesi",
-      lead: "Gün × ders ızgarasında hücreye dokun, doğru/yanlış/boş ya da sadece toplamı gir, Kaydet'e bas. Koç olarak öğrencinin verisini düzenleyebilirsin.",
+      lead: "Gün × ders ızgarasında hücreye dokun, doğru/yanlış/boş ya da sadece toplamı gir; panel kapanınca kaydedilir. Koç olarak öğrencinin verisini düzenleyebilirsin.",
       keywords: ["soru girişi", "d/y/b", "ızgara", "haftalık", "doğruluk"],
       blocks: [
         {
@@ -402,17 +402,17 @@ export const kocRehberi: Guide = {
           items: [
             "Düzenlemek istediğin gün + ders hücresine dokun.",
             "Doğru, Yanlış, Boş değerlerini gir (ya üçünü doldur ya üçünü boş bırak) veya sadece toplamı yaz.",
-            "\"Tamam\" ile paneli kapat; hücreyi silmek için \"Temizle\".",
-            "Tüm değişiklikler bittiğinde alttaki \"Kaydet\"e bas — kaydedilmemiş gün sayısı düğmenin solunda yazar.",
+            "\"Tamam\" ile paneli kapat — hücre o anda kaydedilir; silmek için \"Temizle\".",
+            "Sıradaki hücreye geç; ayrıca basılacak bir Kaydet düğmesi yoktur.",
           ],
         },
         {
           kind: "buttons",
           rows: [
             { label: "Izgara hücresi", where: "Izgarada gün × ders kesişimi", does: "Alttan D/Y/B giriş panelini açar; kırılımlı hücrelerde altta ince çizgi işareti görünür." },
-            { label: "Temizle", where: "Açılan panelde", does: "Hücrenin tüm değerlerini siler (Kaydet'e basınca kalıcılaşır)." },
-            { label: "Tamam", where: "Açılan panelde", does: "Paneli kapatır; değer taslakta kalır." },
-            { label: "Kaydet", where: "Izgaranın altında", does: "Değişen günleri topluca kaydeder." },
+            { label: "Temizle", where: "Açılan panelde", does: "Hücrenin tüm değerlerini siler ve paneli kapatır; silme anında kaydedilir." },
+            { label: "Tamam", where: "Açılan panelde", does: "Paneli kapatır ve hücreyi kaydeder; panelin dışına dokunmak da aynı şeyi yapar." },
+            { label: "Tekrar dene", where: "Izgaranın altında, yalnız kayıt başarısızsa", does: "Kaydedilemeyen hücreyi yeniden gönderir; normalde orada \"Kaydedildi\" yazar." },
           ],
         },
         {
@@ -1268,7 +1268,7 @@ export const kocRehberi: Guide = {
             },
             {
               q: "Soru ızgarasında girdiğim değerler kayboldu.",
-              a: "Hücre panelini kapatmak kaydetmez; ızgaranın altındaki \"Kaydet\" düğmesine basman gerekir. \"N günde kaydedilmemiş değişiklik var\" yazısı görünüyorsa henüz kaydedilmemiştir.",
+              a: "Artık panel kapanınca hücre kendiliğinden kaydedilir; ızgaranın altında \"Kaydedildi\" yazısını ara. Kırmızı \"Kaydedilemedi\" görünüyorsa bağlantı kopmuştur — \"Tekrar dene\"ye bas. Yarım doğru/yanlış/boş girişi ise hiç kaydedilmez.",
             },
             {
               q: "Şablonlarda / içerikte düzenleme düğmelerini göremiyorum.",

@@ -220,8 +220,8 @@ export const AKISLAR: Flow[] = [
           "Görevler işaretlenir, çözülen sorular girilir, çalışma süresi tutulur.",
         buttons: [
           {
-            label: "Kaydet",
-            does: "Soru girişini yazar — basılmadan hiçbir şey kaydolmaz.",
+            label: "Tekrar dene",
+            does: "Soru girişi kendiliğinden kaydedilir; yalnız bağlantı koptuğunda bu düğme çıkar.",
           },
           { label: "Başla", does: "Kronometreyi çalıştırır." },
           { label: "Bitir", does: "Oturumu bugünün çalışma süresine ekler." },

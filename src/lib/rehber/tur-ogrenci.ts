@@ -117,7 +117,7 @@ export const ogrenciTuru: Tour = {
       route: "/ogrenci",
       target: "bugun-soru",
       purpose:
-        "“Bugün kaç soru çözdün?” bölümü günün soru girişini kolaylaştırır: sayıyı yaz ya da −/+ ile ilerlet, sonunda mutlaka Kaydet'e bas.",
+        "“Bugün kaç soru çözdün?” bölümü günün soru girişini kolaylaştırır: sayıyı yaz ya da −/+ ile ilerlet — kaydetmeyi düşünmen gerekmez, kendiliğinden olur.",
       highlights: [
         {
           label: "−/+ düğmeleri",
@@ -128,21 +128,21 @@ export const ogrenciTuru: Tour = {
           text: "Satırın sonundaki ok, doğru/yanlış/boş alanlarını açar. Üçünü de doldurunca toplam ve net kendiliğinden hesaplanır; eksik bırakırsan kayıt kabul edilmez.",
         },
         {
-          label: "Toplam kutusu",
-          text: "Alttaki şerit “Bugün toplam N soru” diye canlı sayar — Kaydet düğmesi de hep orada, elinin altında.",
+          label: "Toplam şeridi",
+          text: "Alttaki şerit “Bugün toplam N soru” diye canlı sayar; sağında da kayıt durumu yazar.",
         },
         {
-          label: "Kaydet şart",
-          text: "Görev işaretlemenin aksine buradaki sayılar Kaydet'e basmadan kaydolmaz — basmadan çıkarsan girdiklerin kaybolur.",
+          label: "Kaydet düğmesi yok",
+          text: "− / + dokunuşu anında, elle yazdığın sayı ise kutudan çıkınca kaydedilir. Şeritte “Kaydedildi” yazısını görmen yeter.",
         },
       ],
       buttons: [
         {
-          label: "Kaydet",
-          does: "Girdiğin tüm ders sayılarını bugüne yazar.",
+          label: "Tekrar dene",
+          does: "Yalnız bağlantı koptuğunda çıkar; kaydedilemeyen girişi yeniden gönderir.",
         },
       ],
-      tip: "Girişten sonra “Bugünkü sorular kaydedildi 🔥” bildirimini görmeden çıkma — görmediysen kaydolmamıştır.",
+      tip: "Çıkmadan önce alt şeride bak: “Kaydedildi” yazıyorsa veri sunucudadır. Kırmızı “Kaydedilemedi” görürsen “Tekrar dene”ye bas.",
       section: "hizli-soru-girisi",
     },
     {
@@ -374,7 +374,7 @@ export const ogrenciTuru: Tour = {
         },
         {
           label: "Temizle",
-          does: "Hücredeki değerleri siler (Kaydet'e basınca kayıttan da silinir).",
+          does: "Hücredeki değerleri siler ve paneli kapatır; silme anında kaydedilir.",
         },
       ],
       section: "dogru-yanlis-bos",
@@ -382,18 +382,18 @@ export const ogrenciTuru: Tour = {
     {
       id: "sorular-kaydet",
       nav: "Sorular",
-      title: "Kaydet: değişen günler tek seferde",
+      title: "Kayıt kendiliğinden: panel kapanınca yazılır",
       route: "/ogrenci/soru-takibi",
       purpose:
-        "Panel kapatmak kaydetmek değildir: değişen günler sayaçta birikir, Kaydet hepsini tek seferde yazar.",
+        "Ayrıca basılacak bir Kaydet düğmesi yok: hücre panelini kapattığın anda o hücre sunucuya yazılır.",
       highlights: [
         {
-          label: "Kirli gün sayacı",
-          text: "Kaydet'in solundaki “N günde kaydedilmemiş değişiklik var” yazısı seni uyarır; hepsi kayıtlıysa “Tüm değişiklikler kayıtlı” der.",
+          label: "Kapanış = kayıt",
+          text: "“Tamam”, “Temizle” ve panelin dışına dokunmak — üçü de aynı şeyi yapar: paneli kapatır ve hücreyi kaydeder.",
         },
         {
-          label: "Tek dokunuşta hepsi",
-          text: "Kaydet, değişen tüm günleri birden kaydeder — basmadan sayfadan ayrılırsan girdiklerin kaybolur.",
+          label: "Durum yazısı",
+          text: "Tablonun altında kısa bir durum var: “Kaydediliyor…” sonra “Kaydedildi”. Bağlantı koparsa kırmızı “Kaydedilemedi” ve bir “Tekrar dene” düğmesi çıkar.",
         },
         {
           label: "Geçmiş açık, gelecek kapalı",
@@ -406,11 +406,11 @@ export const ogrenciTuru: Tour = {
       ],
       buttons: [
         {
-          label: "Kaydet",
-          does: "Değişen tüm günleri birden kaydeder.",
+          label: "Tekrar dene",
+          does: "Yalnız kayıt başarısız olduğunda çıkar; hücreyi yeniden gönderir.",
         },
       ],
-      tip: "Çıkmadan önce sayaca bak: “Tüm değişiklikler kayıtlı” yazıyorsa gönül rahatlığıyla çık.",
+      tip: "Yarım doğru/yanlış/boş girişi kaydedilmez — ya üçünü birden doldur ya üçünü de boş bırakıp sadece toplamı yaz.",
       section: "soru-takibi",
     },
     {
