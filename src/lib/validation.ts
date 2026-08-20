@@ -604,20 +604,40 @@ export const upsertResourceLinkSchema = z.object({
 });
 export type UpsertResourceLinkInput = z.infer<typeof upsertResourceLinkSchema>;
 
+export const packageKindSchema = z.enum(["kocluk", "ozel_ders"]);
+
+const kurusField = z.coerce
+  .number()
+  .int("Fiyat kuruş cinsinden tam sayı olmalı.")
+  .min(0, "Fiyat negatif olamaz.")
+  .max(100_000_000);
+
 /** Paket — fiyat integer kuruş olarak gelir (client ₺ → kuruş çevirir). */
-export const upsertPackageSchema = z.object({
-  id: z.coerce.number().int().positive().optional(),
-  name: z.string().trim().min(2, "Paket adı gerekli.").max(80),
-  priceKurus: z.coerce
-    .number()
-    .int("Fiyat kuruş cinsinden tam sayı olmalı.")
-    .min(0, "Fiyat negatif olamaz.")
-    .max(100_000_000),
-  period: z.string().trim().max(40).optional().or(z.literal("")),
-  features: z.array(z.string().trim().min(1).max(160)).max(12),
-  sortOrder: z.coerce.number().int().min(0).max(999),
-  isActive: z.boolean(),
-});
+export const upsertPackageSchema = z
+  .object({
+    id: z.coerce.number().int().positive().optional(),
+    name: z.string().trim().min(2, "Paket adı gerekli.").max(80),
+    kind: packageKindSchema.default("kocluk"),
+    priceKurus: kurusField,
+    /** Üstü çizili "eski fiyat"; boş/0 = indirim rozeti gösterilmez. */
+    compareAtKurus: kurusField.nullish(),
+    period: z.string().trim().max(40).optional().or(z.literal("")),
+    /** Pakete dahil özel ders saati. */
+    lessonHours: z.coerce.number().int().min(0).max(500).nullish(),
+    /** Ücret planı ön-doldurması: paket kaç ayı kapsıyor. */
+    periodMonths: z.coerce.number().int().min(1).max(60).nullish(),
+    features: z.array(z.string().trim().min(1).max(160)).max(12),
+    sortOrder: z.coerce.number().int().min(0).max(999),
+    isActive: z.boolean(),
+  })
+  .refine(
+    (v) => v.compareAtKurus == null || v.compareAtKurus > v.priceKurus,
+    {
+      // Aksi hâlde /fiyatlar "%-3 indirim" gibi saçma bir rozet basardı.
+      message: "Eski fiyat, güncel fiyattan büyük olmalı.",
+      path: ["compareAtKurus"],
+    },
+  );
 export type UpsertPackageInput = z.infer<typeof upsertPackageSchema>;
 
 export const upsertFaqSchema = z.object({

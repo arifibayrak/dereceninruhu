@@ -58,10 +58,36 @@ export const COACHING_INCLUDES: IncludeGroup[] = [
   },
 ];
 
-/** Hizmete DAHİL OLMAYANLAR — beklenti yönetimi, güven artırır. */
+/**
+ * Hizmete DAHİL OLMAYANLAR — beklenti yönetimi, güven artırır.
+ *
+ * Özel ders artık AYRI bir ürün olarak satılıyor, ama konumlandırma
+ * değişmedi: koçluk hâlâ ders anlatımı değildir. Madde "yoktur" demiyor,
+ * "bu pakete dahil değil, ayrıca alınır" diyor — abartısız ve doğru.
+ */
 export const COACHING_EXCLUDES: string[] = [
-  "Ders anlatımı / özel ders (koçluk, öğretmenlik değildir)",
+  "Ders anlatımı (koçluk öğretmenlik değildir) — özel ders ayrı bir hizmet olarak alınabilir",
   "Kitap ve yayın satışı — kaynak önerilir, satılmaz",
   "Sınav sonucu garantisi",
   "Yapay zekânın koç yerine geçmesi — öneriyi AI çıkarır, kararı koçun verir",
+];
+
+/**
+ * Özel ders paketinin kapsamı. Koçluğun envanterinden AYRI durur: iki farklı
+ * ürün, iki farklı söz. Kısa tutuluyor — özel ders zaten tanıdık bir hizmet,
+ * anlatılması gereken tek şey uygulamada nasıl takip edildiği.
+ */
+export const PRIVATE_LESSON_INCLUDES: string[] = [
+  "Alanında uzman öğretmenle birebir ders (online)",
+  "Konular koçunun tespit ettiği eksiklere göre seçilir",
+  "Her ders tarih, ders adı ve süresiyle uygulamaya işlenir",
+  "Kalan ders hakkını uygulamadan her an görürsün",
+  "Ders sonrası öğretmen notu (paylaşılırsa) öğrenci ekranında görünür",
+];
+
+/** Özel derste OLMAYANLAR — koçlukla karışmasın diye. */
+export const PRIVATE_LESSON_EXCLUDES: string[] = [
+  "Koçluk paketinin yerine geçmesi — program ve takip yine koçtan gelir",
+  "Sınırsız ders — paket kaç saatse o kadar",
+  "Kullanılmayan saatin iadesi (dönem sonuna kadar kullanılır)",
 ];

@@ -435,50 +435,55 @@ export default async function HomePage() {
           align="center"
         />
         <div className="grid gap-4 md:grid-cols-3">
-          {packages.slice(0, 3).map((pkg, i) => (
-            <div
-              key={pkg.name}
-              className={
-                i === 1
-                  ? "flex flex-col gap-3 rounded-2xl bg-card p-6 ring-2 ring-primary/40"
-                  : "flex flex-col gap-3 rounded-2xl bg-card p-6 ring-1 ring-foreground/10"
-              }
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-heading text-base font-semibold">
-                  {pkg.name}
-                </span>
-                {i === 1 && <Badge>En popüler</Badge>}
-              </div>
-              {i === 1 &&
-                cohortVm.visible &&
-                !cohortVm.isFull &&
-                cohortVm.remaining != null && (
-                  <ScarcityBadge
-                    remaining={cohortVm.remaining}
-                    className="w-fit"
-                  />
-                )}
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-heading text-2xl font-bold tabular-nums">
-                  {formatKurus(pkg.priceKurus)}
-                </span>
-                {pkg.period && (
-                  <span className="text-sm text-muted-foreground">
-                    / {pkg.period}
+          {/* Özel ders ayrı bir üründür; vitrin kartları koçlukla sınırlı —
+              karşılaştırma /fiyatlar sayfasında yapılır. */}
+          {packages
+            .filter((p) => p.kind !== "ozel_ders")
+            .slice(0, 3)
+            .map((pkg, i) => (
+              <div
+                key={pkg.name}
+                className={
+                  i === 1
+                    ? "flex flex-col gap-3 rounded-2xl bg-card p-6 ring-2 ring-primary/40"
+                    : "flex flex-col gap-3 rounded-2xl bg-card p-6 ring-1 ring-foreground/10"
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-heading text-base font-semibold">
+                    {pkg.name}
                   </span>
-                )}
-              </div>
-              <ul className="flex flex-col gap-1.5">
-                {pkg.features.slice(0, 3).map((f) => (
-                  <li
-                    key={f}
-                    className="flex items-start gap-2 text-sm text-muted-foreground"
-                  >
-                    <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-success" />
-                    {f}
-                  </li>
-                ))}
+                  {i === 1 && <Badge>En popüler</Badge>}
+                </div>
+                {i === 1 &&
+                  cohortVm.visible &&
+                  !cohortVm.isFull &&
+                  cohortVm.remaining != null && (
+                    <ScarcityBadge
+                      remaining={cohortVm.remaining}
+                      className="w-fit"
+                    />
+                  )}
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-heading text-2xl font-bold tabular-nums">
+                    {formatKurus(pkg.priceKurus)}
+                  </span>
+                  {pkg.period && (
+                    <span className="text-sm text-muted-foreground">
+                      / {pkg.period}
+                    </span>
+                  )}
+                </div>
+                <ul className="flex flex-col gap-1.5">
+                  {pkg.features.slice(0, 3).map((f) => (
+                    <li
+                      key={f}
+                      className="flex items-start gap-2 text-sm text-muted-foreground"
+                    >
+                      <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-success" />
+                      {f}
+                    </li>
+                  ))}
               </ul>
             </div>
           ))}

@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
+  enrollmentPackages,
   enrollments,
   feePlans,
   invoices,
@@ -440,6 +441,10 @@ export async function getEnrollmentPayment(
 
 export type FeePlanRow = {
   id: number;
+  /** Ücretin karşılığı olan paket ataması; null = serbest ücret. */
+  enrollmentPackageId: number | null;
+  /** Paket adı (snapshot) — öğrenci "ne için ödüyorum" görsün diye. */
+  packageName: string | null;
   billingType: BillingType;
   amountKurus: number;
   currency: string;
@@ -466,32 +471,43 @@ export async function getEnrollmentFinance(
   now: Date = new Date(),
 ): Promise<EnrollmentFinance> {
   const db = getDb();
-  const plan = await db.query.feePlans.findFirst({
-    where: and(
-      eq(feePlans.enrollmentId, enrollmentId),
-      eq(feePlans.isActive, true),
-    ),
-    orderBy: desc(feePlans.id),
-  });
-
-  const invoiceRows = await listInvoices({ enrollmentId, now });
-  const paymentRows = await listPayments({ enrollmentId });
+  // Üçü de bağımsız — sırayla değil, tek dalgada (bkz. perf notu).
+  const [planRows, invoiceRows, paymentRows] = await Promise.all([
+    db
+      .select({
+        id: feePlans.id,
+        enrollmentPackageId: feePlans.enrollmentPackageId,
+        packageName: enrollmentPackages.nameSnapshot,
+        billingType: feePlans.billingType,
+        amountKurus: feePlans.amountKurus,
+        currency: feePlans.currency,
+        periodMonths: feePlans.periodMonths,
+        dueDay: feePlans.dueDay,
+        isActive: feePlans.isActive,
+        autoRenew: feePlans.autoRenew,
+        nextBillingOn: feePlans.nextBillingOn,
+      })
+      .from(feePlans)
+      .leftJoin(
+        enrollmentPackages,
+        eq(enrollmentPackages.id, feePlans.enrollmentPackageId),
+      )
+      .where(
+        and(
+          eq(feePlans.enrollmentId, enrollmentId),
+          eq(feePlans.isActive, true),
+        ),
+      )
+      .orderBy(desc(feePlans.id))
+      .limit(1),
+    listInvoices({ enrollmentId, now }),
+    listPayments({ enrollmentId }),
+  ]);
+  const plan = planRows[0];
 
   const nonVoid = invoiceRows.filter((r) => r.status !== "iptal");
   return {
-    activePlan: plan
-      ? {
-          id: plan.id,
-          billingType: plan.billingType,
-          amountKurus: plan.amountKurus,
-          currency: plan.currency,
-          periodMonths: plan.periodMonths,
-          dueDay: plan.dueDay,
-          isActive: plan.isActive,
-          autoRenew: plan.autoRenew,
-          nextBillingOn: plan.nextBillingOn,
-        }
-      : null,
+    activePlan: plan ?? null,
     invoices: invoiceRows,
     payments: paymentRows,
     totalInvoicedKurus: nonVoid.reduce((acc, r) => acc + r.amountKurus, 0),

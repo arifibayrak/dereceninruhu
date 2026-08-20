@@ -835,6 +835,14 @@ export const feePlans = sqliteTable(
     enrollmentId: integer("enrollment_id")
       .notNull()
       .references(() => enrollments.id),
+    /**
+     * Bu ücret NEYİN karşılığı — öğrenciye atanmış paket. NULL = pakete
+     * bağlanmamış serbest ücret (eski satırların tamamı böyle). Fatura zaten
+     * `fee_plan_id` taşıdığı için para → paket zinciri buradan kapanır.
+     */
+    enrollmentPackageId: integer("enrollment_package_id").references(
+      (): AnySQLiteColumn => enrollmentPackages.id,
+    ),
     billingType: text("billing_type", {
       enum: ["haftalık", "aylık", "paket", "tek_seferlik"],
     }).notNull(),
@@ -1204,14 +1212,34 @@ export const resourceLinks = sqliteTable(
   (t) => [index("resource_links_category_idx").on(t.category, t.sortOrder)],
 );
 
+/**
+ * Satılan hizmet KATALOĞU. Hem /fiyatlar kartlarını besler hem de bir öğrenciye
+ * atanabilir (`enrollment_packages`). Katalog satırı pazarlama tarafıdır;
+ * öğrenciye atanan şey fiyatın o günkü kopyasıdır (bkz. enrollmentPackages).
+ */
 export const packages = sqliteTable("packages", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
+  /**
+   * Hizmet türü. Koçluk ile özel ders AYRI ürünlerdir: /fiyatlar iki bölüm
+   * hâlinde gösterir, kapsam listeleri de ayrışır (koçluk hâlâ "ders anlatımı
+   * değildir"; özel ders ek ücretli ayrı hizmettir).
+   */
+  kind: text("kind", { enum: ["kocluk", "ozel_ders"] })
+    .notNull()
+    .default("kocluk"),
   priceKurus: integer("price_kurus").notNull(),
   /** Optional "was" price (kuruş) for a discount display (strikethrough). */
   compareAtKurus: integer("compare_at_kurus"),
   /** Billing period label shown publicly (e.g. "aylık"). */
   period: text("period"),
+  /**
+   * Pakete dahil özel ders SAATİ. Koçluk paketlerinde de dolu olabilir
+   * ("3 saat özel ders dahil"). 0/NULL = özel ders içermiyor.
+   */
+  lessonHours: integer("lesson_hours"),
+  /** Ücret planı ön-doldurması: paket kaç ayı kapsıyor (fee_plans.periodMonths). */
+  periodMonths: integer("period_months"),
   /** JSON-encoded string[] of feature bullets. */
   features: text("features"),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -1219,6 +1247,107 @@ export const packages = sqliteTable("packages", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+/**
+ * Öğrenciye ATANMIŞ paket — "bu öğrenci ne satın aldı" sorusunun cevabı.
+ *
+ * Kayıt başına BİRDEN ÇOK satır serbesttir (koçluk + özel ders aynı anda).
+ * Bilinçli: `enrollments_one_active_per_student_uq` bir öğrenciye ikinci aktif
+ * kayıt açtırmaz, dolayısıyla ikinci ürün ikinci enrollment olarak modellenemez.
+ *
+ * Ad ve fiyat SNAPSHOT'tır: katalogdaki fiyat sonradan değişince geçmiş
+ * atamalar bozulmaz (net snapshot'ıyla aynı ilke). `package_id` yalnız izdir;
+ * kataloğa bağlı olmayan özel anlaşmalarda NULL kalır.
+ */
+export const enrollmentPackages = sqliteTable(
+  "enrollment_packages",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    enrollmentId: integer("enrollment_id")
+      .notNull()
+      .references(() => enrollments.id),
+    packageId: integer("package_id").references(() => packages.id),
+    /** Atama anındaki paket adı — katalog değişse de fatura geçmişi okunur kalır. */
+    nameSnapshot: text("name_snapshot").notNull(),
+    /** Atama anındaki fiyat (kuruş). */
+    priceKurusSnapshot: integer("price_kurus_snapshot").notNull(),
+    kind: text("kind", { enum: ["kocluk", "ozel_ders"] })
+      .notNull()
+      .default("kocluk"),
+    /** Tanınan özel ders saati; kalan hak buradan düşülür (@/lib/ozel-ders). */
+    lessonHoursGranted: integer("lesson_hours_granted").notNull().default(0),
+    startsOn: integer("starts_on", { mode: "timestamp" }),
+    endsOn: integer("ends_on", { mode: "timestamp" }),
+    status: text("status", { enum: ["aktif", "bitti", "iptal"] })
+      .notNull()
+      .default("aktif"),
+    note: text("note"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("enrollment_packages_enrollment_idx").on(t.enrollmentId, t.status),
+  ],
+);
+
+/**
+ * Planlanan / işlenen ÖZEL DERS.
+ *
+ * `coaching_sessions` GENİŞLETİLMEDİ, bilinçli: o tabloyu 6 canlı sorgu okuyor
+ * (`@/db/queries/sessions`) ve hepsi /koc/gorusmeler, /ogrenci/gorusmeler ve
+ * eklenti seçicisini besliyor. Bir `type` kolonu eklemek her sorguya filtre
+ * borcu yüklerdi; biri atlanınca dersler görüşme listelerine sızardı. Ayrı
+ * tablo aynı deseni sıfır regresyon riskiyle izler.
+ *
+ * Eğitmen iki türlü olabilir: hesabı olan koç (`instructor_user_id`) ya da
+ * hesabı olmayan dış öğretmen (`instructor_profile_id` → coach_profiles, ki o
+ * tablo zaten hesapsız profili destekliyor). Yeni bir rol gerekmez.
+ */
+export const privateLessons = sqliteTable(
+  "private_lessons",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    enrollmentId: integer("enrollment_id")
+      .notNull()
+      .references(() => enrollments.id),
+    /** Hangi paketin hakkından düşüyor; NULL = hak dışı / ekstra ders. */
+    enrollmentPackageId: integer("enrollment_package_id").references(
+      () => enrollmentPackages.id,
+    ),
+    subjectId: integer("subject_id").references(() => subjects.id),
+    topicId: integer("topic_id").references(() => topics.id),
+    instructorUserId: text("instructor_user_id").references(() => users.id),
+    instructorProfileId: integer("instructor_profile_id").references(
+      () => coachProfiles.id,
+    ),
+    scheduledAt: integer("scheduled_at", { mode: "timestamp" }),
+    heldAt: integer("held_at", { mode: "timestamp" }),
+    durationMinutes: integer("duration_minutes").notNull().default(60),
+    status: text("status", {
+      enum: ["scheduled", "held", "cancelled", "missed"],
+    })
+      .notNull()
+      .default("scheduled"),
+    /**
+     * Kalan haktan düşsün mü. Telafi/ücretsiz tanıtım dersleri için false —
+     * ders kaydı görünür kalır ama saat yakmaz.
+     */
+    countsAgainstQuota: integer("counts_against_quota", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    /** Eğitmene özel not. */
+    note: text("note"),
+    /** Öğrencinin gördüğü not. */
+    studentVisibleNote: text("student_visible_note"),
+    meetingUrl: text("meeting_url"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("private_lessons_enrollment_idx").on(t.enrollmentId, t.scheduledAt),
+    index("private_lessons_package_idx").on(t.enrollmentPackageId),
+  ],
+);
 
 export const faqs = sqliteTable("faqs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -2108,6 +2237,10 @@ export type BlogPost = typeof blogPosts.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type ResourceLink = typeof resourceLinks.$inferSelect;
 export type Package = typeof packages.$inferSelect;
+export type EnrollmentPackage = typeof enrollmentPackages.$inferSelect;
+export type NewEnrollmentPackage = typeof enrollmentPackages.$inferInsert;
+export type PrivateLesson = typeof privateLessons.$inferSelect;
+export type NewPrivateLesson = typeof privateLessons.$inferInsert;
 export type Faq = typeof faqs.$inferSelect;
 export type CoachProfile = typeof coachProfiles.$inferSelect;
 export type ExtensionToken = typeof extensionTokens.$inferSelect;

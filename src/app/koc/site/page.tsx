@@ -146,8 +146,12 @@ export default async function IcerikPage() {
             rows={packageRows.map((r) => ({
               id: r.id,
               name: r.name,
+              kind: r.kind,
               priceKurus: r.priceKurus,
+              compareAtKurus: r.compareAtKurus,
               period: r.period,
+              lessonHours: r.lessonHours,
+              periodMonths: r.periodMonths,
               features: parseJsonArray(r.features),
               sortOrder: r.sortOrder,
               isActive: r.isActive,

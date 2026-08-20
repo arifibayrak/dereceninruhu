@@ -52,6 +52,7 @@ const ENTRIES: Entry[] = [
   },
   { test: /^\/ogrenci\/icerik/, guide: "ogrenci", section: "icerik" },
   { test: /^\/ogrenci\/gorusmeler/, guide: "ogrenci", section: "gorusmeler" },
+  { test: /^\/ogrenci\/ozel-ders/, guide: "ogrenci", section: "ozel-ders" },
   { test: /^\/ogrenci\/odemeler/, guide: "ogrenci", section: "odemeler" },
   { test: /^\/ogrenci\/asistan/, guide: "ogrenci", section: "asistan" },
   {
@@ -105,6 +106,11 @@ const ENTRIES: Entry[] = [
     test: /^\/koc\/ogrenciler\/[^/]+\/icerik/,
     guide: "koc",
     section: "icerik-kutuphanesi",
+  },
+  {
+    test: /^\/koc\/ogrenciler\/[^/]+\/paket/,
+    guide: "koc",
+    section: "paket-ders",
   },
   {
     test: /^\/koc\/ogrenciler\/[^/]+\/muhasebe/,

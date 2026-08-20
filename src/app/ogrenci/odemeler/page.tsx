@@ -137,7 +137,10 @@ export default async function OgrenciOdemelerPage() {
       {activePlan && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Ücret planın</CardTitle>
+            <CardTitle className="text-base">
+              {/* Paket bağlıysa "ne için ödüyorum" sorusu burada cevaplanır. */}
+              {activePlan.packageName ?? "Ücret planın"}
+            </CardTitle>
             <CardDescription>
               {BILLING_TYPE_LABELS[activePlan.billingType]}
               {activePlan.billingType === "paket" && activePlan.periodMonths

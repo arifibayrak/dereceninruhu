@@ -65,10 +65,14 @@ export type PublicTestimonial = {
 export type PublicPackage = {
   id?: number;
   name: string;
+  /** Koçluk mu özel ders mi — /fiyatlar iki ayrı bölüm çizer. */
+  kind: "kocluk" | "ozel_ders";
   priceKurus: number;
   /** Optional "was" price for a discount strikethrough. */
   compareAtKurus?: number | null;
   period: string | null;
+  /** Pakete dahil özel ders saati; 0/null = yok. */
+  lessonHours?: number | null;
   features: string[];
 };
 
@@ -414,17 +418,21 @@ export async function getPublicPackages(): Promise<PublicPackage[]> {
     return rows.map((r) => ({
       id: r.id,
       name: r.name,
+      kind: r.kind,
       priceKurus: r.priceKurus,
       compareAtKurus: r.compareAtKurus,
       period: r.period,
+      lessonHours: r.lessonHours,
       features: parseJsonArray(r.features),
     }));
   }
   return packageSeeds.map((p) => ({
     name: p.name,
+    kind: p.kind ?? "kocluk",
     priceKurus: p.priceKurus,
     compareAtKurus: p.compareAtKurus ?? null,
     period: p.period,
+    lessonHours: p.lessonHours ?? null,
     features: p.features,
   }));
 }

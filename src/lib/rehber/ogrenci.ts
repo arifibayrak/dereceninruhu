@@ -1267,10 +1267,47 @@ export const ogrenciRehberi: Guide = {
       ],
     },
 
+    {
+      id: "ozel-ders",
+      no: 25,
+      chapter: "Hesap",
+      title: "Özel ders ve kalan hakkın",
+      lead: "Özel ders paketin varsa kalan saatini, yaklaşan derslerini ve öğretmeninin bıraktığı notları burada görürsün.",
+      where: "/ogrenci/ozel-ders",
+      keywords: ["özel ders", "ders", "saat", "kalan hak", "öğretmen", "paket"],
+      blocks: [
+        {
+          kind: "para",
+          text: "Koçluk bir sistemdir, ders anlatımı değildir. Konu eksiğini kapatmak için ders almak istersen özel ders AYRI bir hizmet olarak eklenir. Bu ekran salt okunurdur: ders kayıtlarını öğretmenin/koçun girer, sen kalan hakkını takip edersin.",
+        },
+        {
+          kind: "para",
+          text: "Üstteki iki kutu “Kalan hak” ve “İşlenen ders” der. Kalan hak yalnız İŞLENMİŞ derslerden düşer — planlanmış ama henüz yapılmamış ders hakkını yakmaz, iptal edilen ders de yakmaz. Telafi ya da ücretsiz derslerde öğretmen “haktan düşmesin” işaretini kullanır; o ders listede görünür ama sayaca girmez.",
+        },
+        {
+          kind: "tip",
+          text: "Haftalık programında o güne düşen özel dersler altın renkli bir satır olarak görünür. Program görevi değildir; işaretlenmez, sadece hatırlatır.",
+        },
+        {
+          kind: "faq",
+          items: [
+            {
+              q: "Kalan saatim yanlış görünüyor.",
+              a: "Sayaç saklanmaz, her açılışta işlenen derslerden hesaplanır. Yanlışsa bir ders kaydı eksik ya da fazla girilmiştir — koçuna söyle, kokpitten düzeltsin.",
+            },
+            {
+              q: "Ders aldım ama listede yok.",
+              a: "Kaydı öğretmenin/koçun girer; henüz işlememiş olabilir. Birkaç gün geçtiyse hatırlat.",
+            },
+          ],
+        },
+      ],
+    },
+
     /* ------------------------------- Hesap ------------------------------- */
     {
       id: "odemeler",
-      no: 25,
+      no: 26,
       chapter: "Hesap",
       title: "Ödemeler ve ödeme bildirimi",
       lead: "Bakiyeni ve faturalarını görürsün; gönderdiğin ödemeyi “Ödeme bildir” ile haber verirsin. Onayı koçun verir.",
@@ -1330,7 +1367,7 @@ export const ogrenciRehberi: Guide = {
     },
     {
       id: "profil-ve-hesap",
-      no: 26,
+      no: 27,
       chapter: "Hesap",
       title: "Profil, tema ve çıkış",
       lead: "İletişim ve okul bilgilerini profilden güncellersin; tema ve çıkış üst bardadır.",

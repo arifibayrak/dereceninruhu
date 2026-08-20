@@ -363,9 +363,13 @@ export const faqSeeds: { question: string; answer: string }[] = [
  */
 export const packageSeeds: {
   name: string;
+  /** Koçluk mu özel ders mi — /fiyatlar iki ayrı bölüm çizer. */
+  kind?: "kocluk" | "ozel_ders";
   priceKurus: number;
   compareAtKurus?: number | null;
   period: string;
+  /** Pakete dahil özel ders saati. */
+  lessonHours?: number | null;
   features: string[];
 }[] = [
   {
@@ -402,6 +406,38 @@ export const packageSeeds: {
       "Konu bazlı eksik haritası",
       "60 dk birebir değerlendirme görüşmesi",
       "Sonraki haftalar için öneri planı",
+    ],
+  },
+  /*
+   * Özel ders AYRI bir üründür: koçluk hâlâ "ders anlatımı değildir".
+   * Saat hakkı `lessonHours` ile tanımlanır; öğrenciye atanınca kalan saat
+   * uygulamada takip edilir (bkz. @/lib/ozel-ders).
+   */
+  {
+    name: "Özel Ders — 4 saat",
+    kind: "ozel_ders",
+    priceKurus: 320_000, // ₺3.200
+    period: "4 saatlik paket",
+    lessonHours: 4,
+    features: [
+      "Alanında uzman öğretmenle birebir ders",
+      "Eksik çıkan konulara göre planlanır",
+      "Ders saatleri uygulamada takip edilir",
+      "Kalan hakkını her an görürsün",
+    ],
+  },
+  {
+    name: "Özel Ders — 10 saat",
+    kind: "ozel_ders",
+    priceKurus: 750_000, // ₺7.500
+    compareAtKurus: 800_000, // ₺8.000
+    period: "10 saatlik paket",
+    lessonHours: 10,
+    features: [
+      "4 saatlik paketin tüm içeriği",
+      "Saat başı daha uygun fiyat",
+      "Birden çok derse dağıtılabilir",
+      "Koçunla ortak konu planlaması",
     ],
   },
 ];

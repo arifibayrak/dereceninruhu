@@ -47,11 +47,22 @@ const BILLING_ITEMS = (
   Object.entries(BILLING_TYPE_LABELS) as [BillingType, string][]
 ).map(([value, label]) => ({ value, label }));
 
+const NO_PACKAGE = "yok";
+
+const PACKAGE_ITEMS = (packages: FeePlanPackageOption[]) => [
+  { value: NO_PACKAGE, label: "Pakete bağlı değil" },
+  ...packages.map((p) => ({ value: String(p.id), label: p.name })),
+];
+
 type FormInput = z.input<typeof upsertFeePlanSchema>;
 type FormOutput = z.output<typeof upsertFeePlanSchema>;
 
+/** Ücret planına bağlanabilecek paket ataması. */
+export type FeePlanPackageOption = { id: number; name: string };
+
 export type FeePlanDefaults = {
   feePlanId: number;
+  enrollmentPackageId: number | null;
   billingType: BillingType;
   amountTl: string;
   periodMonths: number | null;
@@ -64,9 +75,12 @@ export type FeePlanDefaults = {
 export function FeePlanDialog({
   enrollmentId,
   plan,
+  packages = [],
 }: {
   enrollmentId: number;
   plan: FeePlanDefaults | null;
+  /** Öğrenciye atanmış aktif paketler — ücretin karşılığı buradan seçilir. */
+  packages?: FeePlanPackageOption[];
 }) {
   const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
@@ -77,6 +91,7 @@ export function FeePlanDialog({
     defaultValues: {
       feePlanId: plan?.feePlanId,
       enrollmentId,
+      enrollmentPackageId: plan?.enrollmentPackageId ?? undefined,
       billingType: plan?.billingType ?? "aylık",
       amountTl: plan?.amountTl ?? "",
       periodMonths: plan?.periodMonths ?? undefined,
@@ -123,6 +138,41 @@ export function FeePlanDialog({
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <FieldGroup>
+            {packages.length > 0 && (
+              <Field>
+                <FieldLabel htmlFor="plan-paket">Hangi paket için</FieldLabel>
+                <Controller
+                  control={form.control}
+                  name="enrollmentPackageId"
+                  render={({ field }) => (
+                    <Select
+                      items={PACKAGE_ITEMS(packages)}
+                      value={field.value ? String(field.value) : NO_PACKAGE}
+                      onValueChange={(v) =>
+                        field.onChange(
+                          v === NO_PACKAGE ? undefined : Number(v),
+                        )
+                      }
+                    >
+                      <SelectTrigger id="plan-paket" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PACKAGE_ITEMS(packages).map((p) => (
+                          <SelectItem key={p.value} value={p.value}>
+                            {p.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldDescription>
+                  Bağlarsan öğrenci ödemeler ekranında ne için ödediğini görür.
+                </FieldDescription>
+              </Field>
+            )}
+
             <Field data-invalid={errors.billingType ? true : undefined}>
               <FieldLabel htmlFor="plan-tip">Ücretlendirme *</FieldLabel>
               <Controller

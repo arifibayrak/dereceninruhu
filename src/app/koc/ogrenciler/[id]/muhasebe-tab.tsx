@@ -1,4 +1,5 @@
 import { getEnrollmentFinance } from "@/db/queries/muhasebe";
+import { listEnrollmentPackages } from "@/db/queries/paketler";
 import { formatKurus } from "@/lib/format";
 import {
   BILLING_TYPE_LABELS,
@@ -48,7 +49,10 @@ export async function MuhasebeTab({
   studentName: string;
 }) {
   const now = new Date();
-  const finance = await getEnrollmentFinance(enrollmentId, now);
+  const [finance, assignedPackages] = await Promise.all([
+    getEnrollmentFinance(enrollmentId, now),
+    listEnrollmentPackages(enrollmentId),
+  ]);
   const paymentStudents = buildPaymentStudentOptions(
     [{ enrollmentId, studentId: 0, label: studentName }],
     finance.invoices.filter(
@@ -92,10 +96,14 @@ export async function MuhasebeTab({
       <div className="flex flex-wrap items-center gap-2">
         <FeePlanDialog
           enrollmentId={enrollmentId}
+          packages={assignedPackages
+            .filter((p) => p.status === "aktif")
+            .map((p) => ({ id: p.id, name: p.name }))}
           plan={
             plan
               ? {
                   feePlanId: plan.id,
+                  enrollmentPackageId: plan.enrollmentPackageId,
                   billingType: plan.billingType,
                   amountTl: kurusToTryInput(plan.amountKurus),
                   periodMonths: plan.periodMonths,

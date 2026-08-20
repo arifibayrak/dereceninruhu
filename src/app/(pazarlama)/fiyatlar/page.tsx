@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { CheckIcon, InfoIcon, MinusIcon, SparklesIcon } from "lucide-react";
 
-import { getCohort, getPublicFaqs, getPublicPackages } from "@/db/queries/cms";
+import {
+  getCohort,
+  getPublicFaqs,
+  getPublicPackages,
+  type PublicPackage,
+} from "@/db/queries/cms";
 import { cohortView, enrollmentOpen } from "@/lib/cohort";
 import { COACHING_EXCLUDES, COACHING_INCLUDES } from "@/lib/coaching-includes";
 import { formatKurus } from "@/lib/format";
@@ -34,6 +39,10 @@ export default async function FiyatlarPage() {
     getCohort(),
   ]);
 
+  // İki ayrı ürün, iki ayrı bölüm (bkz. PackageGrid).
+  const koclukPackages = packages.filter((p) => p.kind !== "ozel_ders");
+  const ozelDersPackages = packages.filter((p) => p.kind === "ozel_ders");
+
   const cohortVm = cohortView(cohort);
   const enrollOpen = enrollmentOpen(cohort);
   // Kayıtlar kapalıysa paket CTA'ları bekleme listesine döner.
@@ -56,7 +65,19 @@ export default async function FiyatlarPage() {
           Puan burada gösterilmediği için aggregateRating EKLENMEZ (politika). */}
       <JsonLd
         data={[
-          serviceSchema({ name: "Sınav Koçluğu Paketleri", packages }),
+          serviceSchema({
+            name: "Sınav Koçluğu Paketleri",
+            packages: koclukPackages,
+          }),
+          ...(ozelDersPackages.length
+            ? [
+                serviceSchema({
+                  name: "Özel Ders Paketleri",
+                  serviceType: "Birebir özel ders (LGS, YKS, KPSS)",
+                  packages: ozelDersPackages,
+                }),
+              ]
+            : []),
           ...(paymentFaqs.length ? [faqPageSchema(paymentFaqs)] : []),
           breadcrumbSchema([
             { name: "Ana Sayfa", path: "/" },
@@ -86,80 +107,29 @@ export default async function FiyatlarPage() {
       {/* Dönem/kontenjan bandı */}
       <CohortBanner cohort={cohort} />
 
-      {/* Paket kartları */}
-      <section className="grid gap-4 lg:grid-cols-3">
-        {packages.map((pkg, i) => {
-          const highlighted = i === 1;
-          return (
-            <div
-              key={pkg.name}
-              className={cn(
-                "relative flex flex-col gap-5 rounded-3xl bg-card p-6 sm:p-7",
-                highlighted
-                  ? "ring-2 ring-primary/50 shadow-xl shadow-primary/10"
-                  : "ring-1 ring-foreground/10",
-              )}
-            >
-              {highlighted && (
-                <Badge className="absolute -top-2.5 left-6">En popüler</Badge>
-              )}
-              <div className="flex flex-col gap-1">
-                <h2 className="font-heading text-lg font-semibold">{pkg.name}</h2>
-                {highlighted &&
-                  cohortVm.visible &&
-                  !cohortVm.isFull &&
-                  cohortVm.remaining != null && (
-                    <ScarcityBadge
-                      remaining={cohortVm.remaining}
-                      className="w-fit"
-                    />
-                  )}
-                {pkg.compareAtKurus && pkg.compareAtKurus > pkg.priceKurus && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground tabular-nums line-through">
-                      {formatKurus(pkg.compareAtKurus)}
-                    </span>
-                    <Badge className="bg-success/15 text-success">
-                      %
-                      {Math.round(
-                        (1 - pkg.priceKurus / pkg.compareAtKurus) * 100,
-                      )}{" "}
-                      indirim
-                    </Badge>
-                  </div>
-                )}
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-heading text-3xl font-bold tabular-nums">
-                    {formatKurus(pkg.priceKurus)}
-                  </span>
-                  {pkg.period && (
-                    <span className="text-sm text-muted-foreground">
-                      / {pkg.period}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <ul className="flex flex-1 flex-col gap-2.5">
-                {pkg.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm">
-                    <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
-                    <span className="text-pretty">{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <Button
-                size="lg"
-                variant={highlighted ? "default" : "outline"}
-                className="w-full"
-                render={<Link href={ctaHref} />}
-              >
-                <SparklesIcon data-icon="inline-start" />
-                {ctaLabel}
-              </Button>
-            </div>
-          );
-        })}
-      </section>
+      {/* Koçluk paketleri */}
+      <PackageGrid
+        packages={koclukPackages}
+        cohortVm={cohortVm}
+        ctaHref={ctaHref}
+        ctaLabel={ctaLabel}
+      />
+
+      {ozelDersPackages.length > 0 && (
+        <section className="flex flex-col gap-6">
+          <SectionHeading
+            eyebrow="Ek hizmet"
+            title="Özel ders paketleri"
+            description="Koçluk bir sistemdir, ders anlatımı değildir. Konu eksiğini kapatmak için ders almak istersen özel ders ayrı bir hizmet olarak alınır — saatler uygulamada takip edilir, kalan hakkını her an görürsün."
+          />
+          <PackageGrid
+            packages={ozelDersPackages}
+            cohortVm={cohortVm}
+            ctaHref={ctaHref}
+            ctaLabel={ctaLabel}
+          />
+        </section>
+      )}
 
       <div className="mx-auto flex max-w-2xl items-start gap-3 rounded-xl bg-info/10 p-4 text-sm text-pretty">
         <InfoIcon className="mt-0.5 size-4 shrink-0 text-info" />
@@ -239,5 +209,113 @@ export default async function FiyatlarPage() {
         description="Ön görüşmede hedefine ve temposuna göre en mantıklı paketi öneririz — satış baskısı yok, kontenjan sınırlı."
       />
     </div>
+  );
+}
+
+/**
+ * Bir hizmet türünün kart ızgarası. Koçluk ve özel ders AYRI bölümlerde
+ * gösterilir: ikisi farklı ürün, yan yana dizilince "hangisi hangisinin yerine
+ * geçiyor" karışıyor. "En popüler" rozeti bölüm İÇİNDE görecelidir — eskiden
+ * global ikinci karta sabitliydi, bölünme sonrası yanlış karta düşerdi.
+ */
+function PackageGrid({
+  packages,
+  cohortVm,
+  ctaHref,
+  ctaLabel,
+}: {
+  packages: PublicPackage[];
+  cohortVm: ReturnType<typeof cohortView>;
+  ctaHref: string;
+  ctaLabel: string;
+}) {
+  if (packages.length === 0) return null;
+  // Tek kart varsa vurgulamak anlamsız; 2+ kartta ikincisi öne çıkar.
+  const highlightIndex = packages.length > 1 ? 1 : -1;
+
+  return (
+    <section className="grid gap-4 lg:grid-cols-3">
+      {packages.map((pkg, i) => {
+        const highlighted = i === highlightIndex;
+        const discounted =
+          pkg.compareAtKurus != null && pkg.compareAtKurus > pkg.priceKurus;
+        return (
+          <div
+            key={pkg.name}
+            className={cn(
+              "relative flex flex-col gap-5 rounded-3xl bg-card p-6 sm:p-7",
+              highlighted
+                ? "shadow-xl ring-2 shadow-primary/10 ring-primary/50"
+                : "ring-1 ring-foreground/10",
+            )}
+          >
+            {highlighted && (
+              <Badge className="absolute -top-2.5 left-6">En popüler</Badge>
+            )}
+            <div className="flex flex-col gap-1">
+              <h2 className="font-heading text-lg font-semibold">{pkg.name}</h2>
+              {highlighted &&
+                cohortVm.visible &&
+                !cohortVm.isFull &&
+                cohortVm.remaining != null && (
+                  <ScarcityBadge
+                    remaining={cohortVm.remaining}
+                    className="w-fit"
+                  />
+                )}
+              {discounted && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground line-through tabular-nums">
+                    {formatKurus(pkg.compareAtKurus!)}
+                  </span>
+                  <Badge className="bg-success/15 text-success">
+                    %
+                    {Math.round(
+                      (1 - pkg.priceKurus / pkg.compareAtKurus!) * 100,
+                    )}{" "}
+                    indirim
+                  </Badge>
+                </div>
+              )}
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-heading text-3xl font-bold tabular-nums">
+                  {formatKurus(pkg.priceKurus)}
+                </span>
+                {pkg.period && (
+                  <span className="text-sm text-muted-foreground">
+                    / {pkg.period}
+                  </span>
+                )}
+              </div>
+              {pkg.lessonHours ? (
+                <p className="text-sm text-muted-foreground">
+                  <strong className="text-foreground tabular-nums">
+                    {pkg.lessonHours} saat
+                  </strong>{" "}
+                  özel ders dahil
+                </p>
+              ) : null}
+            </div>
+            <ul className="flex flex-1 flex-col gap-2.5">
+              {pkg.features.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm">
+                  <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
+                  <span className="text-pretty">{f}</span>
+                </li>
+              ))}
+            </ul>
+            <Button
+              size="lg"
+              variant={highlighted ? "default" : "outline"}
+              className="w-full"
+              render={<Link href={ctaHref} />}
+            >
+              <SparklesIcon data-icon="inline-start" />
+              {ctaLabel}
+            </Button>
+          </div>
+        );
+      })}
+    </section>
   );
 }

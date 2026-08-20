@@ -2,13 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2Icon, ChevronRightIcon, CircleIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  ChevronRightIcon,
+  CircleIcon,
+  GraduationCapIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { togglePlanTaskDone } from "@/actions/plans";
 import { formatInt } from "@/lib/format";
+import { formatLessonMinutes } from "@/lib/ozel-ders";
 import { DAY_COLORS, type DayColorKey } from "@/lib/plan-layout";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +28,21 @@ export type ChecklistTask = {
   isDone: boolean;
 };
 
+/**
+ * O güne düşen özel ders — salt render girdisi.
+ *
+ * `plan_tasks` satırı ÜRETİLMEZ: özel ders bir program görevi değil, verilen
+ * bir hizmettir (bkz. `plan_day_layouts` kararı). Öğrenci işaretleyemez, sadece
+ * görür.
+ */
+export type ChecklistLesson = {
+  id: number;
+  subjectName: string | null;
+  durationMinutes: number;
+  instructorName: string | null;
+  status: "scheduled" | "held" | "cancelled" | "missed";
+};
+
 export type ChecklistDay = {
   day: number;
   name: string;
@@ -29,6 +50,8 @@ export type ChecklistDay = {
   tasks: ChecklistTask[];
   /** Koçun kurduğu ders düzeninden gelen gün rengi (yoksa varsayılan). */
   color?: DayColorKey;
+  /** O güne planlanmış/işlenmiş özel dersler. */
+  lessons?: ChecklistLesson[];
 };
 
 /** İyimser tamam/geri-al: yerel override + server action + refresh. */
@@ -236,11 +259,33 @@ function DaySection({
         </span>
       </div>
 
+      {(day.lessons ?? []).length > 0 && (
+        <ul className="flex flex-col gap-1.5">
+          {day.lessons!.map((l) => (
+            <li
+              key={l.id}
+              className="flex items-center gap-2 rounded-xl bg-gold/10 px-3 py-2 text-xs"
+            >
+              <GraduationCapIcon className="size-3.5 shrink-0 text-gold" />
+              <span className="min-w-0 flex-1 truncate font-medium">
+                Özel ders{l.subjectName ? ` · ${l.subjectName}` : ""}
+                {l.instructorName ? ` · ${l.instructorName}` : ""}
+              </span>
+              <span className="shrink-0 text-muted-foreground tabular-nums">
+                {formatLessonMinutes(l.durationMinutes)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {day.tasks.length === 0 ? (
         <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-          {isToday
-            ? "Bugün için görev yok — dinlenmek de programın parçası. 😌"
-            : "Bu gün için görev yok."}
+          {(day.lessons ?? []).length > 0
+            ? "Bu gün için program görevi yok."
+            : isToday
+              ? "Bugün için görev yok — dinlenmek de programın parçası. 😌"
+              : "Bu gün için görev yok."}
         </div>
       ) : (
         <div className="flex flex-col gap-3">

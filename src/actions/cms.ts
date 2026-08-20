@@ -138,8 +138,13 @@ export async function upsertPackage(
     const db = getDb();
     const values = {
       name: v.name.trim(),
+      kind: v.kind,
       priceKurus: v.priceKurus,
+      // 0 ya da boş = indirim rozeti yok (kolon NULL kabul eder).
+      compareAtKurus: v.compareAtKurus ? v.compareAtKurus : null,
       period: clean(v.period),
+      lessonHours: v.lessonHours ? v.lessonHours : null,
+      periodMonths: v.periodMonths ? v.periodMonths : null,
       features: JSON.stringify(v.features),
       sortOrder: v.sortOrder,
       isActive: v.isActive,

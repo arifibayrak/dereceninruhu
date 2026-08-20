@@ -45,6 +45,8 @@ export const upsertFeePlanSchema = z
   .object({
     feePlanId: z.coerce.number().int().positive().optional(),
     enrollmentId: z.coerce.number().int().positive(),
+    /** Bu ücret hangi paketin karşılığı — boş bırakılabilir (serbest ücret). */
+    enrollmentPackageId: z.coerce.number().int().positive().nullish(),
     billingType: billingTypeSchema,
     amountTl: positiveTlToKurusSchema,
     periodMonths: z.coerce.number().int().min(1).max(36).nullish(),

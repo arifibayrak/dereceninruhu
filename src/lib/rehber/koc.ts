@@ -1004,8 +1004,60 @@ export const kocRehberi: Guide = {
     /*  Para                                                               */
     /* ------------------------------------------------------------------ */
     {
-      id: "muhasebe",
+      id: "paket-ders",
       no: 24,
+      chapter: "Para",
+      title: "Paket & Ders sekmesi",
+      lead: "Öğrencinin hangi paketi aldığını ve kaç saat özel ders işlendiğini buradan yönetirsin. Kokpit → Paket & Ders.",
+      keywords: ["paket", "özel ders", "saat", "kalan hak", "eğitmen", "atama"],
+      blocks: [
+        {
+          kind: "para",
+          text: "Paket, öğrencinin SATIN ALDIĞI hizmettir; ders ise ona VERİLEN hizmet. \"Paket ata\" ile katalogdan seçersin (ya da katalog dışı özel anlaşma girersin) — seçim yalnız alanları doldurur, kaydedilen değer formdakidir. Ad ve fiyat atama anında KOPYALANIR: /koc/site'ten katalog fiyatını değiştirmen eski atamaları ve faturaları bozmaz.",
+        },
+        {
+          kind: "para",
+          text: "Kalan hak hiçbir yerde saklanmaz, her açılışta işlenen derslerden hesaplanır. Yalnız \"İşlendi\" dersler haktan düşer: planlanmış ders henüz gerçekleşmediği için düşmez (iptal edilebilir), iptal ve gelinmedi de düşmez. Telafi/ücretsiz ders için ders formundaki \"Kalan haktan düşsün\" işaretini kaldır — kayıt görünür kalır, saat yanmaz.",
+        },
+        {
+          kind: "steps",
+          title: "Özel ders işleme",
+          items: [
+            "Kokpitte Paket & Ders sekmesine gir.",
+            "Paketi yoksa önce \"Paket ata\" — özel ders saatini paket üstünde tanımla.",
+            "\"Ders ekle\" ile dersi gir: hangi paketten, ders, eğitmen, süre.",
+            "Ders yapıldıysa Durum'u \"İşlendi\" seç ve işlendiği günü gir — kalan hak o an düşer.",
+            "İstersen \"Öğrenciye görünen not\" yaz; öğrenci /ogrenci/ozel-ders ekranında görür.",
+          ],
+        },
+        {
+          kind: "buttons",
+          rows: [
+            {
+              label: "Paket ata",
+              where: "Paketler kartının sağ üstünde",
+              does: "Öğrenciye yeni paket atar; katalogdan seçmek alanları doldurur.",
+            },
+            {
+              label: "Ders ekle",
+              where: "Özel dersler kartının sağ üstünde",
+              does: "Planlanan ya da işlenen bir özel ders kaydı oluşturur.",
+            },
+          ],
+        },
+        {
+          kind: "warning",
+          text: "Eğitmen listesindeki \"(dış)\" etiketli isimler uygulamada HESABI OLMAYAN öğretmenlerdir (/koc/site → koç profilleri). Onlar panele giremez; ders kaydını sen ya da bir koç girer.",
+        },
+        {
+          kind: "tip",
+          text: "Ücret planındaki \"Hangi paket için\" alanını doldurursan öğrenci Ödemeler ekranında ne için ödediğini paket adıyla görür.",
+        },
+      ],
+    },
+    {
+      id: "muhasebe",
+      no: 25,
       chapter: "Para",
       title: "Muhasebe: ücret planı, fatura, ödeme",
       lead: "Akış üç adımdır: öğrenciye ücret planı tanımla → fatura kes (plan varsa otomatik de kesilir) → ödemeyi kaydet. Tutarları ₺ girersin.",
@@ -1047,7 +1099,7 @@ export const kocRehberi: Guide = {
     },
     {
       id: "odeme-bildirimleri",
-      no: 25,
+      no: 26,
       chapter: "Para",
       title: "Ödeme bildirimlerini onaylama ve gecikme takibi",
       lead: "Öğrenci \"Ödeme bildir\" ile havalesini bildirir; bakiyeye ancak sen onaylayınca yansır. Gecikmişleri tek tuş WhatsApp'la kovalarsın.",
@@ -1088,7 +1140,7 @@ export const kocRehberi: Guide = {
     /* ------------------------------------------------------------------ */
     {
       id: "leadler-bekleme",
-      no: 26,
+      no: 27,
       chapter: "Talepler",
       title: "Leadler ve bekleme listesi",
       lead: "Siteden gelen ön görüşme talepleri Leadler'e, dönem doluyken gelenler Bekleme listesine düşer. Her iki havuz da tüm koçlara ortaktır.",
@@ -1132,7 +1184,7 @@ export const kocRehberi: Guide = {
     /* ------------------------------------------------------------------ */
     {
       id: "asistan",
-      no: 27,
+      no: 28,
       chapter: "Araçlar",
       title: "Koç Asistanı",
       lead: "Öğrencilerin hakkında soru sor, plan ve soru önerileri iste. Asistanın her yazma işlemi onay kartı olarak gelir; onaylamadan hiçbir şey değişmez.",
@@ -1170,7 +1222,7 @@ export const kocRehberi: Guide = {
     },
     {
       id: "profil-ayarlar-eklenti",
-      no: 28,
+      no: 29,
       chapter: "Araçlar",
       title: "Profil, ayarlar ve transkript eklentisi",
       lead: "Ayarlar hesabının merkezi: herkese açık koç profilin, iletişim/ödeme bilgilerin, rehberler ve canlı transkript eklentisinin token yönetimi.",

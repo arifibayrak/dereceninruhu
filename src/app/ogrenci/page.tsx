@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import {
   CalendarClockIcon,
   ChevronRightIcon,
+  GraduationCapIcon,
   LibraryIcon,
   SparklesIcon,
   VideoIcon,
@@ -13,6 +14,7 @@ import {
   getEnrollmentDetailByUserId,
   getSectionsForEnrollment,
 } from "@/db/queries/enrollment";
+import { getStudentPackageSummary } from "@/db/queries/paketler";
 import { getWeeklyPlan } from "@/db/queries/plans";
 import { getNextSessionForEnrollment } from "@/db/queries/sessions";
 import { getStudyWeekTotal } from "@/db/queries/study";
@@ -20,6 +22,7 @@ import { getStudentInsightInput, getWeekGrid } from "@/db/queries/tracking";
 import { getCurrentUser, type Role } from "@/lib/session";
 import { formatTrDate, trDayKey, trWeekday } from "@/lib/dates";
 import { formatInt, formatNet } from "@/lib/format";
+import { formatLessonMinutes } from "@/lib/ozel-ders";
 import { formatMinutes } from "@/lib/study";
 import { buildStudentInsights, computeStreak, netTrend } from "@/lib/insights";
 import { InsightList } from "@/components/app/insight-list";
@@ -71,6 +74,9 @@ export default async function OgrenciBugunPage() {
       getNextSessionForEnrollment(enrollment.id, now),
       getStudyWeekTotal(enrollment.id, now),
     ]);
+
+  // Özel ders kartı yalnız paketi olan öğrencide çıkar — kimseye satış yapmaz.
+  const lessonSummary = await getStudentPackageSummary(enrollment.id);
 
   const todayDay = trWeekday(now);
   const todayTasks: ChecklistTask[] = (weekPlan?.tasks ?? [])
@@ -235,6 +241,30 @@ export default async function OgrenciBugunPage() {
           </span>
         </div>
       </Link>
+
+      {lessonSummary.hasPackage && (
+        <Link
+          href="/ogrenci/ozel-ders"
+          className="flex items-center gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10 hover:ring-foreground/20"
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gold/15">
+            <GraduationCapIcon className="size-4 text-gold" />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-sm font-medium">Özel ders</span>
+            <span className="text-xs text-muted-foreground">
+              Kalan hakkın{" "}
+              <strong className="text-foreground tabular-nums">
+                {formatLessonMinutes(lessonSummary.quota.remainingMinutes)}
+              </strong>
+              {lessonSummary.upcoming[0]?.scheduledAt
+                ? " · yaklaşan dersin var"
+                : ""}
+            </span>
+          </div>
+          <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
+        </Link>
+      )}
 
       <Link
         href="/ogrenci/icerik"

@@ -7,6 +7,7 @@ import {
   getEnrollmentDetailByUserId,
   getSectionsForEnrollment,
 } from "@/db/queries/enrollment";
+import { listLessonsInRange } from "@/db/queries/paketler";
 import {
   getPlanDayLayout,
   getResourcesForEnrollment,
@@ -24,7 +25,10 @@ import {
   weekDays,
 } from "@/lib/dates";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
-import { type ChecklistDay } from "@/components/app/plan-checklist";
+import {
+  type ChecklistDay,
+  type ChecklistLesson,
+} from "@/components/app/plan-checklist";
 import { StudentProgram } from "@/components/app/student-program";
 import { type GridTask } from "@/components/app/program-grid";
 import { Button } from "@/components/ui/button";
@@ -70,11 +74,30 @@ export default async function OgrenciProgramPage({
   const visible = isPublished || isOwnDraft ? raw : null;
   const status = isPublished ? "published" : isOwnDraft ? "draft-own" : "none";
 
-  const [sections, resources, layout] = await Promise.all([
+  const [sections, resources, layout, weekLessons] = await Promise.all([
     getSectionsForEnrollment(enrollment),
     getResourcesForEnrollment(enrollment.id),
     getPlanDayLayout(enrollment.id),
+    // Özel dersler programda GÖRÜNÜR ama plan_tasks satırı üretmez.
+    listLessonsInRange(enrollment.id, monday, addDays(monday, 7)),
   ]);
+
+  const lessonsByDay = new Map<number, ChecklistLesson[]>();
+  for (const l of weekLessons) {
+    if (l.status === "cancelled") continue;
+    const at = l.heldAt ?? l.scheduledAt;
+    if (!at) continue;
+    const day = trWeekday(at);
+    const list = lessonsByDay.get(day) ?? [];
+    list.push({
+      id: l.id,
+      subjectName: l.subjectName,
+      durationMinutes: l.durationMinutes,
+      instructorName: l.instructorName,
+      status: l.status,
+    });
+    lessonsByDay.set(day, list);
+  }
   // Gün rengi yalnız koç o güne ders atadıysa gösterilir — boş günde renk yok.
   const colorByDay = new Map(
     layout
@@ -112,6 +135,7 @@ export default async function OgrenciProgramPage({
     name: DAY_NAMES_TR[i],
     dateLabel: dayMonthFmt.format(d),
     color: colorByDay.get(i + 1),
+    lessons: lessonsByDay.get(i + 1) ?? [],
     tasks: (byDay.get(i + 1) ?? []).map((t) => ({
       id: t.id,
       description: t.description,

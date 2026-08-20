@@ -203,8 +203,13 @@ function seedCms(db: SeedDb): Record<string, Counts> {
     db.insert(packages)
       .values({
         name: p.name,
+        kind: p.kind ?? "kocluk",
         priceKurus: p.priceKurus,
+        // Eskiden yazılmıyordu: kolon ve public render vardı ama indirim
+        // rozeti DB paketlerinde hiç çalışmıyordu.
+        compareAtKurus: p.compareAtKurus ?? null,
         period: p.period,
+        lessonHours: p.lessonHours ?? null,
         features: JSON.stringify(p.features),
         sortOrder: i,
         isActive: true,

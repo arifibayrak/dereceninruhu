@@ -832,8 +832,12 @@ export function ResourceLinkManager({ rows }: { rows: ResourceLinkRow[] }) {
 export type PackageRow = {
   id: number;
   name: string;
+  kind: "kocluk" | "ozel_ders";
   priceKurus: number;
+  compareAtKurus: number | null;
   period: string | null;
+  lessonHours: number | null;
+  periodMonths: number | null;
   features: string[];
   sortOrder: number;
   isActive: boolean;
@@ -842,8 +846,12 @@ export type PackageRow = {
 type PackageDraft = {
   id?: number;
   name: string;
+  kind: "kocluk" | "ozel_ders";
   priceTry: string;
+  compareAtTry: string;
   period: string;
+  lessonHours: string;
+  periodMonths: string;
   features: string;
   sortOrder: string;
   isActive: boolean;
@@ -851,12 +859,21 @@ type PackageDraft = {
 
 const emptyPackage: PackageDraft = {
   name: "",
+  kind: "kocluk",
   priceTry: "",
+  compareAtTry: "",
   period: "aylık",
+  lessonHours: "",
+  periodMonths: "",
   features: "",
   sortOrder: "0",
   isActive: true,
 };
+
+const tryInput = (kurus: number | null) =>
+  kurus == null
+    ? ""
+    : (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
 
 export function PackageManager({ rows }: { rows: PackageRow[] }) {
   const { refresh } = useRefresh();
@@ -870,12 +887,24 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
       toast.error("Geçerli bir fiyat girin (örn. 2.500 veya 2.500,50).");
       return;
     }
+    // Boş bırakılırsa indirim rozeti gösterilmez; girildiyse geçerli olmalı.
+    const compareAtKurus = draft.compareAtTry.trim()
+      ? parseTryToKurus(draft.compareAtTry)
+      : null;
+    if (draft.compareAtTry.trim() && compareAtKurus === null) {
+      toast.error("Eski fiyat geçerli değil.");
+      return;
+    }
     setSaving(true);
     const res = await callAction(upsertPackage, {
       id: draft.id,
       name: draft.name,
+      kind: draft.kind,
       priceKurus,
+      compareAtKurus,
       period: draft.period,
+      lessonHours: draft.lessonHours.trim() ? draft.lessonHours : null,
+      periodMonths: draft.periodMonths.trim() ? draft.periodMonths : null,
       features: draft.features
         .split("\n")
         .map((s) => s.trim())
@@ -926,9 +955,11 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="text-sm font-medium">{row.name}</span>
                 <span className="text-xs text-muted-foreground tabular-nums">
+                  {row.kind === "ozel_ders" ? "Özel ders · " : "Koçluk · "}
                   {formatKurus(row.priceKurus)}
-                  {row.period ? ` / ${row.period}` : ""} · {row.features.length}{" "}
-                  özellik
+                  {row.period ? ` / ${row.period}` : ""}
+                  {row.lessonHours ? ` · ${row.lessonHours} sa` : ""} ·{" "}
+                  {row.features.length} özellik
                 </span>
               </div>
               <ActiveBadge active={row.isActive} />
@@ -940,10 +971,14 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
                   setDraft({
                     id: row.id,
                     name: row.name,
-                    priceTry: (row.priceKurus / 100).toLocaleString("tr-TR", {
-                      maximumFractionDigits: 2,
-                    }),
+                    kind: row.kind,
+                    priceTry: tryInput(row.priceKurus),
+                    compareAtTry: tryInput(row.compareAtKurus),
                     period: row.period ?? "",
+                    lessonHours: row.lessonHours ? String(row.lessonHours) : "",
+                    periodMonths: row.periodMonths
+                      ? String(row.periodMonths)
+                      : "",
                     features: row.features.join("\n"),
                     sortOrder: String(row.sortOrder),
                     isActive: row.isActive,
@@ -983,6 +1018,30 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 />
               </Field>
+              <Field>
+                <FieldLabel htmlFor="paket-tur">Hizmet türü *</FieldLabel>
+                <div className="flex gap-2">
+                  {(
+                    [
+                      ["kocluk", "Koçluk"],
+                      ["ozel_ders", "Özel ders"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      size="sm"
+                      variant={draft.kind === value ? "default" : "outline"}
+                      onClick={() => setDraft({ ...draft, kind: value })}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Fiyatlar sayfası ikisini ayrı bölümlerde gösterir.
+                </p>
+              </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field>
                   <FieldLabel htmlFor="paket-fiyat">Fiyat (₺) *</FieldLabel>
@@ -997,15 +1056,64 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
                   />
                 </Field>
                 <Field>
+                  <FieldLabel htmlFor="paket-eski-fiyat">
+                    Eski fiyat (₺)
+                  </FieldLabel>
+                  <Input
+                    id="paket-eski-fiyat"
+                    inputMode="decimal"
+                    placeholder="Boş = indirim yok"
+                    value={draft.compareAtTry}
+                    onChange={(e) =>
+                      setDraft({ ...draft, compareAtTry: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Doluysa üstü çizili gösterilir ve indirim yüzdesi çıkar.
+                  </p>
+                </Field>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field>
                   <FieldLabel htmlFor="paket-donem">Dönem</FieldLabel>
                   <Input
                     id="paket-donem"
-                    placeholder="aylık / 3 aylık / tek seferlik"
+                    placeholder="aylık / tek seferlik"
                     value={draft.period}
                     onChange={(e) =>
                       setDraft({ ...draft, period: e.target.value })
                     }
                   />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="paket-saat">Özel ders saati</FieldLabel>
+                  <Input
+                    id="paket-saat"
+                    inputMode="numeric"
+                    placeholder="Örn. 4"
+                    value={draft.lessonHours}
+                    onChange={(e) =>
+                      setDraft({ ...draft, lessonHours: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Öğrenciye atanınca kalan hak buradan sayılır.
+                  </p>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="paket-ay">Kaç ay</FieldLabel>
+                  <Input
+                    id="paket-ay"
+                    inputMode="numeric"
+                    placeholder="Örn. 3"
+                    value={draft.periodMonths}
+                    onChange={(e) =>
+                      setDraft({ ...draft, periodMonths: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ücret planı ön-doldurması için.
+                  </p>
                 </Field>
               </div>
               <Field>

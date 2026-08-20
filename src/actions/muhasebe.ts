@@ -119,6 +119,7 @@ export async function upsertFeePlan(
       await db
         .update(feePlans)
         .set({
+          enrollmentPackageId: v.enrollmentPackageId ?? null,
           billingType: v.billingType,
           amountKurus: v.amountTl,
           periodMonths:
@@ -151,6 +152,7 @@ export async function upsertFeePlan(
       .insert(feePlans)
       .values({
         enrollmentId: v.enrollmentId,
+        enrollmentPackageId: v.enrollmentPackageId ?? null,
         billingType: v.billingType,
         amountKurus: v.amountTl,
         periodMonths:
