@@ -9,9 +9,11 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useRouter } from "next/navigation";
+
 import { MicIcon, SquareIcon, SaveIcon, PlayIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   appendLiveTranscript,
@@ -107,6 +109,7 @@ export function LiveTranscribe({
   initialText,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
   const isAppend = transcriptId != null;
 
   const supported = useSyncExternalStore(
@@ -543,7 +546,7 @@ export function LiveTranscribe({
           setPartial("");
           audioSegmentsRef.current = [];
           setStatus("idle");
-          router.refresh();
+          refresh();
         } else {
           router.push(`/koc/ogrenciler/${studentId}/transkript/${tid}`);
         }

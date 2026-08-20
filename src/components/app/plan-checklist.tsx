@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CheckCircle2Icon, ChevronRightIcon, CircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { togglePlanTaskDone } from "@/actions/plans";
 import { formatInt } from "@/lib/format";
@@ -33,7 +33,7 @@ export type ChecklistDay = {
 
 /** İyimser tamam/geri-al: yerel override + server action + refresh. */
 function useTaskToggle() {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [overrides, setOverrides] = useState<Record<number, boolean>>({});
 
   const doneOf = (t: ChecklistTask) => overrides[t.id] ?? t.isDone;
@@ -46,7 +46,7 @@ function useTaskToggle() {
       setOverrides((prev) => ({ ...prev, [t.id]: !next }));
       toast.error(res.error);
     } else {
-      router.refresh();
+      refresh();
     }
   };
 

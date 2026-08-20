@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BanknoteIcon } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { recordPayment } from "@/actions/muhasebe";
 import { trDayKey } from "@/lib/dates";
@@ -78,7 +78,7 @@ export function PaymentRecordDialog({
   triggerLabel?: string;
   triggerVariant?: "default" | "outline";
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const todayKey = trDayKey(new Date());
@@ -124,7 +124,7 @@ export function PaymentRecordDialog({
     );
     setOpen(false);
     form.reset();
-    router.refresh();
+    refresh();
   };
 
   return (

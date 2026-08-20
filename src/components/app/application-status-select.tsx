@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { updateCoachApplicationStatus } from "@/actions/coach-applications";
 import type { CoachApplicationStatus } from "@/lib/validation";
@@ -31,7 +31,7 @@ export function ApplicationStatusSelect({
   applicationId: number;
   status: CoachApplicationStatus;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [value, setValue] = useState<CoachApplicationStatus>(status);
   const [pending, startTransition] = useTransition();
 
@@ -51,7 +51,7 @@ export function ApplicationStatusSelect({
       toast.success(
         `Durum güncellendi: ${STATUSES.find((s) => s.value === next)?.label}`,
       );
-      router.refresh();
+      refresh();
     });
   };
 

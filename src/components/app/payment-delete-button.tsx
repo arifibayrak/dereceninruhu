@@ -1,17 +1,17 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { deletePayment } from "@/actions/muhasebe";
 import { Button } from "@/components/ui/button";
 
 /** Yanlış girilen ödemeyi siler (onaylı); bağlı fatura yeniden hesaplanır. */
 export function PaymentDeleteButton({ paymentId }: { paymentId: number }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [pending, startTransition] = useTransition();
 
   const remove = () => {
@@ -20,7 +20,7 @@ export function PaymentDeleteButton({ paymentId }: { paymentId: number }) {
       const res = await callAction(deletePayment, paymentId);
       if (res.ok) {
         toast.success("Ödeme silindi");
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CheckIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { resolvePaymentNotice } from "@/actions/muhasebe";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
  * Onaylarken tutarı değiştirmek istersen reddedip elle "Ödeme al" kullan.
  */
 export function PaymentNoticeActions({ noticeId }: { noticeId: number }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [busy, setBusy] = useState<null | "onayla" | "reddet">(null);
 
   const run = async (action: "onayla" | "reddet") => {
@@ -28,7 +28,7 @@ export function PaymentNoticeActions({ noticeId }: { noticeId: number }) {
     toast.success(
       action === "onayla" ? "Onaylandı — ödeme işlendi." : "Bildirim reddedildi.",
     );
-    router.refresh();
+    refresh();
   };
 
   return (

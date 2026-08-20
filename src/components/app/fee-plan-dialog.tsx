@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PencilIcon, PlusIcon } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { upsertFeePlan } from "@/actions/muhasebe";
 import { trDayKey } from "@/lib/dates";
@@ -68,7 +68,7 @@ export function FeePlanDialog({
   enrollmentId: number;
   plan: FeePlanDefaults | null;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -101,7 +101,7 @@ export function FeePlanDialog({
     }
     toast.success(plan ? "Ücret planı güncellendi" : "Ücret planı oluşturuldu");
     setOpen(false);
-    router.refresh();
+    refresh();
   };
 
   return (

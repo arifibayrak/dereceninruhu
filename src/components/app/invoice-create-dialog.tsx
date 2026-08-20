@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ReceiptTextIcon } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { createInvoice } from "@/actions/muhasebe";
 import { trDayKey } from "@/lib/dates";
@@ -64,7 +64,7 @@ export function InvoiceCreateDialog({
   defaultPeriodLabel?: string;
   triggerLabel?: string;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const todayKey = trDayKey(new Date());
@@ -93,7 +93,7 @@ export function InvoiceCreateDialog({
     toast.success("Fatura oluşturuldu");
     setOpen(false);
     form.reset();
-    router.refresh();
+    refresh();
   };
 
   return (

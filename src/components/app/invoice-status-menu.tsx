@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { MoreHorizontalIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { updateInvoiceStatus, voidInvoice } from "@/actions/muhasebe";
 import {
@@ -66,7 +66,7 @@ export function InvoiceStatusMenu({
   invoiceId: number;
   status: InvoiceStatus;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [pending, startTransition] = useTransition();
 
   const setStatus = (next: InvoiceStatus) => {
@@ -74,7 +74,7 @@ export function InvoiceStatusMenu({
       const res = await callAction(updateInvoiceStatus, { invoiceId, status: next });
       if (res.ok) {
         toast.success(`Fatura ${INVOICE_STATUS_LABELS[next].toLocaleLowerCase("tr")} olarak işaretlendi`);
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }
@@ -86,7 +86,7 @@ export function InvoiceStatusMenu({
       const res = await callAction(voidInvoice, { invoiceId });
       if (res.ok) {
         toast.success("Fatura iptal edildi");
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }

@@ -553,41 +553,55 @@ export async function getStudentInsightInput(
 ): Promise<StudentInsightInput> {
   const db = getDb();
 
-  const activeDays = await db
-    .select({ logDate: questionLogs.logDate })
-    .from(questionLogs)
-    .where(
-      and(
-        eq(questionLogs.enrollmentId, enrollmentId),
-        gt(questionLogs.questionCount, 0),
-      ),
-    );
+  /*
+   * Seri (streak) bugünden geriye yürür, o yüzden yalnız YAKIN geçmiş gerekir.
+   * Eskiden bu sorgu öğrencinin TÜM soru kayıtlarını satır satır okuyordu (bir
+   * yıl × ~30 ders ≈ 10 bin satır) sadece "hangi günler dolu" kümesini çıkarmak
+   * için. `group by` sunucuda tekilleştirir, tarih penceresi de indeksi o
+   * aralığa daraltır — sınav hazırlığı 400 günü aşmadığı için seri kısalmaz.
+   */
+  const streakWindowStart = addDays(now, -400);
+
+  const [activeDays, lastLogRows, lastMockRows, thisWeek, lastWeek, thisWeekStudy, lastWeekStudy, series] =
+    await Promise.all([
+      db
+        .select({ logDate: questionLogs.logDate })
+        .from(questionLogs)
+        .where(
+          and(
+            eq(questionLogs.enrollmentId, enrollmentId),
+            gt(questionLogs.questionCount, 0),
+            gte(questionLogs.logDate, streakWindowStart),
+          ),
+        )
+        .groupBy(questionLogs.logDate),
+      db
+        .select({ last: sql<number | null>`max(${questionLogs.logDate})` })
+        .from(questionLogs)
+        .where(
+          and(
+            eq(questionLogs.enrollmentId, enrollmentId),
+            gt(questionLogs.questionCount, 0),
+          ),
+        ),
+      db
+        .select({ last: sql<number | null>`max(${mockExams.takenOn})` })
+        .from(mockExams)
+        .where(eq(mockExams.enrollmentId, enrollmentId)),
+      getWeekQuestionTotal(enrollmentId, now),
+      getWeekQuestionTotal(enrollmentId, addDays(now, -7)),
+      getStudyWeekTotal(enrollmentId, now),
+      getStudyWeekTotal(enrollmentId, addDays(now, -7)),
+      getNetSeries(enrollmentId),
+    ]);
+
   const activeDayKeys = [...new Set(activeDays.map((r) => trDayKey(r.logDate)))];
 
-  const [lastLog] = await db
-    .select({ last: sql<number | null>`max(${questionLogs.logDate})` })
-    .from(questionLogs)
-    .where(
-      and(
-        eq(questionLogs.enrollmentId, enrollmentId),
-        gt(questionLogs.questionCount, 0),
-      ),
-    );
-  const [lastMock] = await db
-    .select({ last: sql<number | null>`max(${mockExams.takenOn})` })
-    .from(mockExams)
-    .where(eq(mockExams.enrollmentId, enrollmentId));
-
-  const lastSec = Math.max(Number(lastLog?.last ?? 0), Number(lastMock?.last ?? 0));
+  const lastSec = Math.max(
+    Number(lastLogRows[0]?.last ?? 0),
+    Number(lastMockRows[0]?.last ?? 0),
+  );
   const lastActivity = lastSec > 0 ? new Date(lastSec * 1000) : null;
-
-  const thisWeek = await getWeekQuestionTotal(enrollmentId, now);
-  const lastWeek = await getWeekQuestionTotal(enrollmentId, addDays(now, -7));
-
-  const thisWeekStudy = await getStudyWeekTotal(enrollmentId, now);
-  const lastWeekStudy = await getStudyWeekTotal(enrollmentId, addDays(now, -7));
-
-  const series = await getNetSeries(enrollmentId);
 
   return {
     activeDayKeys,

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CalendarCheckIcon, CheckCircle2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { markCallsScheduled } from "@/actions/gorusme";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
  * planlanmışsa sakin bir "Planlandı ✓" durumu gösterir (yeniden planlama serbest).
  */
 export function PlanCallsConfirm({ planned }: { planned: boolean }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [submitting, setSubmitting] = useState(false);
 
   if (planned) {
@@ -39,7 +39,7 @@ export function PlanCallsConfirm({ planned }: { planned: boolean }) {
       return;
     }
     toast.success("Görüşmen planlandı olarak işaretlendi");
-    router.refresh();
+    refresh();
   };
 
   return (

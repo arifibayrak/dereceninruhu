@@ -238,33 +238,41 @@ export async function getMuhasebeDashboard(
     ? eq(enrollments.coachUserId, coachUserId)
     : undefined;
 
-  const [monthRow] = await db
-    .select({
-      total: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
-    })
-    .from(payments)
-    .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
-    .where(and(gte(payments.paidOn, start), lt(payments.paidOn, end), coachFilter));
+  // Beşi de birbirinden bağımsız — sırayla değil, tek dalgada.
+  const [monthRows, invoicedRows, collectedRows, open, recentPayments] =
+    await Promise.all([
+      db
+        .select({
+          total: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
+        })
+        .from(payments)
+        .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
+        .where(
+          and(gte(payments.paidOn, start), lt(payments.paidOn, end), coachFilter),
+        ),
+      db
+        .select({
+          total: sql<number>`coalesce(sum(${invoices.amountKurus}), 0)`,
+        })
+        .from(invoices)
+        .innerJoin(enrollments, eq(enrollments.id, invoices.enrollmentId))
+        .where(and(ne(invoices.status, "iptal"), coachFilter)),
+      // Faturaya bağlı ödemeler (iptal faturaya bağlılar hariç) — tahsilat oranı.
+      db
+        .select({
+          total: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
+        })
+        .from(payments)
+        .innerJoin(invoices, eq(invoices.id, payments.invoiceId))
+        .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
+        .where(and(ne(invoices.status, "iptal"), coachFilter)),
+      listInvoices({ status: "açık", now, coachUserId }),
+      listPayments({ limit: 8, coachUserId }),
+    ]);
 
-  const [invoicedRow] = await db
-    .select({
-      total: sql<number>`coalesce(sum(${invoices.amountKurus}), 0)`,
-    })
-    .from(invoices)
-    .innerJoin(enrollments, eq(enrollments.id, invoices.enrollmentId))
-    .where(and(ne(invoices.status, "iptal"), coachFilter));
-
-  // Faturaya bağlı ödemeler (iptal faturaya bağlılar hariç) — tahsilat oranı.
-  const [collectedRow] = await db
-    .select({
-      total: sql<number>`coalesce(sum(${payments.amountKurus}), 0)`,
-    })
-    .from(payments)
-    .innerJoin(invoices, eq(invoices.id, payments.invoiceId))
-    .innerJoin(enrollments, eq(enrollments.id, payments.enrollmentId))
-    .where(and(ne(invoices.status, "iptal"), coachFilter));
-
-  const open = await listInvoices({ status: "açık", now, coachUserId });
+  const monthRow = monthRows[0];
+  const invoicedRow = invoicedRows[0];
+  const collectedRow = collectedRows[0];
   const outstandingKurus = open.reduce((acc, r) => acc + r.balanceKurus, 0);
   const overdue = open
     .filter((r) => r.isOverdue)
@@ -278,7 +286,7 @@ export async function getMuhasebeDashboard(
     outstandingKurus,
     collectionRate: invoiced > 0 ? collected / invoiced : null,
     overdue,
-    recentPayments: await listPayments({ limit: 8, coachUserId }),
+    recentPayments,
   };
 }
 

@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+
 import { SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { upsertTopicErrors } from "@/actions/analiz";
 import { formatInt } from "@/lib/format";
@@ -36,6 +38,7 @@ export function TopicErrorForm({
   onSavedHref?: string;
 }) {
   const router = useRouter();
+  const { refresh } = useRefresh();
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState<Record<number, string>>(() => {
     const out: Record<number, string> = {};
@@ -96,7 +99,7 @@ export function TopicErrorForm({
         : "Analiz kaydedildi",
     );
     if (onSavedHref) router.push(onSavedHref);
-    else router.refresh();
+    else refresh();
   };
 
   return (

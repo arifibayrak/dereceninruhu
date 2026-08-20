@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { CircleCheckIcon, ClockIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { setAnalysisDone } from "@/actions/tracking";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export function AnalysisToggle({
   mockExamId: number;
   done: boolean;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [pending, startTransition] = useTransition();
 
   const toggle = () => {
@@ -27,7 +27,7 @@ export function AnalysisToggle({
         toast.success(
           !done ? "Analiz yapıldı olarak işaretlendi" : "Analiz bekliyor",
         );
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }

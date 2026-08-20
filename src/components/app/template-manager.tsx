@@ -7,10 +7,10 @@
  */
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   deleteMessageTemplate,
@@ -67,7 +67,7 @@ export function TemplateManager({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -124,7 +124,7 @@ export function TemplateManager({
     }
     toast.success(draft.id ? "Şablon güncellendi" : "Şablon eklendi");
     setDraft(null);
-    router.refresh();
+    refresh();
   };
 
   const remove = async (t: MessageTemplate) => {
@@ -135,7 +135,7 @@ export function TemplateManager({
       return;
     }
     toast.success("Şablon silindi");
-    router.refresh();
+    refresh();
   };
 
   return (

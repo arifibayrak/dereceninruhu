@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+
 import { EyeOffIcon, RotateCcwIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { hideStudent, restoreStudent } from "@/actions/students";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,7 @@ export function HideStudentButton({
   fullName: string;
 }) {
   const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const firstName = fullName.split(" ")[0];
@@ -45,7 +48,7 @@ export function HideStudentButton({
       toast.success(`${firstName} gizlendi.`);
       setOpen(false);
       router.push("/koc/ogrenciler");
-      router.refresh();
+      refresh();
     });
   };
 
@@ -99,7 +102,7 @@ export function RestoreStudentButton({
   studentId: number;
   fullName: string;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [pending, startTransition] = useTransition();
   const firstName = fullName.split(" ")[0];
 
@@ -111,7 +114,7 @@ export function RestoreStudentButton({
         return;
       }
       toast.success(`${firstName} geri getirildi.`);
-      router.refresh();
+      refresh();
     });
   };
 

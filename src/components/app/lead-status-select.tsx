@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { updateLeadStatus } from "@/actions/leads";
 import type { LeadStatus } from "@/lib/validation";
@@ -30,7 +30,7 @@ export function LeadStatusSelect({
   leadId: number;
   status: LeadStatus;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [value, setValue] = useState<LeadStatus>(status);
   const [pending, startTransition] = useTransition();
 
@@ -45,7 +45,7 @@ export function LeadStatusSelect({
         return;
       }
       toast.success(`Durum güncellendi: ${STATUSES.find((s) => s.value === next)?.label}`);
-      router.refresh();
+      refresh();
     });
   };
 

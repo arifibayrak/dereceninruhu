@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import dynamic from "next/dynamic";
 import { SparklesIcon, XIcon } from "lucide-react";
 
 import {
@@ -9,8 +10,21 @@ import {
   subscribeTour,
 } from "@/lib/rehber/tour-store";
 import { cn } from "@/lib/utils";
-import { CoachAgentChat } from "./coach-agent-chat";
-import { StudentChat } from "./student-chat";
+
+/*
+ * Sohbetler bir FAB'ın arkasında ama panel HER sayfada monte ediliyordu
+ * (yalnız `hidden` ile gizli). Hem koç hem öğrenci sohbeti, hiç açılmasa bile
+ * her gezinmede canlanıyordu. Artık kod da ilk açılışta iniyor, bileşen de o
+ * an monte oluyor.
+ */
+const CoachAgentChat = dynamic(
+  () => import("./coach-agent-chat").then((m) => m.CoachAgentChat),
+  { ssr: false },
+);
+const StudentChat = dynamic(
+  () => import("./student-chat").then((m) => m.StudentChat),
+  { ssr: false },
+);
 
 type Role = "coach" | "student";
 
@@ -38,6 +52,7 @@ const META: Record<
  */
 export function FloatingAssistant({ role }: { role: Role }) {
   const [open, setOpen] = useState(false);
+  const [everOpened, setEverOpened] = useState(false);
   const meta = META[role];
 
   // Tur çalışırken FAB gizlenir: ikisi de sağ-alt köşeyi paylaşıyor ve
@@ -95,17 +110,22 @@ export function FloatingAssistant({ role }: { role: Role }) {
           </button>
         </div>
         <div className="min-h-0 flex-1 p-3">
-          {role === "coach" ? (
-            <CoachAgentChat heightClassName="h-full" />
-          ) : (
-            <StudentChat heightClassName="h-full" />
-          )}
+          {/* İlk açılıştan sonra monte kalır — sohbet geçmişi kapatınca silinmesin. */}
+          {everOpened &&
+            (role === "coach" ? (
+              <CoachAgentChat heightClassName="h-full" />
+            ) : (
+              <StudentChat heightClassName="h-full" />
+            ))}
         </div>
       </div>
 
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setEverOpened(true);
+          setOpen((o) => !o);
+        }}
         aria-label={`${meta.title} — aç`}
         className={cn(
           "fixed z-50 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg ring-1 ring-black/5 transition hover:bg-primary/90 active:scale-95",

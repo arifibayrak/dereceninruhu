@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import {
   CalendarDaysIcon,
   CalendarPlusIcon,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   createPlanFromSession,
@@ -87,6 +89,7 @@ export function SessionsPanel({
   past,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
   const [createOpen, setCreateOpen] = useState(false);
   const [editSession, setEditSession] = useState<SessionItem | null>(null);
   const [pending, startTransition] = useTransition();
@@ -100,7 +103,7 @@ export function SessionsPanel({
             ? "Görüşme yapıldı olarak işaretlendi"
             : "Görüşme gelmedi olarak işaretlendi",
         );
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }
@@ -119,7 +122,7 @@ export function SessionsPanel({
         router.push(
           `/koc/ogrenciler/${studentId}/program?hafta=${res.data.weekKey}`,
         );
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }
@@ -363,7 +366,7 @@ function SessionForm({
   session?: SessionItem;
   onDone: () => void;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const scheduled = session?.scheduledAtMs
     ? new Date(session.scheduledAtMs)
     : null;
@@ -407,7 +410,7 @@ function SessionForm({
         mode === "create" ? "Görüşme planlandı" : "Görüşme güncellendi",
       );
       onDone();
-      router.refresh();
+      refresh();
     } else {
       toast.error(res.error);
     }

@@ -44,6 +44,9 @@ import {
 
 export const metadata: Metadata = { title: "Koç Paneli" };
 
+/** "Bugün hatırlat" kartında gösterilecek en fazla öğrenci. */
+const STALE_LIST_LIMIT = 10;
+
 const dateFmt = new Intl.DateTimeFormat("tr-TR", {
   timeZone: "Europe/Istanbul",
   day: "numeric",
@@ -201,7 +204,9 @@ export default async function KocPanelPage() {
               </div>
             ) : (
               <ul className="flex flex-col divide-y">
-                {dash.staleStudents.map((s) => (
+                {/* Liste tüm kadro kadar uzayabilir (herkes bayatsa); ilk 10
+                    zaten "bugün kimi dürteceğim" sorusunu cevaplıyor. */}
+                {dash.staleStudents.slice(0, STALE_LIST_LIMIT).map((s) => (
                   <li
                     key={s.enrollmentId}
                     className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
@@ -246,6 +251,15 @@ export default async function KocPanelPage() {
                   </li>
                 ))}
               </ul>
+            )}
+            {dash.staleStudents.length > STALE_LIST_LIMIT && (
+              <p className="pt-3 text-xs text-muted-foreground">
+                +{formatInt(dash.staleStudents.length - STALE_LIST_LIMIT)} öğrenci
+                daha ·{" "}
+                <Link href="/koc/ogrenciler" className="underline">
+                  kadronun tamamı
+                </Link>
+              </p>
             )}
           </CardContent>
         </Card>

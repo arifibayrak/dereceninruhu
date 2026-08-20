@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { updateUserRole } from "@/actions/admin";
 import type { StaffRole } from "@/lib/validation-admin";
@@ -31,7 +31,7 @@ export function StaffRoleSelect({
   /** Son yönetici için kilitli — server tarafı da ayrıca korur. */
   disabled?: boolean;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [value, setValue] = useState<StaffRole>(role);
   const [pending, startTransition] = useTransition();
 
@@ -49,7 +49,7 @@ export function StaffRoleSelect({
       toast.success(
         `Rol güncellendi: ${ROLES.find((r) => r.value === next)?.label}`,
       );
-      router.refresh();
+      refresh();
     });
   };
 

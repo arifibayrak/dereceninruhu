@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+
 import Link from "next/link";
 import { CopyCheckIcon, KeyRoundIcon, MergeIcon, PhoneIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { mergeStudents } from "@/actions/merge-students";
 import type { DuplicateGroup } from "@/db/queries/students";
@@ -54,7 +55,7 @@ export function DuplicateStudents({ groups }: { groups: DuplicateGroup[] }) {
 }
 
 function GroupRow({ group }: { group: DuplicateGroup }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [keepId, setKeepId] = useState(group.students[0].studentId);
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -76,7 +77,7 @@ function GroupRow({ group }: { group: DuplicateGroup }) {
       }
       toast.success(`${keep.fullName} kayıtları birleştirildi.`);
       setOpen(false);
-      router.refresh();
+      refresh();
     });
   };
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { CheckIcon, SparklesIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   applyProposal,
@@ -122,7 +122,7 @@ function describe(
 }
 
 export function TranscriptReview({ transcript, proposals, labels }: Props) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [pending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<number | null>(null);
 
@@ -131,7 +131,7 @@ export function TranscriptReview({ transcript, proposals, labels }: Props) {
       const res = await callAction(runTranscriptExtraction, transcript.id);
       if (res.ok) {
         toast.success(`${res.data.proposalCount} öneri çıkarıldı.`);
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }
@@ -145,7 +145,7 @@ export function TranscriptReview({ transcript, proposals, labels }: Props) {
       if (res.ok) toast.success("Uygulandı.");
       else toast.error(res.error);
       setBusyId(null);
-      router.refresh();
+      refresh();
     });
   };
 
@@ -156,7 +156,7 @@ export function TranscriptReview({ transcript, proposals, labels }: Props) {
       if (res.ok) toast.success("Reddedildi.");
       else toast.error(res.error);
       setBusyId(null);
-      router.refresh();
+      refresh();
     });
   };
 

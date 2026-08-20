@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { UserRoundCheckIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { bulkAssignStudentCoach } from "@/actions/admin";
 import type { RosterPayment } from "@/db/queries/muhasebe";
@@ -74,7 +74,7 @@ export function RosterTable({
   coaches: CoachOption[];
   isAdmin: boolean;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [bulkTarget, setBulkTarget] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -123,7 +123,7 @@ export function RosterTable({
       );
       setSelected(new Set());
       setBulkTarget(null);
-      router.refresh();
+      refresh();
     });
   };
 

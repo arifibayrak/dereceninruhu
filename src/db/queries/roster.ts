@@ -121,7 +121,13 @@ export async function getRoster(
   const db = getDb();
   const { start, end } = weekRange(now);
 
-  const base = await db
+  /*
+   * İki dalga: ilk dördü birbirinden bağımsız, hepsi aynı anda gider. Yalnız
+   * `latestPerEnrollment` `base`'in kimliklerine muhtaç olduğu için ikinci
+   * dalgada bekler. Eskiden beşi de sırayla akıyordu — uzak D1'de bu, kadro
+   * sayfasının önünde arka arkaya beş tur demekti.
+   */
+  const basePromise = db
     .select({
       studentId: students.id,
       enrollmentId: enrollments.id,
@@ -151,7 +157,7 @@ export async function getRoster(
     )
     .orderBy(students.fullName);
 
-  const weekTotals = await db
+  const weekTotalsPromise = db
     .select({
       enrollmentId: questionLogs.enrollmentId,
       total: sql<number>`coalesce(sum(${questionLogs.questionCount}), 0)`,
@@ -168,7 +174,7 @@ export async function getRoster(
   const sec = (d: Date) => Math.floor(d.getTime() / 1000);
   // Hafta ay sınırını aşabilir; en erken alt sınırdan tara.
   const studyFloor = start.getTime() < monthStart.getTime() ? start : monthStart;
-  const studyTotals = await db
+  const studyTotalsPromise = db
     .select({
       enrollmentId: studyLogs.enrollmentId,
       today: sql<number>`coalesce(sum(case when ${studyLogs.logDate} >= ${sec(dayStart)} and ${studyLogs.logDate} < ${sec(dayEnd)} then ${studyLogs.minutes} else 0 end), 0)`,
@@ -179,7 +185,12 @@ export async function getRoster(
     .where(gte(studyLogs.logDate, studyFloor))
     .groupBy(studyLogs.enrollmentId);
 
-  const payments = await getRosterPayments(viewer, now);
+  const [base, weekTotals, studyTotals, payments] = await Promise.all([
+    basePromise,
+    weekTotalsPromise,
+    studyTotalsPromise,
+    getRosterPayments(viewer, now),
+  ]);
 
   const enrollmentIds = base.map((r) => r.enrollmentId);
   const [lastLogs, lastMocks] = await Promise.all([
@@ -309,20 +320,28 @@ export async function getCoachDashboard(
   now: Date = new Date(),
 ): Promise<CoachDashboard> {
   const db = getDb();
-  const roster = await getRoster(viewer, now);
   const { start, end } = weekRange(now);
 
-  const [mockCountRow] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(mockExams)
-    .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
-    .where(
-      and(
-        gte(mockExams.takenOn, start),
-        lt(mockExams.takenOn, end),
-        coachScope(viewer),
+  /*
+   * Üçü de birbirinden bağımsız. `pendingMocks` eskiden dönen nesne
+   * LİTERALİNİN İÇİNDE await ediliyordu — yani her şey bittikten sonra, tek
+   * başına bir tur daha. Koç panosunun ilk boyaması bunu bekliyordu.
+   */
+  const [roster, mockCountRows, pendingMocks] = await Promise.all([
+    getRoster(viewer, now),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(mockExams)
+      .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
+      .where(
+        and(
+          gte(mockExams.takenOn, start),
+          lt(mockExams.takenOn, end),
+          coachScope(viewer),
+        ),
       ),
-    );
+    getPendingAnalysisMocks(viewer),
+  ]);
 
   const staleStudents = roster
     .filter((r) => r.staleDays === null || r.staleDays >= 3)
@@ -331,9 +350,9 @@ export async function getCoachDashboard(
   return {
     rosterCount: roster.length,
     weekQuestionTotal: roster.reduce((acc, r) => acc + r.weekQuestionTotal, 0),
-    weekMockCount: Number(mockCountRow?.count ?? 0),
+    weekMockCount: Number(mockCountRows[0]?.count ?? 0),
     staleStudents,
-    pendingMocks: await getPendingAnalysisMocks(viewer),
+    pendingMocks,
     roster,
   };
 }

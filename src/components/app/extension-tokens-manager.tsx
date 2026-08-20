@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   CopyIcon,
   KeyRoundIcon,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   deleteExtensionToken,
@@ -47,7 +47,7 @@ export function ExtensionTokensManager({
 }: {
   tokens: ExtensionTokenRow[];
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [label, setLabel] = useState("");
   const [freshToken, setFreshToken] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -59,7 +59,7 @@ export function ExtensionTokensManager({
         setFreshToken(res.data.token);
         setLabel("");
         toast.success("Token oluşturuldu. Aşağıdan kopyalayın.");
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }
@@ -71,7 +71,7 @@ export function ExtensionTokensManager({
       const res = await callAction(revokeExtensionToken, id);
       if (res.ok) {
         toast.success("Token iptal edildi.");
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }
@@ -83,7 +83,7 @@ export function ExtensionTokensManager({
       const res = await callAction(deleteExtensionToken, id);
       if (res.ok) {
         toast.success("Token silindi.");
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }

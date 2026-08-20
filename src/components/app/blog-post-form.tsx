@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SaveIcon, Trash2Icon } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { deleteBlogPost, upsertBlogPost } from "@/actions/cms";
 import { slugifyTr } from "@/lib/slug";
@@ -64,6 +66,7 @@ export type BlogPostFormValues = {
 /** Blog yazısı editörü — başlıktan otomatik slug, yayınla/arşivle. */
 export function BlogPostForm({ post }: { post?: BlogPostFormValues }) {
   const router = useRouter();
+  const { refresh } = useRefresh();
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   // Slug elle değiştirilene kadar başlıktan türetilir.
@@ -101,7 +104,7 @@ export function BlogPostForm({ post }: { post?: BlogPostFormValues }) {
     }
     toast.success(post ? "Yazı güncellendi" : "Yazı oluşturuldu");
     router.push("/koc/blog");
-    router.refresh();
+    refresh();
   };
 
   const onDelete = async () => {
@@ -116,7 +119,7 @@ export function BlogPostForm({ post }: { post?: BlogPostFormValues }) {
     }
     toast.success("Yazı silindi");
     router.push("/koc/blog");
-    router.refresh();
+    refresh();
   };
 
   return (

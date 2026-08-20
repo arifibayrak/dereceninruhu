@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { updateWaitlistStatus } from "@/actions/waitlist";
 import type { WaitlistStatus } from "@/lib/validation";
@@ -30,7 +30,7 @@ export function WaitlistStatusSelect({
   entryId: number;
   status: WaitlistStatus;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [value, setValue] = useState<WaitlistStatus>(status);
   const [pending, startTransition] = useTransition();
 
@@ -47,7 +47,7 @@ export function WaitlistStatusSelect({
       toast.success(
         `Durum güncellendi: ${STATUSES.find((s) => s.value === next)?.label}`,
       );
-      router.refresh();
+      refresh();
     });
   };
 

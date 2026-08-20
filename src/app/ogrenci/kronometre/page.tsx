@@ -24,7 +24,7 @@ import { NoEnrollmentCard } from "@/components/app/no-enrollment";
 import { StudySubjectBars } from "@/components/app/study-subject-bars";
 import { StudyLogger, type StudySubject } from "@/components/app/study-logger";
 import { StudyLogDelete } from "@/components/app/study-log-delete";
-import { WeeklyStudyChart } from "@/components/charts/weekly-study-chart";
+import { WeeklyStudyChart } from "@/components/charts/lazy-charts";
 import { StatTile } from "@/components/brand/stat-tile";
 import { Badge } from "@/components/ui/badge";
 import {

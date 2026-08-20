@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+
 import { TargetIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { createMock, updateMock } from "@/actions/tracking";
 import type { MockEditData } from "@/db/queries/tracking";
@@ -98,6 +100,7 @@ export function MockForm({
   initial,
 }: Props) {
   const router = useRouter();
+  const { refresh } = useRefresh();
   const [saving, setSaving] = useState(false);
 
   /*
@@ -313,9 +316,9 @@ export function MockForm({
     onSuccess?.();
     if (redirectTo) {
       router.push(redirectTo);
-      router.refresh();
+      refresh();
     } else {
-      router.refresh();
+      refresh();
     }
   };
 

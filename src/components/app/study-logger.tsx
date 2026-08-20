@@ -7,7 +7,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { useRouter } from "next/navigation";
 import {
   ImageIcon,
   PauseIcon,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { createStudyLog, uploadStudyProof } from "@/actions/study";
 import {
@@ -214,7 +214,7 @@ function TimerPane({
   subjects: StudySubject[];
   todayKey: string;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const items = subjectItems(subjects);
   const [saving, setSaving] = useState(false);
 
@@ -289,7 +289,7 @@ function TimerPane({
     }
     toast.success(`${minutes} dk kaydedildi 💪`);
     reset();
-    router.refresh();
+    refresh();
   };
 
   return (
@@ -357,7 +357,7 @@ function ManualPane({
   subjects: StudySubject[];
   todayKey: string;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const items = subjectItems(subjects);
   const fileRef = useRef<HTMLInputElement>(null);
   const [subject, setSubject] = useState<string>(GENEL);
@@ -413,7 +413,7 @@ function ManualPane({
     setNote("");
     setFileName(null);
     if (fileRef.current) fileRef.current.value = "";
-    router.refresh();
+    refresh();
   };
 
   return (

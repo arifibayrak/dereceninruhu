@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   ExternalLinkIcon,
   PlusIcon,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { saveMyProfile, uploadProfileImage } from "@/actions/cms";
 import { Button } from "@/components/ui/button";
@@ -132,7 +132,7 @@ export type CoachProfileValues = {
  * satırını düzenler (kimlik oturumdan). /koclar/[slug] sayfasını besler.
  */
 export function CoachProfileForm({ profile }: { profile: CoachProfileValues }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [saving, setSaving] = useState(false);
   const [slug, setSlug] = useState(profile.slug);
   const [values, setValues] = useState({
@@ -199,7 +199,7 @@ export function CoachProfileForm({ profile }: { profile: CoachProfileValues }) {
         ? "Herkese açık sayfanda yayında."
         : "Şu an gizli — “Sitede görünsün” ile yayınlayabilirsin.",
     });
-    router.refresh();
+    refresh();
   };
 
   return (

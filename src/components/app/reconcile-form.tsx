@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   AlertTriangleIcon,
   BanknoteIcon,
@@ -10,6 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   commitReconciliation,
@@ -50,7 +50,7 @@ function todayIso(): string {
 
 /** Yönetici — banka ekstresini yapıştır/yükle → eşleştir → ödeme olarak kaydet. */
 export function ReconcileForm() {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const fileRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<Mode>("csv");
   const [text, setText] = useState("");
@@ -130,7 +130,7 @@ export function ReconcileForm() {
     setPreview(null);
     setRows([]);
     setText("");
-    router.refresh();
+    refresh();
   };
 
   const busy = loading !== null;

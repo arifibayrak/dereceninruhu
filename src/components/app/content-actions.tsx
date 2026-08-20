@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { CircleCheckIcon, Trash2Icon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   assignContent,
@@ -39,7 +39,7 @@ export function ContentAssignDialog({
   students: AssignOption[];
   assignedEnrollmentIds: number[];
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [ids, setIds] = useState<number[]>(assignedEnrollmentIds);
@@ -58,7 +58,7 @@ export function ContentAssignDialog({
         : `${ids.length} öğrenciye atandı`,
     );
     setOpen(false);
-    router.refresh();
+    refresh();
   };
 
   return (
@@ -100,7 +100,7 @@ export function ContentDeleteButton({
 }: {
   contentItemId: number;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [pending, startTransition] = useTransition();
 
   const remove = () => {
@@ -110,7 +110,7 @@ export function ContentDeleteButton({
       const res = await callAction(deleteContentItem, { contentItemId });
       if (res.ok) {
         toast.success("İçerik silindi");
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }
@@ -141,7 +141,7 @@ export function ContentViewedButton({
   enrollmentId: number;
   viewed: boolean;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [pending, startTransition] = useTransition();
 
   const toggle = () => {
@@ -153,7 +153,7 @@ export function ContentViewedButton({
       });
       if (res.ok) {
         toast.success(!viewed ? "İzlendi olarak işaretlendi 🎉" : "İşaret kaldırıldı");
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }

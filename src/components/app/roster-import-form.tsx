@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,
@@ -10,6 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { importRoster, type ImportSummary } from "@/actions/roster-import";
 import { formatInt } from "@/lib/format";
@@ -27,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 /** Yönetici — CSV yapıştır/yükle → önizle → içe aktar ve eşitle. */
 export function RosterImportForm() {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const fileRef = useRef<HTMLInputElement>(null);
   const [csv, setCsv] = useState("");
   const [preview, setPreview] = useState<ImportSummary | null>(null);
@@ -72,7 +72,7 @@ export function RosterImportForm() {
         res.data.updateCount,
       )} güncel · ${formatInt(res.data.deactivateCount)} pasif`,
     );
-    router.refresh();
+    refresh();
   };
 
   const hasBlocking = (preview?.errorCount ?? 0) > 0;

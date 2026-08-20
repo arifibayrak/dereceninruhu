@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SaveIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { updateMyContact } from "@/actions/setup";
 import {
@@ -29,7 +29,7 @@ export function CoachContactForm({
 }: {
   initial: UpdateMyContactInput;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<UpdateMyContactInput>({
@@ -54,7 +54,7 @@ export function CoachContactForm({
     }
     toast.success("İletişim bilgilerin güncellendi");
     form.reset(values);
-    router.refresh();
+    refresh();
   };
 
   return (

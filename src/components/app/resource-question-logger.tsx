@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { logResourceQuestions } from "@/actions/konular";
 import { formatInt } from "@/lib/format";
@@ -31,7 +31,7 @@ export function ResourceQuestionLogger({
   dayKey: string;
   resources: ResourceQuestionItem[];
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [counts, setCounts] = useState<Record<number, number>>(() =>
     Object.fromEntries(resources.map((r) => [r.id, r.today])),
   );
@@ -60,7 +60,7 @@ export function ResourceQuestionLogger({
         toast.error(res.error);
         return;
       }
-      router.refresh();
+      refresh();
     });
   };
 

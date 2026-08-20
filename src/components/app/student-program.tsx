@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CalendarDaysIcon, QuoteIcon, SendIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { submitPlanForReview } from "@/actions/plans";
 import { cn } from "@/lib/utils";
@@ -109,7 +109,7 @@ export function StudentProgram({
   checklistDays,
   todayDay,
 }: Props) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [view, setView] = useState<View>("hafta");
   const [submitting, setSubmitting] = useState(false);
 
@@ -122,7 +122,7 @@ export function StudentProgram({
       toast.success("Programın koçuna gönderildi", {
         description: "Koçun inceleyip onaylayınca işaretleyebilirsin.",
       });
-      router.refresh();
+      refresh();
     } else {
       toast.error(res.error);
     }

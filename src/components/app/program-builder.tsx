@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   addPlanTask,
@@ -142,7 +142,7 @@ export function ProgramBuilder({
   layout,
   layoutSources,
 }: Props) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [view, setView] = useState<View>("hafta");
   const [motto, setMotto] = useState(plan?.motto ?? "");
   const [coachNote, setCoachNote] = useState(plan?.coachNote ?? "");
@@ -204,7 +204,7 @@ export function ProgramBuilder({
     setSavingMeta(false);
     if (res.ok) {
       toast.success("Strateji kaydedildi");
-      router.refresh();
+      refresh();
     } else {
       toast.error(res.error);
     }
@@ -219,7 +219,7 @@ export function ProgramBuilder({
       toast.success("Öğrencinin önerisi onaylandı 🎉", {
         description: "Program resmileşti — öğrenci artık konuları işaretleyebilir.",
       });
-      router.refresh();
+      refresh();
     } else {
       toast.error(res.error);
     }
@@ -231,7 +231,7 @@ export function ProgramBuilder({
     setCopying(false);
     if (res.ok) {
       toast.success(`${res.data.added} konu geçen haftadan kopyalandı`);
-      router.refresh();
+      refresh();
     } else {
       toast.error(res.error);
     }
@@ -243,7 +243,7 @@ export function ProgramBuilder({
         taskId: task.id,
         isDone: !task.isDone,
       });
-      if (res.ok) router.refresh();
+      if (res.ok) refresh();
       else toast.error(res.error);
     });
   };
@@ -253,7 +253,7 @@ export function ProgramBuilder({
       const res = await callAction(deletePlanTask, { taskId: task.id });
       if (res.ok) {
         toast.success("Görev silindi");
-        router.refresh();
+        refresh();
       } else {
         toast.error(res.error);
       }
@@ -803,7 +803,7 @@ function NoteConverter({
   days: BuilderDay[];
   onDone: () => void;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [saving, setSaving] = useState(false);
   const [rows, setRows] = useState(() =>
     candidates.map((c) => ({ ...c, selected: true })),
@@ -843,7 +843,7 @@ function NoteConverter({
       description: "Ders ve hedef soru bilgisini görevlerden düzenleyebilirsin.",
     });
     onDone();
-    router.refresh();
+    refresh();
   };
 
   return (
@@ -927,7 +927,7 @@ function TaskForm({
   initial: NonNullable<TaskDialogState>;
   onDone: () => void;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const editTask = initial.mode === "edit" ? initial.task : null;
   const [saving, setSaving] = useState(false);
   // 0 = güne atanmamış (haftalık konu).
@@ -979,7 +979,7 @@ function TaskForm({
     if (res.ok) {
       toast.success(editTask ? "Görev güncellendi" : "Görev eklendi");
       onDone();
-      router.refresh();
+      refresh();
     } else {
       toast.error(res.error);
     }

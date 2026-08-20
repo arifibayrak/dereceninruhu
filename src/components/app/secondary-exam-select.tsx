@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { setSecondaryExam } from "@/actions/students";
 import {
@@ -42,7 +42,7 @@ export function SecondaryExamSelect({
   secondaryExamCode: string | null;
   secondaryTrackCode: string | null;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [exam, setExam] = useState(secondaryExamCode ?? NONE);
   const [track, setTrack] = useState(secondaryTrackCode ?? "");
   const [pending, startTransition] = useTransition();
@@ -80,7 +80,7 @@ export function SecondaryExamSelect({
               : "Program ve soru takibi artık iki sınavın derslerini de gösteriyor.",
         },
       );
-      router.refresh();
+      refresh();
     });
   };
 

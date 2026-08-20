@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CopyIcon, LayoutGridIcon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { copyPlanDayLayout, savePlanDayLayout } from "@/actions/plans";
 import {
@@ -60,7 +60,7 @@ export function DayLayoutDialog({
   sources,
   dayNames,
 }: Props) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DayLayoutEntry[]>(layout);
   const [saving, setSaving] = useState(false);
@@ -100,7 +100,7 @@ export function DayLayoutDialog({
       description: "Her hafta bu iskelet çıkacak; sen yalnız konuları yaz.",
     });
     setOpen(false);
-    router.refresh();
+    refresh();
   };
 
   const copy = async () => {
@@ -117,7 +117,7 @@ export function DayLayoutDialog({
     }
     toast.success("Düzen kopyalandı");
     setOpen(false);
-    router.refresh();
+    refresh();
   };
 
   return (

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { EyeIcon, SaveIcon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { updateCohortSettings } from "@/actions/cohort";
 import type { CohortStatus } from "@/lib/validation-admin";
@@ -62,7 +62,7 @@ export function CohortSettingsForm({
   initial: CohortSettingsValues;
   realActiveStudents: number;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState({
     donemLabel: initial.donemLabel,
@@ -103,7 +103,7 @@ export function CohortSettingsForm({
       return;
     }
     toast.success("Dönem ayarı kaydedildi");
-    router.refresh();
+    refresh();
   };
 
   return (

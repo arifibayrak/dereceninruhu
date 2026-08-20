@@ -10,7 +10,6 @@ import {
   getWeeklyStudyMinutes,
 } from "@/db/queries/study";
 import {
-  getNetSeries,
   getStudentInsightInput,
   getSubjectBreakdown,
   getTotalQuestions,
@@ -26,9 +25,11 @@ import { InsightList } from "@/components/app/insight-list";
 import { StudySubjectBars } from "@/components/app/study-subject-bars";
 import { SubjectBreakdownTable } from "@/components/app/subject-breakdown-table";
 import { NoEnrollmentCard } from "@/components/app/no-enrollment";
-import { NetProgressChart } from "@/components/charts/net-progress-chart";
-import { WeeklyStudyChart } from "@/components/charts/weekly-study-chart";
-import { WeeklyVolumeChart } from "@/components/charts/weekly-volume-chart";
+import {
+  NetProgressChart,
+  WeeklyStudyChart,
+  WeeklyVolumeChart,
+} from "@/components/charts/lazy-charts";
 import { StatTile } from "@/components/brand/stat-tile";
 import {
   Card,
@@ -59,7 +60,6 @@ export default async function GelisimPage() {
 
   const now = new Date();
   const [
-    netSeries,
     volume,
     insightInput,
     totalQuestions,
@@ -68,7 +68,6 @@ export default async function GelisimPage() {
     studyTotal,
     studyBySubject,
   ] = await Promise.all([
-    getNetSeries(enrollmentId),
     getWeeklyVolume(enrollmentId, 8, now),
     getStudentInsightInput(enrollmentId, now),
     getTotalQuestions(enrollmentId),
@@ -78,7 +77,10 @@ export default async function GelisimPage() {
     getStudyBySubject(enrollmentId, 8, now),
   ]);
   const insights = buildStudentInsights(insightInput);
-  const trend = netTrend(insightInput.netSeries);
+  // Aynı seriyi ikinci kez çekmiyoruz: `getStudentInsightInput` zaten
+  // `getNetSeries`'i çalıştırıp sonucu `netSeries` olarak taşıyor.
+  const netSeries = insightInput.netSeries;
+  const trend = netTrend(netSeries);
 
   // Verimlilik: bu haftaki çalışma dakikasının soru başına ortalaması.
   const weekStudy = insightInput.weekStudyMinutes ?? 0;

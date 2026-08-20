@@ -11,7 +11,6 @@ import {
 } from "@/db/queries/study";
 import {
   getMockList,
-  getNetSeries,
   getStudentInsightInput,
   getTotalQuestions,
   getWeekQuestionTotal,
@@ -24,8 +23,10 @@ import { InsightList } from "@/components/app/insight-list";
 import { PaymentStatusBadge } from "@/components/app/payment-status-badge";
 import { StalenessBadge } from "@/components/app/staleness-badge";
 import { StudySubjectBars } from "@/components/app/study-subject-bars";
-import { NetProgressChart } from "@/components/charts/net-progress-chart";
-import { WeeklyStudyChart } from "@/components/charts/weekly-study-chart";
+import {
+  NetProgressChart,
+  WeeklyStudyChart,
+} from "@/components/charts/lazy-charts";
 import { StatTile } from "@/components/brand/stat-tile";
 import {
   Card,
@@ -59,7 +60,6 @@ export default async function OgrenciGenelBakisPage({
   const [
     totalQuestions,
     weekTotal,
-    netSeries,
     insightInput,
     mocks,
     studyWeek,
@@ -70,7 +70,6 @@ export default async function OgrenciGenelBakisPage({
   ] = await Promise.all([
     getTotalQuestions(enrollment.id),
     getWeekQuestionTotal(enrollment.id, now),
-    getNetSeries(enrollment.id),
     getStudentInsightInput(enrollment.id, now),
     getMockList(enrollment.id),
     getStudyWeekTotal(enrollment.id, now),
@@ -81,7 +80,10 @@ export default async function OgrenciGenelBakisPage({
   ]);
 
   const insights = buildStudentInsights(insightInput);
-  const trend = netTrend(insightInput.netSeries);
+  // Seri ikinci kez çekilmiyor: `getStudentInsightInput` zaten `getNetSeries`'i
+  // çalıştırıp sonucu taşıyor (3 yollu join + group by, sayfa başına bir kez).
+  const netSeries = insightInput.netSeries;
+  const trend = netTrend(netSeries);
   const streak = computeStreak(insightInput.activeDayKeys, now);
   const staleDays = insightInput.lastActivity
     ? daysBetween(insightInput.lastActivity, now)

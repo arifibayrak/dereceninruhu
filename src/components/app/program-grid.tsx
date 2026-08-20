@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   addPlanTask,
@@ -129,7 +129,7 @@ type DialogState =
 
 /** İyimser tamam/geri-al — check modunda konu hücresine dokununca. */
 function useDoneToggle() {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [overrides, setOverrides] = useState<Record<number, boolean>>({});
   const doneOf = (t: GridTask) => overrides[t.id] ?? t.isDone;
   const toggle = async (t: GridTask) => {
@@ -140,7 +140,7 @@ function useDoneToggle() {
       setOverrides((prev) => ({ ...prev, [t.id]: !next }));
       toast.error(res.error);
     } else {
-      router.refresh();
+      refresh();
     }
   };
   return { doneOf, toggle };
@@ -394,7 +394,7 @@ function TopicCell({
 }
 
 function DeleteTopicButton({ taskId }: { taskId: number }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [pending, setPending] = useState(false);
   const remove = async () => {
     setPending(true);
@@ -402,7 +402,7 @@ function DeleteTopicButton({ taskId }: { taskId: number }) {
     setPending(false);
     if (res.ok) {
       toast.success("Konu silindi");
-      router.refresh();
+      refresh();
     } else {
       toast.error(res.error);
     }
@@ -532,7 +532,7 @@ function TopicForm({
   state: NonNullable<DialogState>;
   onDone: () => void;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const editTask = state.mode === "edit" ? state.task : null;
   const initialSubject =
     state.mode === "add" ? state.subjectId : (editTask?.subjectId ?? null);
@@ -587,7 +587,7 @@ function TopicForm({
     if (res.ok) {
       toast.success(editTask ? "Konu güncellendi" : "Konu eklendi");
       onDone();
-      router.refresh();
+      refresh();
     } else {
       toast.error(res.error);
     }

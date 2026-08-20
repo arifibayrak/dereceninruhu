@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LinkIcon, PaperclipIcon, PlusIcon, UploadIcon, XIcon } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { createContentItem } from "@/actions/icerik";
 import {
@@ -209,7 +209,7 @@ export function ContentCreateDialog({
   /** Kokpitten açılırsa: içerik bu öğrenciye atanmış olarak oluşur. */
   fixedEnrollmentId?: number;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [assignIds, setAssignIds] = useState<number[]>(
@@ -332,7 +332,7 @@ export function ContentCreateDialog({
     toast.success("İçerik eklendi");
     setOpen(false);
     resetForm();
-    router.refresh();
+    refresh();
   };
 
   return (

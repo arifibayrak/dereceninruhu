@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArchiveIcon,
@@ -14,6 +13,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { createResource, updateResource } from "@/actions/konular";
 import {
@@ -150,7 +150,7 @@ function ResourceCreateDialog({
   enrollmentId: number;
   subjects: SubjectOption[];
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<FormInput, unknown, FormOutput>({
@@ -176,7 +176,7 @@ function ResourceCreateDialog({
     toast.success("Kaynak eklendi");
     setOpen(false);
     form.reset();
-    router.refresh();
+    refresh();
   };
 
   return (
@@ -213,7 +213,7 @@ function ResourceEditDialog({
   resource: ResourceRow;
   subjects: SubjectOption[];
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<FormInput, unknown, FormOutput>({
@@ -246,7 +246,7 @@ function ResourceEditDialog({
     }
     toast.success("Kaynak güncellendi");
     setOpen(false);
-    router.refresh();
+    refresh();
   };
 
   return (
@@ -276,7 +276,7 @@ function ResourceEditDialog({
 }
 
 function ResourceArchiveButton({ resource }: { resource: ResourceRow }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [pending, setPending] = useState(false);
   const toggle = async () => {
     setPending(true);
@@ -295,7 +295,7 @@ function ResourceArchiveButton({ resource }: { resource: ResourceRow }) {
       return;
     }
     toast.success(resource.isActive ? "Kaynak arşivlendi" : "Kaynak geri alındı");
-    router.refresh();
+    refresh();
   };
   return (
     <Button

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { addPlanTasks, upsertWeeklyPlan } from "@/actions/plans";
 import { generatePlanDraft } from "@/actions/plan-ai";
@@ -48,7 +48,7 @@ export function PlanAiDraft({
   label = "AI ile oluştur",
   variant = "outline",
 }: Props) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const isCoach = studentId != null;
   const [open, setOpen] = useState(false);
   const [focus, setFocus] = useState("");
@@ -133,7 +133,7 @@ export function PlanAiDraft({
     });
     setOpen(false);
     reset();
-    router.refresh();
+    refresh();
   };
 
   return (

@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { deleteStudyLog } from "@/actions/study";
 import { Button } from "@/components/ui/button";
 
 export function StudyLogDelete({ id }: { id: number }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [busy, setBusy] = useState(false);
 
   const onDelete = async () => {
@@ -22,7 +22,7 @@ export function StudyLogDelete({ id }: { id: number }) {
       return;
     }
     toast.success("Kayıt silindi");
-    router.refresh();
+    refresh();
   };
 
   return (

@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BellRingIcon } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { createPaymentNotice } from "@/actions/muhasebe";
 import { trDayKey } from "@/lib/dates";
@@ -65,7 +65,7 @@ export function PaymentNoticeDialog({
   triggerVariant?: "default" | "outline";
   triggerSize?: "sm" | "xs";
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const todayKey = trDayKey(new Date());
@@ -106,7 +106,7 @@ export function PaymentNoticeDialog({
     toast.success("Bildirim gönderildi — koçun onayladığında işlenecek.");
     setOpen(false);
     form.reset();
-    router.refresh();
+    refresh();
   };
 
   return (

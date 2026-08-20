@@ -7,10 +7,10 @@
  */
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { PencilIcon, PlusIcon, Trash2Icon, TrophyIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import {
   deleteFaq,
@@ -147,7 +147,7 @@ const emptyTestimonial: TestimonialDraft = {
 };
 
 export function TestimonialManager({ rows }: { rows: TestimonialRow[] }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [draft, setDraft] = useState<TestimonialDraft | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -174,7 +174,7 @@ export function TestimonialManager({ rows }: { rows: TestimonialRow[] }) {
     }
     toast.success("Yorum kaydedildi");
     setDraft(null);
-    router.refresh();
+    refresh();
   };
 
   const remove = async (row: TestimonialRow) => {
@@ -185,7 +185,7 @@ export function TestimonialManager({ rows }: { rows: TestimonialRow[] }) {
       return;
     }
     toast.success("Yorum silindi");
-    router.refresh();
+    refresh();
   };
 
   return (
@@ -540,7 +540,7 @@ const emptyResource: ResourceDraft = {
  * site yapısı değiştikçe kırılabilir, bu yüzden buradan deploy'suz düzeltilir.
  */
 export function ResourceLinkManager({ rows }: { rows: ResourceLinkRow[] }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [draft, setDraft] = useState<ResourceDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -567,7 +567,7 @@ export function ResourceLinkManager({ rows }: { rows: ResourceLinkRow[] }) {
     }
     toast.success("Kaynak kaydedildi");
     setDraft(null);
-    router.refresh();
+    refresh();
   };
 
   const remove = async (row: ResourceLinkRow) => {
@@ -578,7 +578,7 @@ export function ResourceLinkManager({ rows }: { rows: ResourceLinkRow[] }) {
       return;
     }
     toast.success("Kaynak silindi");
-    router.refresh();
+    refresh();
   };
 
   const seed = async () => {
@@ -590,7 +590,7 @@ export function ResourceLinkManager({ rows }: { rows: ResourceLinkRow[] }) {
       return;
     }
     toast.success(`${res.data.inserted} kaynak eklendi`);
-    router.refresh();
+    refresh();
   };
 
   return (
@@ -859,7 +859,7 @@ const emptyPackage: PackageDraft = {
 };
 
 export function PackageManager({ rows }: { rows: PackageRow[] }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [draft, setDraft] = useState<PackageDraft | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -890,7 +890,7 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
     }
     toast.success("Paket kaydedildi");
     setDraft(null);
-    router.refresh();
+    refresh();
   };
 
   const remove = async (row: PackageRow) => {
@@ -901,7 +901,7 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
       return;
     }
     toast.success("Paket silindi");
-    router.refresh();
+    refresh();
   };
 
   return (
@@ -1083,7 +1083,7 @@ const emptyFaq: FaqDraft = {
 };
 
 export function FaqManager({ rows }: { rows: FaqRow[] }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [draft, setDraft] = useState<FaqDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -1097,7 +1097,7 @@ export function FaqManager({ rows }: { rows: FaqRow[] }) {
       return;
     }
     toast.success(`${res.data.inserted} soru eklendi`);
-    router.refresh();
+    refresh();
   };
 
   const save = async () => {
@@ -1117,7 +1117,7 @@ export function FaqManager({ rows }: { rows: FaqRow[] }) {
     }
     toast.success("Soru kaydedildi");
     setDraft(null);
-    router.refresh();
+    refresh();
   };
 
   const remove = async (row: FaqRow) => {
@@ -1128,7 +1128,7 @@ export function FaqManager({ rows }: { rows: FaqRow[] }) {
       return;
     }
     toast.success("Soru silindi");
-    router.refresh();
+    refresh();
   };
 
   return (

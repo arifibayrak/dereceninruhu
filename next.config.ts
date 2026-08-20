@@ -30,6 +30,12 @@ const nextConfig: NextConfig = {
     // Ses transkript hattı: ~45 sn'lik WAV parçaları (base64) Server Action ile
     // yüklenir; varsayılan 1MB sınırı yetmez.
     serverActions: { bodySizeLimit: "8mb" },
+    /*
+     * Next'in kendi varsayılan listesi `lucide-react` ve `recharts`ı zaten
+     * kapsıyor; bu ikisi kapsam dışında. Barrel importları tek tek modüllere
+     * çevrilir, kullanılmayan alt modüller pakete girmez.
+     */
+    optimizePackageImports: ["motion", "@base-ui/react"],
   },
 };
 

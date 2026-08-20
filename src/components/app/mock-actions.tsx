@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { deleteMock, loadMockForEdit } from "@/actions/tracking";
 import type { MockEditPayload } from "@/db/queries/tracking";
@@ -34,7 +34,7 @@ export function MockActions({
   /** Silme onayında ve erişilebilirlik etiketlerinde görünen deneme adı. */
   label: string;
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [payload, setPayload] = useState<MockEditPayload | null>(null);
@@ -63,7 +63,7 @@ export function MockActions({
     }
     setConfirmOpen(false);
     toast.success("Deneme silindi");
-    router.refresh();
+    refresh();
   };
 
   return (
@@ -103,7 +103,7 @@ export function MockActions({
               initial={payload.mock}
               onSuccess={() => {
                 setEditOpen(false);
-                router.refresh();
+                refresh();
               }}
             />
           ) : (

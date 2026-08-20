@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { upsertQuestionLogs } from "@/actions/tracking";
 import { callAction } from "@/lib/action-client";
 
@@ -69,8 +69,7 @@ export function useQuestionAutosave({
   enrollmentId: number;
   refreshAfterSave?: boolean;
 }) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
+  const { refresh } = useRefresh();
   const [status, setStatus] = useState<AutosaveStatus>("hazir");
 
   const pending = useRef<Pending>(new Map());
@@ -84,10 +83,8 @@ export function useQuestionAutosave({
   const scheduleRefresh = useCallback(() => {
     if (!refreshAfterSave) return;
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    refreshTimer.current = setTimeout(() => {
-      startTransition(() => router.refresh());
-    }, REFRESH_MS);
-  }, [refreshAfterSave, router]);
+    refreshTimer.current = setTimeout(refresh, REFRESH_MS);
+  }, [refreshAfterSave, refresh]);
 
   const flush = useCallback(async () => {
     if (timer.current) {

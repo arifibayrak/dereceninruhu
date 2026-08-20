@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { RefreshCwIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { runBillingNow } from "@/actions/muhasebe";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
  * çağırır; idempotent olduğu için elle + zamanlanmış tetik çakışmaz.
  */
 export function BillingRunButton() {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
@@ -31,7 +31,7 @@ export function BillingRunButton() {
         ? `${invoicesCreated} otomatik fatura kesildi (${plansProcessed} plan).`
         : "Vadesi gelen fatura yok — her şey güncel.",
     );
-    router.refresh();
+    refresh();
   };
 
   return (

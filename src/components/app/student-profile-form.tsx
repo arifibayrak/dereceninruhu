@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SaveIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { updateMyProfile, updateStudent } from "@/actions/students";
 import {
@@ -55,7 +55,7 @@ export function StudentProfileForm({
   studentId,
   initial,
 }: StudentProfileFormProps) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<FormInput, unknown, UpdateStudentProfileInput>({
@@ -99,7 +99,7 @@ export function StudentProfileForm({
 
     toast.success("Profil güncellendi");
     form.reset(values);
-    router.refresh();
+    refresh();
   };
 
   return (

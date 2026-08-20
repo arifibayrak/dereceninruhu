@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { EyeIcon, ExternalLinkIcon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { updateSiteSettings } from "@/actions/site-settings";
 import { buildWaLink, DEFAULT_WA_PHONE } from "@/lib/whatsapp";
@@ -35,7 +35,7 @@ export type SiteSettingsValues = {
  * gerçek adresleri gösterir). Butonu gizleyen tek anahtar `whatsappVisible`.
  */
 export function SiteSettingsForm({ initial }: { initial: SiteSettingsValues }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState({
     whatsappPhone: initial.whatsappPhone ?? "",
@@ -80,7 +80,7 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettingsValues }) {
       return;
     }
     toast.success("İletişim ayarı kaydedildi");
-    router.refresh();
+    refresh();
   };
 
   return (
