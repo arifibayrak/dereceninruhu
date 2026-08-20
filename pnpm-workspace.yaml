@@ -1,3 +1,18 @@
+# pnpm 11 artık package.json'daki `pnpm.onlyBuiltDependencies` alanını OKUMUYOR;
+# derleme betiği çalıştırma izni buradan verilir. Boş bırakılırsa pnpm yükleme
+# sonunda ERR_PNPM_IGNORED_BUILDS ile çıkar ve better-sqlite3 native ikilisi
+# derlenmediği için `pnpm test` (seed testleri) patlar.
+allowBuilds:
+  # Seed/migration testleri yerel SQLite açıyor — native ikili şart.
+  better-sqlite3: true
+  esbuild: true
+  workerd: true
+  # Transkript modeli tarayıcıda (WebGPU) çalışır; sunucu ikilisi gerekmez
+  # (bkz. next.config.ts serverExternalPackages).
+  onnxruntime-node: false
+  protobufjs: false
+  sharp: false
+  unrs-resolver: false
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver

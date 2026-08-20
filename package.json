@@ -62,14 +62,5 @@
     "typescript": "^5",
     "vitest": "^3.2.7",
     "wrangler": "^4.112.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "workerd",
-      "esbuild",
-      "@tailwindcss/oxide",
-      "sharp",
-      "better-sqlite3"
-    ]
   }
 }
