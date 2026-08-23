@@ -13,7 +13,8 @@ Turkish exam-prep coaching (mentorluk) OS. All-Cloudflare. Full plan:
 - **Next.js 16.2** App Router + **Turbopack** (default; no `--turbopack` flag).
 - Deploy target **Cloudflare Workers** via `@opennextjs/cloudflare` (OpenNext 1.20).
 - **D1 (SQLite)** + **Drizzle ORM 0.45**. **R2** for files. **Better Auth 1.6** (phone+PIN).
-- Tailwind v4 + shadcn/ui. Recharts. Zod. date-fns (`tr` locale).
+- Tailwind v4 + shadcn/ui. Recharts. Zod. Tarih/saat: **kendi `@/lib/dates`** modülü
+  (`tr` locale, Europe/Istanbul, hafta Pazartesi) — `date-fns` KULLANILMIYOR, bağımlılıktan çıkarıldı.
 - Package manager: **pnpm**. Node 24.
 
 ## Next.js 16 rules (breaking vs your training data)
