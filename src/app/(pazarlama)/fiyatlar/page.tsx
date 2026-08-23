@@ -119,13 +119,22 @@ export default async function FiyatlarPage() {
       {/* Dönem/kontenjan bandı */}
       <CohortBanner cohort={cohort} />
 
-      {/* Koçluk paketleri */}
-      <PackageGrid
-        packages={koclukPackages}
-        cohortVm={cohortVm}
-        ctaHref={ctaHref}
-        ctaLabel={ctaLabel}
-      />
+      {/* Üç hizmet hattı, üç bölüm — hepsi aynı başlık kalıbında. */}
+      {koclukPackages.length > 0 && (
+        <section className="flex flex-col gap-6">
+          <SectionHeading
+            eyebrow="Çekirdek hizmet"
+            title="Koçluk paketleri"
+            description="Haftalık program, birebir görüşme ve günlük takip. Süreyi sen seçersin: uzadıkça aylık maliyet düşer."
+          />
+          <PackageGrid
+            packages={koclukPackages}
+            cohortVm={cohortVm}
+            ctaHref={ctaHref}
+            ctaLabel={ctaLabel}
+          />
+        </section>
+      )}
 
       {ozelDersPackages.length > 0 && (
         <section className="flex flex-col gap-6">
