@@ -435,10 +435,10 @@ export default async function HomePage() {
           align="center"
         />
         <div className="grid gap-4 md:grid-cols-3">
-          {/* Özel ders ayrı bir üründür; vitrin kartları koçlukla sınırlı —
-              karşılaştırma /fiyatlar sayfasında yapılır. */}
+          {/* Vitrin yalnız saf koçluk gösterir; özel ders ve birleşik paketler
+              /fiyatlar sayfasında karşılaştırılır. */}
           {packages
-            .filter((p) => p.kind !== "ozel_ders")
+            .filter((p) => p.kind === "kocluk")
             .slice(0, 3)
             .map((pkg, i) => (
               <div

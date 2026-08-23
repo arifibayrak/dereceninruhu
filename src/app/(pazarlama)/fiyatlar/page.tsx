@@ -39,9 +39,12 @@ export default async function FiyatlarPage() {
     getCohort(),
   ]);
 
-  // İki ayrı ürün, iki ayrı bölüm (bkz. PackageGrid).
-  const koclukPackages = packages.filter((p) => p.kind !== "ozel_ders");
+  // Üç ayrı ürün hattı, üç ayrı bölüm (bkz. PackageGrid).
+  const koclukPackages = packages.filter((p) => p.kind === "kocluk");
   const ozelDersPackages = packages.filter((p) => p.kind === "ozel_ders");
+  const birlikatePackages = packages.filter(
+    (p) => p.kind === "kocluk_ozel_ders",
+  );
 
   const cohortVm = cohortView(cohort);
   const enrollOpen = enrollmentOpen(cohort);
@@ -75,6 +78,15 @@ export default async function FiyatlarPage() {
                   name: "Özel Ders Paketleri",
                   serviceType: "Birebir özel ders (LGS, YKS, KPSS)",
                   packages: ozelDersPackages,
+                }),
+              ]
+            : []),
+          ...(birlikatePackages.length
+            ? [
+                serviceSchema({
+                  name: "Koçluk + Özel Ders Paketleri",
+                  serviceType: "Sınav koçluğu ve birebir özel ders",
+                  packages: birlikatePackages,
                 }),
               ]
             : []),
@@ -124,6 +136,22 @@ export default async function FiyatlarPage() {
           />
           <PackageGrid
             packages={ozelDersPackages}
+            cohortVm={cohortVm}
+            ctaHref={ctaHref}
+            ctaLabel={ctaLabel}
+          />
+        </section>
+      )}
+
+      {birlikatePackages.length > 0 && (
+        <section className="flex flex-col gap-6">
+          <SectionHeading
+            eyebrow="Birlikte"
+            title="Koçluk + Özel ders"
+            description="İkisini birlikte alırsan program ve ders tek planda buluşur: koçun eksiği tespit eder, ders o eksiği kapatır. Ayrı ayrı almaya göre daha uygundur."
+          />
+          <PackageGrid
+            packages={birlikatePackages}
             cohortVm={cohortVm}
             ctaHref={ctaHref}
             ctaLabel={ctaLabel}

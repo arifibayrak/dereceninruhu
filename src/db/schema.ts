@@ -1225,7 +1225,7 @@ export const packages = sqliteTable("packages", {
    * hâlinde gösterir, kapsam listeleri de ayrışır (koçluk hâlâ "ders anlatımı
    * değildir"; özel ders ek ücretli ayrı hizmettir).
    */
-  kind: text("kind", { enum: ["kocluk", "ozel_ders"] })
+  kind: text("kind", { enum: ["kocluk", "ozel_ders", "kocluk_ozel_ders"] })
     .notNull()
     .default("kocluk"),
   priceKurus: integer("price_kurus").notNull(),
@@ -1271,7 +1271,7 @@ export const enrollmentPackages = sqliteTable(
     nameSnapshot: text("name_snapshot").notNull(),
     /** Atama anındaki fiyat (kuruş). */
     priceKurusSnapshot: integer("price_kurus_snapshot").notNull(),
-    kind: text("kind", { enum: ["kocluk", "ozel_ders"] })
+    kind: text("kind", { enum: ["kocluk", "ozel_ders", "kocluk_ozel_ders"] })
       .notNull()
       .default("kocluk"),
     /** Tanınan özel ders saati; kalan hak buradan düşülür (@/lib/ozel-ders). */

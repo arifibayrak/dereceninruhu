@@ -96,6 +96,8 @@ export const LESSON_STATUS_LABELS: Record<QuotaLesson["status"], string> = {
 export const PACKAGE_KIND_LABELS = {
   kocluk: "Koçluk",
   ozel_ders: "Özel ders",
+  /** Koçluk + belirli saat özel ders bir arada satılan paket. */
+  kocluk_ozel_ders: "Koçluk + Özel ders",
 } as const;
 
 export type PackageKind = keyof typeof PACKAGE_KIND_LABELS;

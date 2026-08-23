@@ -42,6 +42,7 @@ import type {
   ProfileLink,
   WaitlistStatus,
 } from "@/lib/validation";
+import type { PackageKind } from "@/lib/ozel-ders";
 
 /**
  * Pazarlama sitesi + koç CMS okumaları.
@@ -66,7 +67,7 @@ export type PublicPackage = {
   id?: number;
   name: string;
   /** Koçluk mu özel ders mi — /fiyatlar iki ayrı bölüm çizer. */
-  kind: "kocluk" | "ozel_ders";
+  kind: PackageKind;
   priceKurus: number;
   /** Optional "was" price for a discount strikethrough. */
   compareAtKurus?: number | null;

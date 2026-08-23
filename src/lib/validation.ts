@@ -604,7 +604,11 @@ export const upsertResourceLinkSchema = z.object({
 });
 export type UpsertResourceLinkInput = z.infer<typeof upsertResourceLinkSchema>;
 
-export const packageKindSchema = z.enum(["kocluk", "ozel_ders"]);
+export const packageKindSchema = z.enum([
+  "kocluk",
+  "ozel_ders",
+  "kocluk_ozel_ders",
+]);
 
 const kurusField = z.coerce
   .number()

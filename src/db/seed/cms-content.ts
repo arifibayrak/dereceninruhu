@@ -358,86 +358,154 @@ export const faqSeeds: { question: string; answer: string }[] = [
 /* -------------------------------- Paketler -------------------------------- */
 
 /**
- * DİKKAT — fiyatlar YER TUTUCUDUR (TODO Arif): gerçek fiyatları
- * /koc/site → Paketler sekmesinden ₺ olarak gir (kuruş cinsinden saklanır).
+ * Gerçek paket kataloğu (2026-08, Arif'ten alınan fiyat listesi).
+ *
+ * Üç süre × üç hizmet hattı: Haftalık / Aylık / Sınava kadar ×
+ * Koçluk / Özel ders / Koçluk+Özel ders. Fiyatlar kuruş cinsindendir.
+ *
+ * `lessonHours` = pakete dahil özel ders SAATİ. Haftalık paketlerde bu saat
+ * HAFTALIKTIR; öğrenciye atarken koç, anlaşılan dönemin toplamını girer
+ * (kota toplam saat üzerinden işler — bkz. `@/lib/ozel-ders`).
+ *
+ * Kart maddeleri marka kuralına tabidir: abartı yok, her madde gerçekten olan
+ * ve hesabı verilebilecek bir şey (bkz. AGENTS.md).
  */
 export const packageSeeds: {
   name: string;
-  /** Koçluk mu özel ders mi — /fiyatlar iki ayrı bölüm çizer. */
-  kind?: "kocluk" | "ozel_ders";
+  /** Hizmet hattı — /fiyatlar bunları ayrı bölümlerde gösterir. */
+  kind?: "kocluk" | "ozel_ders" | "kocluk_ozel_ders";
   priceKurus: number;
   compareAtKurus?: number | null;
   period: string;
   /** Pakete dahil özel ders saati. */
   lessonHours?: number | null;
+  /** Paketin kapsadığı ay (ücret planı ön-doldurması). */
+  periodMonths?: number | null;
   features: string[];
 }[] = [
+  /* ------------------------------- Koçluk -------------------------------- */
   {
     name: "Haftalık Koçluk",
-    priceKurus: 129_900, // ₺1.299
-    compareAtKurus: 149_900, // ₺1.499
+    kind: "kocluk",
+    priceKurus: 100_000, // ₺1.000
     period: "haftalık",
     features: [
-      "Haftalık birebir koçluk görüşmesi",
-      "Sana özel haftalık çalışma programı",
+      "Haftada bir birebir koçluk görüşmesi",
+      "Sana özel hazırlanan haftalık çalışma programı",
       "Günlük soru ve deneme takibi (uygulama)",
       "WhatsApp'tan koçuna doğrudan erişim",
     ],
   },
   {
     name: "Aylık Koçluk",
-    priceKurus: 399_900, // ₺3.999
-    compareAtKurus: 499_900, // ₺4.999
+    kind: "kocluk",
+    priceKurus: 400_000, // ₺4.000
     period: "aylık",
+    periodMonths: 1,
     features: [
       "Haftalık koçluğun tüm içeriği",
-      "Aylık hedef yol haritası",
+      "Aylık hedef ve yol haritası",
       "Deneme & net analizi + eksik konu haritası",
-      "Öncelikli görüşme saatleri",
-      "Veli bilgilendirmesi (LGS/YKS)",
+      "Veli bilgilendirmesi (isteğe bağlı)",
     ],
   },
   {
-    name: "Deneme Analizi Paketi",
-    priceKurus: 49_900, // ₺499
-    period: "tek seferlik",
+    name: "Sınava Kadar Koçluk",
+    kind: "kocluk",
+    priceKurus: 3_600_000, // ₺36.000
+    period: "sınava kadar (~10 ay)",
+    periodMonths: 10,
     features: [
-      "Denemelerinin detaylı analizi",
-      "Konu bazlı eksik haritası",
-      "60 dk birebir değerlendirme görüşmesi",
-      "Sonraki haftalar için öneri planı",
+      "Sınava kadar kesintisiz koçluk",
+      "Aylık pakete göre daha düşük aylık maliyet",
+      "Dönem boyunca aynı koç",
+      "İlk günden sınava net gelişim takibi",
     ],
   },
-  /*
-   * Özel ders AYRI bir üründür: koçluk hâlâ "ders anlatımı değildir".
-   * Saat hakkı `lessonHours` ile tanımlanır; öğrenciye atanınca kalan saat
-   * uygulamada takip edilir (bkz. @/lib/ozel-ders).
-   */
+
+  /* ----------------------------- Özel ders ------------------------------- */
   {
-    name: "Özel Ders — 4 saat",
+    name: "Haftalık Özel Ders",
     kind: "ozel_ders",
-    priceKurus: 320_000, // ₺3.200
-    period: "4 saatlik paket",
-    lessonHours: 4,
+    priceKurus: 125_000, // ₺1.250
+    period: "saat (60 dk)",
+    lessonHours: 1,
     features: [
       "Alanında uzman öğretmenle birebir ders",
-      "Eksik çıkan konulara göre planlanır",
-      "Ders saatleri uygulamada takip edilir",
-      "Kalan hakkını her an görürsün",
+      "60 dakikalık ders",
+      "Konu, koçunun tespit ettiği eksiğe göre seçilir",
+      "Her ders uygulamaya işlenir",
     ],
   },
   {
-    name: "Özel Ders — 10 saat",
+    name: "Aylık Özel Ders",
     kind: "ozel_ders",
-    priceKurus: 750_000, // ₺7.500
-    compareAtKurus: 800_000, // ₺8.000
-    period: "10 saatlik paket",
-    lessonHours: 10,
+    priceKurus: 480_000, // ₺4.800 — saat başı ₺1.200
+    period: "aylık (4 saat)",
+    lessonHours: 4,
+    periodMonths: 1,
     features: [
-      "4 saatlik paketin tüm içeriği",
-      "Saat başı daha uygun fiyat",
-      "Birden çok derse dağıtılabilir",
-      "Koçunla ortak konu planlaması",
+      "Ayda 4 saat birebir ders",
+      "Saat başı ₺1.200",
+      "Saatleri ay içine istediğin gibi yayarsın",
+      "Kalan hakkını uygulamadan görürsün",
+    ],
+  },
+  {
+    name: "Sınava Kadar Matematik Dersi",
+    kind: "ozel_ders",
+    priceKurus: 4_500_000, // ₺45.000 — saat başı ₺1.125
+    period: "sınava kadar (~40 saat)",
+    lessonHours: 40,
+    periodMonths: 10,
+    features: [
+      "Sınava kadar toplam 40 saat matematik dersi",
+      "Saat başı ₺1.125 — en uygun saat ücreti",
+      "Konu planı koçunla ortak kurulur",
+      "Kalan saatin uygulamada takip edilir",
+    ],
+  },
+
+  /* ------------------------ Koçluk + Özel ders --------------------------- */
+  {
+    name: "Haftalık Koçluk + Özel Ders",
+    kind: "kocluk_ozel_ders",
+    priceKurus: 210_000, // ₺2.100 (ayrı ayrı ₺2.250)
+    period: "haftalık",
+    lessonHours: 1,
+    features: [
+      "Haftalık koçluğun tamamı",
+      "Haftada 1 saat birebir özel ders",
+      "Program ve ders tek planda birleşir",
+      "Ayrı ayrı almaya göre daha uygun",
+    ],
+  },
+  {
+    name: "Aylık Koçluk + Özel Ders",
+    kind: "kocluk_ozel_ders",
+    priceKurus: 840_000, // ₺8.400 (ayrı ayrı ₺8.800)
+    period: "aylık",
+    lessonHours: 4,
+    periodMonths: 1,
+    features: [
+      "Aylık koçluğun tamamı",
+      "Ayda 4 saat birebir özel ders",
+      "Eksik çıkan konular derste kapatılır",
+      "Tek ödeme, tek takip",
+    ],
+  },
+  {
+    name: "Sınava Kadar Koçluk + Özel Ders",
+    kind: "kocluk_ozel_ders",
+    priceKurus: 7_800_000, // ₺78.000 (ayrı ayrı ₺81.000)
+    period: "sınava kadar (~40 saat)",
+    lessonHours: 40,
+    periodMonths: 10,
+    features: [
+      "Sınava kadar kesintisiz koçluk",
+      "Toplam 40 saat birebir özel ders",
+      "En kapsamlı paket",
+      "Saat başı ve aylık maliyeti en düşük seçenek",
     ],
   },
 ];

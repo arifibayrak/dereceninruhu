@@ -51,6 +51,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PACKAGE_KIND_LABELS, type PackageKind } from "@/lib/ozel-ders";
 
 /* ------------------------------- Ortak parçalar --------------------------- */
 
@@ -832,7 +833,7 @@ export function ResourceLinkManager({ rows }: { rows: ResourceLinkRow[] }) {
 export type PackageRow = {
   id: number;
   name: string;
-  kind: "kocluk" | "ozel_ders";
+  kind: PackageKind;
   priceKurus: number;
   compareAtKurus: number | null;
   period: string | null;
@@ -846,7 +847,7 @@ export type PackageRow = {
 type PackageDraft = {
   id?: number;
   name: string;
-  kind: "kocluk" | "ozel_ders";
+  kind: PackageKind;
   priceTry: string;
   compareAtTry: string;
   period: string;
@@ -955,8 +956,7 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="text-sm font-medium">{row.name}</span>
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  {row.kind === "ozel_ders" ? "Özel ders · " : "Koçluk · "}
-                  {formatKurus(row.priceKurus)}
+                  {PACKAGE_KIND_LABELS[row.kind]} · {formatKurus(row.priceKurus)}
                   {row.period ? ` / ${row.period}` : ""}
                   {row.lessonHours ? ` · ${row.lessonHours} sa` : ""} ·{" "}
                   {row.features.length} özellik
@@ -1020,12 +1020,12 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
               </Field>
               <Field>
                 <FieldLabel htmlFor="paket-tur">Hizmet türü *</FieldLabel>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {(
-                    [
-                      ["kocluk", "Koçluk"],
-                      ["ozel_ders", "Özel ders"],
-                    ] as const
+                    Object.entries(PACKAGE_KIND_LABELS) as [
+                      PackageKind,
+                      string,
+                    ][]
                   ).map(([value, label]) => (
                     <Button
                       key={value}
@@ -1039,7 +1039,7 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Fiyatlar sayfası ikisini ayrı bölümlerde gösterir.
+                  Fiyatlar sayfası her türü ayrı bölümde gösterir.
                 </p>
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">

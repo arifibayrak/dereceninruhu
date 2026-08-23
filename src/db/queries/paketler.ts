@@ -13,6 +13,7 @@ import { selectInChunks } from "@/lib/d1";
 import {
   mergeQuota,
   quotaSummary,
+  type PackageKind,
   type QuotaSummary,
 } from "@/lib/ozel-ders";
 
@@ -21,7 +22,7 @@ export type EnrollmentPackageRow = {
   packageId: number | null;
   name: string;
   priceKurus: number;
-  kind: "kocluk" | "ozel_ders";
+  kind: PackageKind;
   lessonHoursGranted: number;
   startsOn: Date | null;
   endsOn: Date | null;
