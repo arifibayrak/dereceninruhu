@@ -54,13 +54,16 @@ function ImpactTile({
 }
 
 export default async function BasarilarPage() {
-  const [testimonials, achievements, site] = await Promise.all([
+  // Sayaçlar artık `impact_stats`'ten tek satır okuması (ağır tarama cron'a
+  // taşındı), bu yüzden şalterden bağımsız olarak paralel çekilebiliyor —
+  // eskiden üç sınırsız tablo taraması olduğu için sıralı ve şarta bağlıydı.
+  const [testimonials, achievements, site, impact] = await Promise.all([
     getPublicTestimonials(),
     getFeaturedAchievements(),
     getSiteSettings(),
+    getPublicImpactStats(),
   ]);
-  // Sayaçlar admin şalterine bağlı; kapalıyken hiç sorgulanmaz.
-  const stats = site.publicStatsVisible ? await getPublicImpactStats() : null;
+  const stats = site.publicStatsVisible ? impact : null;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-10 sm:px-6 md:gap-16 md:py-16">
@@ -123,7 +126,7 @@ export default async function BasarilarPage() {
             </h2>
             <p className="max-w-xl text-sm text-pretty text-muted-foreground">
               Bu sayılar pazarlama metni değil; öğrencilerimizin uygulamaya
-              girdiği gerçek takip verisinden canlı olarak hesaplanır.
+              girdiği gerçek takip verisinden her gün yeniden hesaplanır.
             </p>
           </div>
           <dl className="grid gap-3 sm:grid-cols-3">

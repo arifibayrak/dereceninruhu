@@ -11,6 +11,7 @@ import {
   examSections,
   examTemplates,
   faqs,
+  impactStats,
   leads,
   mockExamResults,
   mockExams,
@@ -226,14 +227,21 @@ export type PublicImpactStats = {
 };
 
 /**
- * Ahmet Hakan'ın istediği "şeffaf istatistik" — public /basarilar sayfası.
+ * Sayaçların AĞIR hesabı — `question_logs` üzerinde bir SUM, `mock_exams`
+ * üzerinde bir COUNT ve bir leftJoin/groupBy taraması. Üçü de WHERE'siz ve
+ * LIMIT'siz.
+ *
+ * ⚠️ Bunu bir SAYFADAN ÇAĞIRMA. Yalnız cron (`/api/cron/impact`) ve
+ * `getPublicImpactStats()`'ın ilk-kez soğuk yolu çağırır; public sayfa
+ * `impact_stats` anlık görüntüsünü okur. Eskiden `/basarilar` bunu her istekte
+ * çalıştırıyordu ve iki tablo büyüdükçe sayfa yavaşlıyordu.
  *
  * ⚠️ AGENTS.md: gerçek aktif öğrenci sayısı ve kontenjan ASLA public'e çıkmaz.
- * Bu yüzden burada yalnız TOPLAM soru/deneme ve net artışının MEDYANI döner;
- * öğrenci sayısı ne döndürülür ne de ondan türetilebilecek bir metrik (ör.
- * "öğrenci başına ortalama soru") yayınlanır.
+ * Bu yüzden yalnız TOPLAM soru/deneme ve net artışının MEDYANI döner; öğrenci
+ * sayısı ne döndürülür ne de ondan türetilebilecek bir metrik (ör. "öğrenci
+ * başına ortalama soru") yayınlanır.
  */
-export async function getPublicImpactStats(): Promise<PublicImpactStats> {
+export async function computeImpactStats(): Promise<PublicImpactStats> {
   const db = getDb();
 
   const [questionRow] = await db
@@ -286,6 +294,48 @@ export async function getPublicImpactStats(): Promise<PublicImpactStats> {
       medianNetGain === null ? null : Math.round(medianNetGain * 100) / 100,
   };
 }
+
+/** Ağır hesabı koşup `impact_stats` singleton'ına yazar. Cron'un işi. */
+export async function refreshImpactStats(): Promise<
+  PublicImpactStats & { computedAt: Date }
+> {
+  const db = getDb();
+  const stats = await computeImpactStats();
+  const now = new Date();
+  await db
+    .insert(impactStats)
+    .values({ id: 1, ...stats, computedAt: now })
+    .onConflictDoUpdate({
+      target: impactStats.id,
+      set: { ...stats, computedAt: now, updatedAt: now },
+    });
+  return { ...stats, computedAt: now };
+}
+
+/**
+ * Public sayaçlar — TEK satır okuması (`impact_stats`, id=1).
+ *
+ * Anlık görüntü hiç yoksa (taze DB, cron henüz koşmamış) bir kereliğine ağır
+ * hesabı koşup yazar; sayfa boş sayaçla çıkmasın diye. Bu soğuk yol ömürde bir
+ * kez işler — sonrasında cron güncel tutar. Bilerek "bayatsa yeniden hesapla"
+ * DEĞİL: public sayfa tarayıcı yüküyle ağır taramayı tetiklememeli.
+ */
+export const getPublicImpactStats = cache(
+  async (): Promise<PublicImpactStats> => {
+    const db = getDb();
+    const row = await db.query.impactStats.findFirst({
+      where: eq(impactStats.id, 1),
+    });
+    if (row) {
+      return {
+        totalQuestions: row.totalQuestions,
+        totalMocks: row.totalMocks,
+        medianNetGain: row.medianNetGain,
+      };
+    }
+    return refreshImpactStats();
+  },
+);
 
 /** /kaynaklar kartı — DB satırı ya da tohum, aynı görünüm tipi. */
 export type PublicResourceLink = {

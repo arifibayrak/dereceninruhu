@@ -996,6 +996,34 @@ export const leads = sqliteTable(
  * konumlandırma). Gerçek aktif öğrenci sayısı yalnız admin panelinde, referans
  * olarak, bu değerin yanında gösterilir.
  */
+/**
+ * `/basarilar` şeffaflık sayaçlarının ÖNCEDEN HESAPLANMIŞ anlık görüntüsü —
+ * singleton (id=1).
+ *
+ * NEDEN TABLO: sayaçlar `question_logs` üzerinde bir SUM ve `mock_exams`
+ * üzerinde bir COUNT + bir leftJoin/groupBy taraması gerektiriyor. Üçü de
+ * WHERE'siz, LIMIT'siz; yani public bir sayfa her istekte projenin en hızlı
+ * büyüyen iki tablosunu baştan sona okuyordu ve her hafta yavaşlıyordu.
+ * Ağır iş artık günde bir kez cron'da (`/api/cron/impact`) koşuyor, sayfa bu
+ * tek satırı okuyor.
+ *
+ * ⚠️ AGENTS.md: gerçek aktif öğrenci sayısı ASLA public'e çıkmaz. Burada da
+ * öğrenci sayısı ne saklanır ne de ondan türetilebilir bir metrik tutulur.
+ */
+export const impactStats = sqliteTable("impact_stats", {
+  /** Singleton — daima id=1. */
+  id: integer("id").primaryKey(),
+  /** Kaydedilen toplam soru sayısı. */
+  totalQuestions: integer("total_questions").notNull().default(0),
+  /** Girilen toplam deneme sayısı. */
+  totalMocks: integer("total_mocks").notNull().default(0),
+  /** İlk→son tam deneme net farkının medyanı; hesaplanamıyorsa null. */
+  medianNetGain: real("median_net_gain"),
+  /** Anlık görüntünün alındığı an — bayatlık teşhisi için. */
+  computedAt: integer("computed_at", { mode: "timestamp" }).notNull(),
+  updatedAt: updatedAt(),
+});
+
 export const cohortSettings = sqliteTable("cohort_settings", {
   /** Singleton — daima id=1. */
   id: integer("id").primaryKey(),
