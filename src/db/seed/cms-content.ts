@@ -377,8 +377,10 @@ export const packageSeeds: {
   priceKurus: number;
   compareAtKurus?: number | null;
   period: string;
-  /** Pakete dahil özel ders saati. */
+  /** Özel ders saati — yenilenen pakette DÖNEM BAŞINA. */
   lessonHours?: number | null;
+  /** Ders hakkı yenilenmesi; yoksa toplam tek seferliktir. */
+  renewal?: "yok" | "haftalik" | "aylik";
   /** Paketin kapsadığı ay (ücret planı ön-doldurması). */
   periodMonths?: number | null;
   features: string[];
@@ -426,6 +428,7 @@ export const packageSeeds: {
   /* ----------------------------- Özel ders ------------------------------- */
   {
     name: "Haftalık Özel Ders",
+    renewal: "haftalik",
     kind: "ozel_ders",
     priceKurus: 125_000, // ₺1.250
     period: "saat (60 dk)",
@@ -439,6 +442,7 @@ export const packageSeeds: {
   },
   {
     name: "Aylık Özel Ders",
+    renewal: "aylik",
     kind: "ozel_ders",
     priceKurus: 480_000, // ₺4.800 — saat başı ₺1.200
     period: "aylık (4 saat)",
@@ -469,6 +473,7 @@ export const packageSeeds: {
   /* ------------------------ Koçluk + Özel ders --------------------------- */
   {
     name: "Haftalık Koçluk + Özel Ders",
+    renewal: "haftalik",
     kind: "kocluk_ozel_ders",
     priceKurus: 210_000, // ₺2.100 (ayrı ayrı ₺2.250)
     period: "haftalık",
@@ -482,6 +487,7 @@ export const packageSeeds: {
   },
   {
     name: "Aylık Koçluk + Özel Ders",
+    renewal: "aylik",
     kind: "kocluk_ozel_ders",
     priceKurus: 840_000, // ₺8.400 (ayrı ayrı ₺8.800)
     period: "aylık",

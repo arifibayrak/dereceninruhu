@@ -152,6 +152,7 @@ export default async function IcerikPage() {
               period: r.period,
               lessonHours: r.lessonHours,
               periodMonths: r.periodMonths,
+              renewal: r.renewal,
               features: parseJsonArray(r.features),
               sortOrder: r.sortOrder,
               isActive: r.isActive,

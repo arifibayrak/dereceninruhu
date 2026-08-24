@@ -92,7 +92,10 @@ export async function assignPackage(
       nameSnapshot: v.name,
       priceKurusSnapshot: v.priceTl,
       kind: v.kind,
-      lessonHoursGranted: v.lessonHours,
+      // Yenilenen pakette toplam saat türetilir; sabit alan 0 kalır.
+      lessonHoursGranted: v.renewal === "yok" ? v.lessonHours : 0,
+      renewal: v.renewal,
+      hoursPerPeriod: v.renewal === "yok" ? 0 : v.hoursPerPeriod,
       startsOn: v.startsOn ?? null,
       endsOn: v.endsOn ?? null,
       status: v.status,

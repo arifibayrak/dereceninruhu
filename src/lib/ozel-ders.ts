@@ -1,3 +1,5 @@
+import { trDayKey } from "@/lib/dates";
+
 /**
  * Özel ders hakkı ve süre hesapları. Framework-free — Server Action'lar,
  * sorgu katmanı ve testler aynı fonksiyonları çağırır (`@/lib/net` deseni).
@@ -5,7 +7,88 @@
  * TEK DOĞRULUK KAYNAĞI: kalan hak hiçbir yerde SAKLANMAZ, her okumada işlenen
  * derslerden türetilir. Saklansaydı iptal/telafi/süre düzeltmesi sonrası sayaç
  * gerçekle ayrışırdı.
+ *
+ * Yenilenen paketler (haftada 1 saat, ayda 4 saat) de aynı ilkeyi izler:
+ * tanınan hak, `startsOn`dan bugüne geçen dönem sayısıyla ÇARPILARAK türetilir.
+ * Arka planda hak ekleyen bir cron YOKTUR — olsaydı iş bir kez atlandığında ya
+ * da iki kez koştuğunda sayaç sessizce yanlışa düşerdi ve kimse fark etmezdi.
+ *
+ * Kullanılmayan saat YANMAZ, birikir: öğrenci parasını ödediği hakkı bir hafta
+ * kullanamadı diye kaybetmemeli. Süreli yakma istenirse `endsOn` ile sınırla.
  */
+
+export type Renewal = "yok" | "haftalik" | "aylik";
+
+export const RENEWAL_LABELS: Record<Renewal, string> = {
+  yok: "Yenilenmez (tek seferlik)",
+  haftalik: "Her hafta yenilenir",
+  aylik: "Her ay yenilenir",
+};
+
+/**
+ * Bir tarihin Türkiye takvimindeki gün numarası (epoch-gün).
+ *
+ * Saat dilimi tuzağı: kayıtlar TRT gece yarısı damgasıyla saklanıyor, Worker
+ * ise UTC'de koşuyor. `getMonth()` doğrudan okunursa ayın 1'i bir önceki aya
+ * düşer ve dönem sayısı bir eksik çıkar. O yüzden gün/ay/yıl DAİMA `trDayKey`
+ * metninden okunur.
+ */
+function trParts(d: Date): { y: number; m: number; day: number } {
+  const [y, m, day] = trDayKey(d).split("-").map(Number);
+  return { y, m, day };
+}
+
+function trDayNumber(d: Date): number {
+  const { y, m, day } = trParts(d);
+  return Math.floor(Date.UTC(y, m - 1, day) / 86_400_000);
+}
+
+/**
+ * `startsOn`dan `now`a kadar BAŞLAMIŞ dönem sayısı (en az 1).
+ *
+ * Başlangıç günü 1. dönemdir: paketi bugün alan öğrenci bugün hakkını
+ * kullanabilmeli. `endsOn` geçmişse birikim orada durur.
+ */
+export function periodsElapsed(
+  startsOn: Date | null | undefined,
+  now: Date,
+  cadence: Exclude<Renewal, "yok">,
+  endsOn?: Date | null,
+): number {
+  if (!startsOn) return 0;
+  const end =
+    endsOn && endsOn.getTime() < now.getTime() ? endsOn : now;
+  if (trDayNumber(end) < trDayNumber(startsOn)) return 0;
+
+  if (cadence === "haftalik") {
+    const days = trDayNumber(end) - trDayNumber(startsOn);
+    return Math.floor(days / 7) + 1;
+  }
+
+  const s = trParts(startsOn);
+  const e = trParts(end);
+  let months = (e.y - s.y) * 12 + (e.m - s.m);
+  // Ayın günü henüz gelmediyse o ay başlamamıştır (15'inde alınan paket,
+  // sonraki ayın 10'unda hâlâ 1. dönemdedir).
+  if (e.day < s.day) months -= 1;
+  return months + 1;
+}
+
+/** Bir paket atamasının BUGÜNE KADAR tanınmış toplam saati. */
+export function accruedHours(
+  pkg: {
+    renewal: Renewal;
+    lessonHoursGranted: number;
+    hoursPerPeriod: number;
+    startsOn: Date | null;
+    endsOn: Date | null;
+  },
+  now: Date = new Date(),
+): number {
+  if (pkg.renewal === "yok") return pkg.lessonHoursGranted;
+  const periods = periodsElapsed(pkg.startsOn, now, pkg.renewal, pkg.endsOn);
+  return periods * pkg.hoursPerPeriod;
+}
 
 /** Kotadan düşen ders — hesaba giren asgari alanlar. */
 export type QuotaLesson = {

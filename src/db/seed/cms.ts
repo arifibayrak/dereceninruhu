@@ -210,6 +210,7 @@ function seedCms(db: SeedDb): Record<string, Counts> {
         compareAtKurus: p.compareAtKurus ?? null,
         period: p.period,
         lessonHours: p.lessonHours ?? null,
+        renewal: p.renewal ?? "yok",
         features: JSON.stringify(p.features),
         sortOrder: i,
         isActive: true,

@@ -51,7 +51,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { PACKAGE_KIND_LABELS, type PackageKind } from "@/lib/ozel-ders";
+import {
+  PACKAGE_KIND_LABELS,
+  RENEWAL_LABELS,
+  type PackageKind,
+  type Renewal,
+} from "@/lib/ozel-ders";
 
 /* ------------------------------- Ortak parçalar --------------------------- */
 
@@ -839,6 +844,7 @@ export type PackageRow = {
   period: string | null;
   lessonHours: number | null;
   periodMonths: number | null;
+  renewal: Renewal;
   features: string[];
   sortOrder: number;
   isActive: boolean;
@@ -853,6 +859,7 @@ type PackageDraft = {
   period: string;
   lessonHours: string;
   periodMonths: string;
+  renewal: Renewal;
   features: string;
   sortOrder: string;
   isActive: boolean;
@@ -866,6 +873,7 @@ const emptyPackage: PackageDraft = {
   period: "aylık",
   lessonHours: "",
   periodMonths: "",
+  renewal: "yok",
   features: "",
   sortOrder: "0",
   isActive: true,
@@ -905,6 +913,7 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
       compareAtKurus,
       period: draft.period,
       lessonHours: draft.lessonHours.trim() ? draft.lessonHours : null,
+      renewal: draft.renewal,
       periodMonths: draft.periodMonths.trim() ? draft.periodMonths : null,
       features: draft.features
         .split("\n")
@@ -976,6 +985,7 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
                     compareAtTry: tryInput(row.compareAtKurus),
                     period: row.period ?? "",
                     lessonHours: row.lessonHours ? String(row.lessonHours) : "",
+                    renewal: row.renewal,
                     periodMonths: row.periodMonths
                       ? String(row.periodMonths)
                       : "",
@@ -1073,6 +1083,30 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
                   </p>
                 </Field>
               </div>
+              <Field>
+                <FieldLabel htmlFor="paket-yenileme-katalog">
+                  Ders hakkı yenilenmesi
+                </FieldLabel>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.entries(RENEWAL_LABELS) as [Renewal, string][]).map(
+                    ([value, label]) => (
+                      <Button
+                        key={value}
+                        type="button"
+                        size="sm"
+                        variant={draft.renewal === value ? "default" : "outline"}
+                        onClick={() => setDraft({ ...draft, renewal: value })}
+                      >
+                        {label}
+                      </Button>
+                    ),
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Yenilenen pakette saat DÖNEM BAŞINA sayılır ve her dönem
+                  kendiliğinden eklenir.
+                </p>
+              </Field>
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field>
                   <FieldLabel htmlFor="paket-donem">Dönem</FieldLabel>
@@ -1086,7 +1120,13 @@ export function PackageManager({ rows }: { rows: PackageRow[] }) {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="paket-saat">Özel ders saati</FieldLabel>
+                  <FieldLabel htmlFor="paket-saat">
+                    {draft.renewal === "yok"
+                      ? "Toplam ders saati"
+                      : draft.renewal === "haftalik"
+                        ? "Haftada kaç saat"
+                        : "Ayda kaç saat"}
+                  </FieldLabel>
                   <Input
                     id="paket-saat"
                     inputMode="numeric"

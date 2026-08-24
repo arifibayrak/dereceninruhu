@@ -11,10 +11,12 @@ import {
 } from "@/db/schema";
 import { selectInChunks } from "@/lib/d1";
 import {
+  accruedHours,
   mergeQuota,
   quotaSummary,
   type PackageKind,
   type QuotaSummary,
+  type Renewal,
 } from "@/lib/ozel-ders";
 
 export type EnrollmentPackageRow = {
@@ -24,6 +26,10 @@ export type EnrollmentPackageRow = {
   priceKurus: number;
   kind: PackageKind;
   lessonHoursGranted: number;
+  renewal: Renewal;
+  hoursPerPeriod: number;
+  /** Bugüne kadar TANINMIŞ toplam saat (yenilenen pakette dönem × saat). */
+  accruedHours: number;
   startsOn: Date | null;
   endsOn: Date | null;
   status: "aktif" | "bitti" | "iptal";
@@ -55,6 +61,7 @@ export type PrivateLessonRow = {
 /** Kayda atanmış paketler — iptaller dahil, en yenisi üstte. */
 export async function listEnrollmentPackages(
   enrollmentId: number,
+  now: Date = new Date(),
 ): Promise<EnrollmentPackageRow[]> {
   const db = getDb();
   const rows = await db
@@ -65,6 +72,8 @@ export async function listEnrollmentPackages(
       priceKurus: enrollmentPackages.priceKurusSnapshot,
       kind: enrollmentPackages.kind,
       lessonHoursGranted: enrollmentPackages.lessonHoursGranted,
+      renewal: enrollmentPackages.renewal,
+      hoursPerPeriod: enrollmentPackages.hoursPerPeriod,
       startsOn: enrollmentPackages.startsOn,
       endsOn: enrollmentPackages.endsOn,
       status: enrollmentPackages.status,
@@ -73,7 +82,8 @@ export async function listEnrollmentPackages(
     .from(enrollmentPackages)
     .where(eq(enrollmentPackages.enrollmentId, enrollmentId))
     .orderBy(desc(enrollmentPackages.startsOn), desc(enrollmentPackages.id));
-  return rows;
+  // Tanınan saat okuma anında türetilir — yenilenen pakette dönem sayısıyla.
+  return rows.map((r) => ({ ...r, accruedHours: accruedHours(r, now) }));
 }
 
 /**
@@ -179,7 +189,7 @@ export async function getPackageOverview(
   const quotaByPackage = new Map<number, QuotaSummary>();
   for (const p of packages) {
     const own = lessons.filter((l) => l.enrollmentPackageId === p.id);
-    quotaByPackage.set(p.id, quotaSummary(p.lessonHoursGranted, own));
+    quotaByPackage.set(p.id, quotaSummary(p.accruedHours, own));
   }
 
   const active = packages.filter((p) => p.status === "aktif");
@@ -281,6 +291,8 @@ export async function packagesByEnrollment(
         priceKurus: enrollmentPackages.priceKurusSnapshot,
         kind: enrollmentPackages.kind,
         lessonHoursGranted: enrollmentPackages.lessonHoursGranted,
+        renewal: enrollmentPackages.renewal,
+        hoursPerPeriod: enrollmentPackages.hoursPerPeriod,
         startsOn: enrollmentPackages.startsOn,
         endsOn: enrollmentPackages.endsOn,
         status: enrollmentPackages.status,
@@ -304,6 +316,9 @@ export async function packagesByEnrollment(
       priceKurus: r.priceKurus,
       kind: r.kind,
       lessonHoursGranted: r.lessonHoursGranted,
+      renewal: r.renewal,
+      hoursPerPeriod: r.hoursPerPeriod,
+      accruedHours: accruedHours(r),
       startsOn: r.startsOn,
       endsOn: r.endsOn,
       status: r.status,

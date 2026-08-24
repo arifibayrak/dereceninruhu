@@ -144,6 +144,7 @@ export async function upsertPackage(
       compareAtKurus: v.compareAtKurus ? v.compareAtKurus : null,
       period: clean(v.period),
       lessonHours: v.lessonHours ? v.lessonHours : null,
+      renewal: v.renewal,
       periodMonths: v.periodMonths ? v.periodMonths : null,
       features: JSON.stringify(v.features),
       sortOrder: v.sortOrder,

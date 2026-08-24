@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  accruedHours,
   formatLessonMinutes,
+  periodsElapsed,
   mergeQuota,
   quotaSummary,
   type QuotaLesson,
@@ -69,5 +71,74 @@ describe("formatLessonMinutes", () => {
     expect(formatLessonMinutes(45)).toBe("45 dk");
     expect(formatLessonMinutes(60)).toBe("1 sa");
     expect(formatLessonMinutes(150)).toBe("2 sa 30 dk");
+  });
+});
+
+describe("periodsElapsed", () => {
+  const d = (s: string) => new Date(`${s}T00:00:00+03:00`);
+
+  it("başlangıç günü 1. dönemdir", () => {
+    expect(periodsElapsed(d("2026-08-24"), d("2026-08-24"), "haftalik")).toBe(1);
+    expect(periodsElapsed(d("2026-08-24"), d("2026-08-24"), "aylik")).toBe(1);
+  });
+
+  it("haftalık: 7 günde bir yeni dönem", () => {
+    const s = d("2026-08-24");
+    expect(periodsElapsed(s, d("2026-08-30"), "haftalik")).toBe(1);
+    expect(periodsElapsed(s, d("2026-08-31"), "haftalik")).toBe(2);
+    expect(periodsElapsed(s, d("2026-10-12"), "haftalik")).toBe(8);
+  });
+
+  it("aylık: ayın günü gelmeden yeni dönem başlamaz", () => {
+    const s = d("2026-08-15");
+    expect(periodsElapsed(s, d("2026-09-14"), "aylik")).toBe(1);
+    expect(periodsElapsed(s, d("2026-09-15"), "aylik")).toBe(2);
+    expect(periodsElapsed(s, d("2027-02-15"), "aylik")).toBe(7);
+  });
+
+  it("ay başında saat dilimi kayması dönem sayısını bozmaz", () => {
+    // TRT gece yarısı = UTC'de bir önceki günün 21:00'i; ham getMonth() burada
+    // bir eksik ay verirdi.
+    expect(periodsElapsed(d("2026-08-01"), d("2026-09-01"), "aylik")).toBe(2);
+  });
+
+  it("endsOn geçmişse birikim orada durur", () => {
+    const s = d("2026-08-24");
+    expect(
+      periodsElapsed(s, d("2026-12-01"), "haftalik", d("2026-09-14")),
+    ).toBe(4);
+  });
+
+  it("başlangıç yoksa dönem sayılmaz", () => {
+    expect(periodsElapsed(null, d("2026-09-01"), "haftalik")).toBe(0);
+  });
+});
+
+describe("accruedHours", () => {
+  const d = (s: string) => new Date(`${s}T00:00:00+03:00`);
+  const base = { lessonHoursGranted: 0, hoursPerPeriod: 0, startsOn: null, endsOn: null };
+
+  it("yenilenmeyen pakette sabit toplam", () => {
+    expect(
+      accruedHours({ ...base, renewal: "yok", lessonHoursGranted: 40 }, d("2027-01-01")),
+    ).toBe(40);
+  });
+
+  it("haftada 1 saat 8 haftada 8 saate çıkar", () => {
+    expect(
+      accruedHours(
+        { ...base, renewal: "haftalik", hoursPerPeriod: 1, startsOn: d("2026-08-24") },
+        d("2026-10-12"),
+      ),
+    ).toBe(8);
+  });
+
+  it("ayda 4 saat üçüncü ayda 12 saate çıkar", () => {
+    expect(
+      accruedHours(
+        { ...base, renewal: "aylik", hoursPerPeriod: 4, startsOn: d("2026-08-15") },
+        d("2026-10-15"),
+      ),
+    ).toBe(12);
   });
 });

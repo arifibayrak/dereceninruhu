@@ -1234,10 +1234,18 @@ export const packages = sqliteTable("packages", {
   /** Billing period label shown publicly (e.g. "aylık"). */
   period: text("period"),
   /**
-   * Pakete dahil özel ders SAATİ. Koçluk paketlerinde de dolu olabilir
-   * ("3 saat özel ders dahil"). 0/NULL = özel ders içermiyor.
+   * Pakete dahil özel ders SAATİ. `renewal` "yok" ise TOPLAM ("sınava kadar
+   * 40 saat"), değilse DÖNEM BAŞINA ("haftada 1 saat"). 0/NULL = ders yok.
    */
   lessonHours: integer("lesson_hours"),
+  /**
+   * Ders hakkının yenilenme sıklığı. "yok" = tek seferlik toplam hak.
+   * Haftalık/aylık pakette hak her dönem yeniden tanınır; sayaç bunu
+   * TÜRETİR (bkz. `@/lib/ozel-ders`), arka planda iş çalışmaz.
+   */
+  renewal: text("renewal", { enum: ["yok", "haftalik", "aylik"] })
+    .notNull()
+    .default("yok"),
   /** Ücret planı ön-doldurması: paket kaç ayı kapsıyor (fee_plans.periodMonths). */
   periodMonths: integer("period_months"),
   /** JSON-encoded string[] of feature bullets. */
@@ -1274,8 +1282,21 @@ export const enrollmentPackages = sqliteTable(
     kind: text("kind", { enum: ["kocluk", "ozel_ders", "kocluk_ozel_ders"] })
       .notNull()
       .default("kocluk"),
-    /** Tanınan özel ders saati; kalan hak buradan düşülür (@/lib/ozel-ders). */
+    /**
+     * TEK SEFERLİK tanınan saat — yalnız `renewal = "yok"` iken kullanılır
+     * ("sınava kadar 40 saat"). Yenilenen paketlerde 0 kalır.
+     */
     lessonHoursGranted: integer("lesson_hours_granted").notNull().default(0),
+    /**
+     * Hak yenilenme sıklığı. Haftalık/aylık pakette öğrenci her dönem yeniden
+     * hak kazanır; toplam hak `startsOn`dan bugüne geçen dönem sayısından
+     * TÜRETİLİR — cron yok, saklanan sayaç yok, dolayısıyla kayma da yok.
+     */
+    renewal: text("renewal", { enum: ["yok", "haftalik", "aylik"] })
+      .notNull()
+      .default("yok"),
+    /** Yenilenen pakette DÖNEM BAŞINA tanınan saat (haftada 1, ayda 4 gibi). */
+    hoursPerPeriod: integer("hours_per_period").notNull().default(0),
     startsOn: integer("starts_on", { mode: "timestamp" }),
     endsOn: integer("ends_on", { mode: "timestamp" }),
     status: text("status", { enum: ["aktif", "bitti", "iptal"] })

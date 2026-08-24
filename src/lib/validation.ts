@@ -626,8 +626,10 @@ export const upsertPackageSchema = z
     /** Üstü çizili "eski fiyat"; boş/0 = indirim rozeti gösterilmez. */
     compareAtKurus: kurusField.nullish(),
     period: z.string().trim().max(40).optional().or(z.literal("")),
-    /** Pakete dahil özel ders saati. */
+    /** Pakete dahil özel ders saati (yenilenen pakette DÖNEM BAŞINA). */
     lessonHours: z.coerce.number().int().min(0).max(500).nullish(),
+    /** Ders hakkı yenileme sıklığı. */
+    renewal: z.enum(["yok", "haftalik", "aylik"]).default("yok"),
     /** Ücret planı ön-doldurması: paket kaç ayı kapsıyor. */
     periodMonths: z.coerce.number().int().min(1).max(60).nullish(),
     features: z.array(z.string().trim().min(1).max(160)).max(12),

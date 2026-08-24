@@ -11,7 +11,12 @@ import { assignPackage } from "@/actions/paketler";
 import { callAction } from "@/lib/action-client";
 import { trDayKey } from "@/lib/dates";
 import { kurusToTryInput } from "@/lib/muhasebe";
-import { PACKAGE_KIND_LABELS, type PackageKind } from "@/lib/ozel-ders";
+import {
+  PACKAGE_KIND_LABELS,
+  RENEWAL_LABELS,
+  type PackageKind,
+  type Renewal,
+} from "@/lib/ozel-ders";
 import { useRefresh } from "@/lib/use-refresh";
 import { assignPackageSchema } from "@/lib/validation-paket";
 import { Button } from "@/components/ui/button";
@@ -51,6 +56,7 @@ export type CatalogPackage = {
   kind: PackageKind;
   priceKurus: number;
   lessonHours: number | null;
+  renewal: Renewal;
 };
 
 export type AssignedPackage = {
@@ -60,6 +66,8 @@ export type AssignedPackage = {
   kind: PackageKind;
   priceKurus: number;
   lessonHoursGranted: number;
+  renewal: Renewal;
+  hoursPerPeriod: number;
   startsOn: Date | null;
   endsOn: Date | null;
   status: "aktif" | "bitti" | "iptal";
@@ -75,6 +83,10 @@ const STATUS_ITEMS = [
   { value: "bitti", label: "Bitti" },
   { value: "iptal", label: "İptal" },
 ];
+
+const RENEWAL_ITEMS = (
+  Object.entries(RENEWAL_LABELS) as [Renewal, string][]
+).map(([value, label]) => ({ value, label }));
 
 const CUSTOM = "ozel";
 
@@ -109,6 +121,8 @@ export function PackageAssignDialog({
       priceTl: assigned ? kurusToTryInput(assigned.priceKurus) : "",
       kind: assigned?.kind ?? "kocluk",
       lessonHours: assigned?.lessonHoursGranted ?? 0,
+      renewal: assigned?.renewal ?? "yok",
+      hoursPerPeriod: assigned?.hoursPerPeriod ?? 0,
       startsOn: assigned?.startsOn ? trDayKey(assigned.startsOn) : undefined,
       endsOn: assigned?.endsOn ? trDayKey(assigned.endsOn) : undefined,
       status: assigned?.status ?? "aktif",
@@ -117,6 +131,8 @@ export function PackageAssignDialog({
   });
   const { errors } = form.formState;
   const kind = useWatch({ control: form.control, name: "kind" });
+  const renewal = useWatch({ control: form.control, name: "renewal" });
+  const renews = renewal !== "yok";
 
   const applyCatalog = (value: string) => {
     if (value === CUSTOM) {
@@ -129,7 +145,15 @@ export function PackageAssignDialog({
     form.setValue("name", pkg.name);
     form.setValue("priceTl", kurusToTryInput(pkg.priceKurus));
     form.setValue("kind", pkg.kind);
-    form.setValue("lessonHours", pkg.lessonHours ?? 0);
+    form.setValue("renewal", pkg.renewal);
+    // Katalogdaki saat, yenilenen pakette DÖNEM BAŞINA demektir.
+    if (pkg.renewal === "yok") {
+      form.setValue("lessonHours", pkg.lessonHours ?? 0);
+      form.setValue("hoursPerPeriod", 0);
+    } else {
+      form.setValue("hoursPerPeriod", pkg.lessonHours ?? 0);
+      form.setValue("lessonHours", 0);
+    }
   };
 
   const onSubmit = async (values: FormOutput) => {
@@ -254,33 +278,88 @@ export function PackageAssignDialog({
               </Field>
             </div>
 
-            <Field data-invalid={errors.lessonHours ? true : undefined}>
-              <FieldLabel htmlFor="paket-saat-atama">
-                Özel ders saati
-              </FieldLabel>
-              <Input
-                id="paket-saat-atama"
-                inputMode="numeric"
-                placeholder="0"
-                aria-invalid={errors.lessonHours ? true : undefined}
-                {...form.register("lessonHours")}
+            <Field>
+              <FieldLabel htmlFor="paket-yenileme">Ders hakkı</FieldLabel>
+              <Controller
+                control={form.control}
+                name="renewal"
+                render={({ field }) => (
+                  <Select
+                    items={RENEWAL_ITEMS}
+                    value={field.value ?? "yok"}
+                    onValueChange={(v) => field.onChange(v)}
+                  >
+                    <SelectTrigger id="paket-yenileme" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RENEWAL_ITEMS.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
-              <FieldError errors={[errors.lessonHours]} />
               <FieldDescription>
-                {kind === "ozel_ders"
-                  ? "Bu paketle verilecek toplam ders saati."
-                  : "Koçluk paketine ders dahilse saatini yaz; değilse 0 bırak."}
+                Yenilenen pakette hak her dönem kendiliğinden eklenir;
+                kullanılmayan saat yanmaz, birikir.
               </FieldDescription>
             </Field>
 
+            {renews ? (
+              <Field data-invalid={errors.hoursPerPeriod ? true : undefined}>
+                <FieldLabel htmlFor="paket-donem-saat">
+                  {renewal === "haftalik" ? "Haftada" : "Ayda"} kaç saat *
+                </FieldLabel>
+                <Input
+                  id="paket-donem-saat"
+                  inputMode="numeric"
+                  placeholder={renewal === "haftalik" ? "1" : "4"}
+                  aria-invalid={errors.hoursPerPeriod ? true : undefined}
+                  {...form.register("hoursPerPeriod")}
+                />
+                <FieldError errors={[errors.hoursPerPeriod]} />
+                <FieldDescription>
+                  Başlangıç tarihinden itibaren her{" "}
+                  {renewal === "haftalik" ? "hafta" : "ay"} bu kadar saat
+                  eklenir. Toplam hak bu yüzden elle güncellenmez.
+                </FieldDescription>
+              </Field>
+            ) : (
+              <Field data-invalid={errors.lessonHours ? true : undefined}>
+                <FieldLabel htmlFor="paket-saat-atama">
+                  Toplam ders saati
+                </FieldLabel>
+                <Input
+                  id="paket-saat-atama"
+                  inputMode="numeric"
+                  placeholder="0"
+                  aria-invalid={errors.lessonHours ? true : undefined}
+                  {...form.register("lessonHours")}
+                />
+                <FieldError errors={[errors.lessonHours]} />
+                <FieldDescription>
+                  {kind === "ozel_ders"
+                    ? "Bu paketle verilecek toplam ders saati."
+                    : "Koçluk paketine ders dahilse saatini yaz; değilse 0 bırak."}
+                </FieldDescription>
+              </Field>
+            )}
+
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="paket-baslangic">Başlangıç</FieldLabel>
+              <Field data-invalid={errors.startsOn ? true : undefined}>
+                <FieldLabel htmlFor="paket-baslangic">
+                  Başlangıç {renews ? "*" : ""}
+                </FieldLabel>
                 <Input
                   id="paket-baslangic"
                   type="date"
+                  aria-invalid={errors.startsOn ? true : undefined}
                   {...form.register("startsOn")}
                 />
+                <FieldError errors={[errors.startsOn]} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="paket-bitis">Bitiş</FieldLabel>

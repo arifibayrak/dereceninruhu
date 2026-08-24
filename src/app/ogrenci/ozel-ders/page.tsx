@@ -156,7 +156,7 @@ export default async function OzelDersPage() {
         <StatTile
           label="İşlenen ders"
           value={formatLessonMinutes(quota.usedMinutes)}
-          hint={`Toplam ${formatLessonMinutes(quota.grantedMinutes)} hak`}
+          hint={`Şu ana kadar ${formatLessonMinutes(quota.grantedMinutes)} hak`}
         />
       </div>
 
@@ -175,11 +175,19 @@ export default async function OzelDersPage() {
                 >
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="text-sm font-medium">{p.name}</span>
-                    {p.lessonHoursGranted > 0 && (
+                    {p.renewal !== "yok" ? (
+                      <span className="text-xs text-muted-foreground">
+                        Her {p.renewal === "haftalik" ? "hafta" : "ay"}{" "}
+                        <strong className="text-foreground tabular-nums">
+                          {p.hoursPerPeriod} saat
+                        </strong>{" "}
+                        eklenir · şu ana kadar {p.accruedHours} saat
+                      </span>
+                    ) : p.lessonHoursGranted > 0 ? (
                       <span className="text-xs text-muted-foreground tabular-nums">
                         {p.lessonHoursGranted} saat ders dahil
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   <Badge variant="secondary">
                     {PACKAGE_KIND_LABELS[p.kind]}

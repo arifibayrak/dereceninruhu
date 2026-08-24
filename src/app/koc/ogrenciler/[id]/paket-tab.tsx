@@ -66,6 +66,20 @@ export async function PaketTab({
 
   const { packages, lessons, quota, quotaByPackage } = overview;
   const activePackages = packages.filter((p) => p.status === "aktif");
+  /*
+   * Yenilenen paketlerde "tanınan" sayısı zamanla ARTAR; koç bunun elle
+   * güncellenmesi gerektiğini sanmasın diye kaynağını yazıyoruz.
+   */
+  const renewing = activePackages.filter((p) => p.renewal !== "yok");
+  const renewingNote =
+    renewing.length > 0
+      ? renewing
+          .map(
+            (p) =>
+              `${p.hoursPerPeriod} sa/${p.renewal === "haftalik" ? "hafta" : "ay"} otomatik ekleniyor`,
+          )
+          .join(" · ")
+      : null;
 
   // Ders seçenekleri: kaydın sınav kapsamındaki tüm dersler, tekilleştirilmiş.
   const subjectOptions = Array.from(
@@ -96,7 +110,9 @@ export async function PaketTab({
         <StatTile
           label="Tanınan ders"
           value={formatLessonMinutes(quota.grantedMinutes)}
-          hint="Aktif paketlerin toplamı"
+          hint={
+            renewingNote ?? "Aktif paketlerin toplamı"
+          }
         />
         <StatTile
           label="İşlenen ders"
@@ -149,6 +165,7 @@ export async function PaketTab({
               kind: c.kind,
               priceKurus: c.priceKurus,
               lessonHours: c.lessonHours,
+              renewal: c.renewal,
             }))}
           />
         </CardHeader>
@@ -183,7 +200,10 @@ export async function PaketTab({
                       </div>
                       <span className="text-xs text-muted-foreground tabular-nums">
                         {formatKurus(p.priceKurus)}
-                        {p.lessonHoursGranted > 0 && q
+                        {p.renewal !== "yok"
+                          ? ` · ${p.hoursPerPeriod} sa/${p.renewal === "haftalik" ? "hafta" : "ay"}`
+                          : ""}
+                        {q && q.grantedMinutes > 0
                           ? ` · ${formatLessonMinutes(q.usedMinutes)} / ${formatLessonMinutes(q.grantedMinutes)} kullanıldı`
                           : ""}
                         {p.startsOn ? ` · ${dateFmt.format(p.startsOn)}` : ""}

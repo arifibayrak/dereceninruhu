@@ -30,11 +30,30 @@ export const assignPackageSchema = z.object({
     .min(0, "Saat negatif olamaz.")
     .max(500)
     .default(0),
+  /** Hak yenilenme sıklığı; "yok" = tek seferlik toplam. */
+  renewal: z.enum(["yok", "haftalik", "aylik"]).default("yok"),
+  /** Yenilenen pakette dönem başına saat. */
+  hoursPerPeriod: z.coerce
+    .number()
+    .int("Saat tam sayı olmalı.")
+    .min(0, "Saat negatif olamaz.")
+    .max(100)
+    .default(0),
   startsOn: optionalDate,
   endsOn: optionalDate,
   status: z.enum(["aktif", "bitti", "iptal"]).default("aktif"),
   note: z.string().trim().max(500).optional().or(z.literal("")),
-});
+})
+  .refine((v) => v.renewal === "yok" || v.hoursPerPeriod > 0, {
+    // Yenilenen pakette 0 saat tanımlamak sayacı hep 0'da tutardı.
+    message: "Yenilenen pakette dönem başına saat girilmeli.",
+    path: ["hoursPerPeriod"],
+  })
+  .refine((v) => v.renewal === "yok" || v.startsOn != null, {
+    // Birikim başlangıç gününden sayılır; tarihsiz yenileme hesaplanamaz.
+    message: "Yenilenen pakette başlangıç tarihi gerekli.",
+    path: ["startsOn"],
+  });
 export type AssignPackageInput = z.infer<typeof assignPackageSchema>;
 
 export const lessonStatusSchema = z.enum([
