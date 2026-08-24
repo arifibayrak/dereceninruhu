@@ -1,7 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "dereceninruhu",
-  "main": ".open-next/worker.js",
+  // OpenNext'in ürettiği worker'ı saran giriş noktası — `scheduled` handler'ı
+  // eklemek için (bkz. worker-entry.ts). `fetch` ve Durable Object export'ları
+  // değiştirilmeden geçirilir.
+  "main": "worker-entry.ts",
   "compatibility_date": "2026-07-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
@@ -38,8 +41,16 @@
       "binding": "R2",
       "bucket_name": "dereceninruhu-files"
     }
-  ]
+  ],
   // OPENROUTER_API_KEY bir secret'tır (wrangler.jsonc'a yazılmaz): yerelde .dev.vars,
   // dağıtımda `wrangler secret put OPENROUTER_API_KEY`.
-  // Cron triggers (haftalık roll-up, aylık fatura) added later with a scheduled handler.
+  // Günlük cron: /basarilar şeffaflık sayaçlarını yeniden hesaplar. 03:30 UTC =
+  // 06:30 Europe/Istanbul, yani öğrenci trafiğinin en düşük olduğu saat.
+  //
+  // ⚠️ /api/cron/billing BİLEREK burada DEĞİL: fatura üretmek parasal sonuç
+  // doğurur, otomatiğe alınması ayrı bir karar. Eklenecekse worker-entry.ts
+  // içindeki CRON_ROUTES listesine yazılır.
+  "triggers": {
+    "crons": ["30 3 * * *"]
+  }
 }
