@@ -1,53 +1,68 @@
-import { getSiteSettings } from "@/db/queries/cms";
+import { Suspense } from "react";
+
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { WhatsappFabSlot } from "@/components/marketing/whatsapp-fab-slot";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationSchema, websiteSchema } from "@/lib/schema";
-import { SOCIAL_LINKS } from "@/lib/seo";
+import { SOCIAL_FALLBACK } from "@/lib/seo";
+import { getSocialUrls } from "@/lib/social";
 
 /**
  * Pazarlama sitesi kabuğu (route group — uygulama chrome'unu miras almaz).
  *
- * Bu layout ARTIK D1 OKUR (`site_settings`): sosyal bağlantılar yöneticinin
+ * Bu layout D1 OKUR (`site_settings`): sosyal bağlantılar yöneticinin
  * `/koc/site` panelinden deploy'suz değiştirebilmesi için DB'de tutuluyor. D1
  * `next build` sırasında BAĞLI DEĞİLDİR, bu yüzden kabuk istek başına render
- * edilmeli → `force-dynamic`. (Yüzen WhatsApp butonu kendi ayarını
- * `WhatsappFabSlot` içinde okur — aynı `cache()`'li sorgu, ek maliyet yok.)
+ * edilmeli → `force-dynamic`.
+ *
+ * ⚠️ LAYOUT GÖVDESİNDE `await` YOK — BİLEREK. React, layout bileşeni geri
+ * dönmeden `children`'a inemez; burada `await getSiteSettings()` beklendiğinde
+ * kabuğun 1 D1 sorgusu ile sayfanın 5 paralel sorgusu İKİ SERİ DALGAYA
+ * bölünüyordu (TTFB = 2 × D1 RTT). Promise `<Suspense>` sınırlarına geçilince
+ * sayfa sorguları anında başlıyor. Yeni bir kabuk verisi eklerken bu deseni
+ * bozma: promise'i geçir, `await` etme.
  *
  * Bilinçli ödünleşme: önceden kabuk D1 okumadığı için 4 pazarlama sayfası
  * (/iletisim, /nasil-calisir, /sayac, /koc-basvuru) statik kalabiliyordu;
- * artık onlar da dinamik render ediliyor. Cloudflare Workers'ta her istek
- * zaten Worker'dan geçtiğinden ek maliyet tek bir D1 singleton okumasıdır ve
- * `getSiteSettings()` `cache()` ile sarılı olduğu için istek başına bir kez
- * çalışır. Diğer 13 pazarlama sayfası zaten `force-dynamic` idi.
+ * artık onlar da dinamik render ediliyor.
  *
  * Site geneli varlıklar (Organization + WebSite JSON-LD) tüm public
  * sayfalarda bir kez yayınlanır — arama motoru ve LLM'ler markayı çözebilsin.
  */
 export const dynamic = "force-dynamic";
 
-export default async function PazarlamaLayout({
+/** Organization şeması `sameAs` için çözülmüş bağlantıları bekler. */
+async function OrganizationJsonLd() {
+  const social = await getSocialUrls();
+  return <JsonLd data={[organizationSchema(social), websiteSchema()]} />;
+}
+
+async function FooterSlot() {
+  return <SiteFooter social={await getSocialUrls()} />;
+}
+
+export default function PazarlamaLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const site = await getSiteSettings();
-
-  // DB boşsa `@/lib/seo` sabitine düş — site seed'siz de eksiksiz görünür.
-  const social = {
-    instagram: site.instagramUrl || SOCIAL_LINKS.instagram,
-    tiktok: site.tiktokUrl || SOCIAL_LINKS.tiktok,
-    youtube: site.youtubeUrl || SOCIAL_LINKS.youtube,
-  };
+  // AWAIT YOK — promise aşağıdaki sınırlara geçiyor (bkz. dosya başı notu).
+  const socialPromise = getSocialUrls();
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <JsonLd data={[organizationSchema(social), websiteSchema()]} />
-      <SiteHeader social={social} />
+      <Suspense fallback={null}>
+        <OrganizationJsonLd />
+      </Suspense>
+      <SiteHeader social={socialPromise} />
       <main className="flex-1">{children}</main>
-      <SiteFooter social={social} />
-      <WhatsappFabSlot />
+      <Suspense fallback={<SiteFooter social={SOCIAL_FALLBACK} />}>
+        <FooterSlot />
+      </Suspense>
+      <Suspense fallback={null}>
+        <WhatsappFabSlot />
+      </Suspense>
     </div>
   );
 }

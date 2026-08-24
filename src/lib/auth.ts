@@ -59,6 +59,18 @@ export function getAuth() {
     session: {
       expiresIn: 60 * 60 * 24 * 30,
       updateAge: 60 * 60 * 24,
+      // Oturumu imzalı bir çereze de yaz: `/koc/*` ve `/ogrenci/*` altındaki
+      // HER istek layout render olmadan önce D1'e session+user sorgusu
+      // atıyordu. 5 dakikalık çerez önbelleği bunu çoğu gezinmede sıfırlar.
+      // TAKAS: bir admin başkasının rolünü değiştirdiğinde o kullanıcının
+      // rolü en geç 5 dk bayat kalır (guard'lar da aynı çerezden okur).
+      // Kabul edilebilir, çünkü rol değişimi nadir ve girişte çerez her zaman
+      // D1'deki güncel rolle yeniden yazılır — kurulum/katıl akışları rolü
+      // signUp'tan SONRA set edip ardından taze signIn yaptığı için etkilenmez.
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60,
+      },
     },
     user: {
       additionalFields: {

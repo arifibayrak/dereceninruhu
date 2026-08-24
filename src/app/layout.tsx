@@ -19,7 +19,6 @@ import {
 import { LazyToaster } from "@/components/app/lazy-toaster";
 import { StaleVersionWatch } from "@/components/app/stale-version-watch";
 import { ThemeProvider } from "@/components/theme-provider";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { OG_IMAGE, SITE_LOCALE, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -108,7 +107,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>{children}</TooltipProvider>
+          {/* ⚠️ Burada `TooltipProvider` YOK — BİLEREK. Kökte durduğunda
+              `@base-ui/react/tooltip` + floating-ui konumlandırma motoru (~109 KB
+              ham) HER pazarlama sayfasının ilk chunk grafiğine giriyordu; oysa
+              tooltip'i kullanan tek yer robots'ta disallow edilmiş `/marka`
+              önizlemesi. Provider artık orada, kullanıldığı yerde. */}
+          {children}
           <LazyToaster />
           <StaleVersionWatch />
         </ThemeProvider>

@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
      * kapsıyor; bu ikisi kapsam dışında. Barrel importları tek tek modüllere
      * çevrilir, kullanılmayan alt modüller pakete girmez.
      */
-    optimizePackageImports: ["motion", "@base-ui/react"],
+    optimizePackageImports: ["@base-ui/react"],
   },
 };
 

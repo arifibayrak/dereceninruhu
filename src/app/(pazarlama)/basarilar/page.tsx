@@ -4,7 +4,7 @@ import {
   getPublicTestimonials,
   getSiteSettings,
 } from "@/db/queries/cms";
-import { coachStats } from "@/db/seed/cms-content";
+import { coachStats, ratingLabel } from "@/db/seed/cms-content";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { ProofStrip } from "@/components/marketing/proof-strip";
 import { AchievementCard } from "@/components/brand/achievement-card";
@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
 export const metadata = buildMetadata({
   title: "Başarı Hikayeleri",
   description:
-    "Derecenin Ruhu öğrencilerinin ve velilerinin gerçek yorumları — Gigbi üzerinde 5,0 yıldız ortalama, 77 yorum.",
+    "Derecenin Ruhu öğrencilerinin ve velilerinin gerçek yorumları — Gigbi üzerinde 4,9 yıldız ortalama, 83 yorum.",
   path: "/basarilar",
 });
 
@@ -100,7 +100,7 @@ export default async function BasarilarPage() {
           <Badge variant="secondary">YKS</Badge>
           <Badge variant="secondary">LGS</Badge>
           <Badge className="bg-gold text-gold-foreground">
-            5,0★ · {coachStats.reviewCount} yorum
+            {ratingLabel}★ · {coachStats.reviewCount} yorum
           </Badge>
         </div>
       </section>

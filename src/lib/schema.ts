@@ -51,7 +51,7 @@ const EXAM_KNOWS = [
   "Net takibi",
 ];
 
-/** 5,0★ / 77 — YALNIZ Course üzerinde kullanılır (bkz. dosya başı notu). */
+/** Gigbi puanı + yorum sayısı — YALNIZ Course üzerinde kullanılır (bkz. dosya başı notu). */
 function aggregateRating() {
   return {
     "@type": "AggregateRating",

@@ -359,7 +359,7 @@ export type CalculatorExam = {
  * Yalnız PUANLANAN dersler döner (alt dersler — GEO/MANTIK — üst derse dahil
  * olduğu için ayrı satır olarak gösterilmez, yoksa çift sayılırdı).
  */
-export async function getCalculatorExams(): Promise<CalculatorExam[]> {
+export const getCalculatorExams = cache(async (): Promise<CalculatorExam[]> => {
   const db = getDb();
   const templates = await db.query.examTemplates.findMany({
     where: eq(examTemplates.isActive, true),
@@ -399,7 +399,7 @@ export async function getCalculatorExams(): Promise<CalculatorExam[]> {
         .filter((s) => s.subjects.length > 0),
     }))
     .filter((t) => t.sections.length > 0);
-}
+});
 
 /** Yönetici listesi — ham satırlar, fallback YOK. */
 export async function listAllResourceLinks() {
@@ -471,7 +471,7 @@ function rowToPublicCoach(row: typeof coachProfiles.$inferSelect): PublicCoach {
  * Ana/öne çıkan koç (en düşük sort_order) — /koclar kahramanı + ana sayfa kartı.
  * Tek marka konumlandırması: bu koç Ahmet Hakan'dır. DB boşsa seed'e düşer.
  */
-export async function getPublicCoach(): Promise<PublicCoach> {
+export const getPublicCoach = cache(async (): Promise<PublicCoach> => {
   const db = getDb();
   const row = await db.query.coachProfiles.findFirst({
     where: eq(coachProfiles.isActive, true),
@@ -492,7 +492,7 @@ export async function getPublicCoach(): Promise<PublicCoach> {
     links: [],
     proofUrl: coachStats.proofUrl,
   };
-}
+});
 
 /**
  * Öne çıkan koç DIŞINDAKİ, linklenebilir (slug'lı) aktif koçlar — "Ekip" şeridi.
@@ -529,9 +529,9 @@ export async function listOtherPublicCoaches(): Promise<PublicCoachCard[]> {
 }
 
 /** Tek koç profili (slug ile) — /koclar/[slug]. Pasif/olmayan → null. */
-export async function getPublicCoachBySlug(
+export const getPublicCoachBySlug = cache(async (
   slug: string,
-): Promise<PublicCoach | null> {
+): Promise<PublicCoach | null> => {
   const db = getDb();
   const row = await db.query.coachProfiles.findFirst({
     where: and(eq(coachProfiles.slug, slug), eq(coachProfiles.isActive, true)),
@@ -554,7 +554,7 @@ export async function getPublicCoachBySlug(
     links: [],
     proofUrl: null,
   };
-}
+});
 
 /** Oturumdaki koçun kendi profil satırı (editör için) — yoksa null. */
 export async function getMyCoachProfile(userId: string) {

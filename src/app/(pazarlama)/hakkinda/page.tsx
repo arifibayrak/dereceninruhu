@@ -7,13 +7,13 @@ import {
 } from "lucide-react";
 
 import { getPublicCoach } from "@/db/queries/cms";
-import { coachContent, coachStats } from "@/db/seed/cms-content";
+import { coachContent, coachStats, ratingLabel } from "@/db/seed/cms-content";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { ProofStrip } from "@/components/marketing/proof-strip";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { StatTile } from "@/components/brand/stat-tile";
 import { JsonLd } from "@/components/seo/json-ld";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CoachAvatar } from "@/components/brand/coach-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildMetadata } from "@/lib/seo";
@@ -34,14 +34,6 @@ export const metadata = buildMetadata({
   type: "profile",
 });
 
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p.charAt(0).toLocaleUpperCase("tr-TR"))
-    .join("");
-}
-
 export default async function HakkindaPage() {
   const coach = await getPublicCoach();
   const title = coach.title ?? coachContent.title;
@@ -51,7 +43,8 @@ export default async function HakkindaPage() {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 px-4 py-10 sm:px-6 md:gap-20 md:py-16">
       {/* Yapısal veri: kurucu koç profili + puanlı program. Puan Person'a
           DEĞİL Course'a bağlanır (Google review snippet'i Person'ı desteklemez
-          — bkz. @/lib/schema dosya başı notu); 5,0★/77 sayfada görünür. */}
+          — bkz. @/lib/schema dosya başı notu); puan + yorum sayısı sayfada
+          görünür. */}
       <JsonLd
         data={[
           profilePageSchema(coach, { profilePath: "/hakkinda" }),
@@ -66,14 +59,13 @@ export default async function HakkindaPage() {
       {/* Kimlik */}
       <section className="flex flex-col items-center gap-8 text-center">
         <div className="flex flex-col items-center gap-4">
-          <Avatar className="size-24 ring-2 ring-primary/25 md:size-28">
-            {coach.photoUrl && (
-              <AvatarImage src={coach.photoUrl} alt={coach.displayName} />
-            )}
-            <AvatarFallback className="bg-secondary font-heading text-2xl font-bold text-secondary-foreground">
-              {initialsOf(coach.displayName)}
-            </AvatarFallback>
-          </Avatar>
+          <CoachAvatar
+            photoUrl={coach.photoUrl}
+            name={coach.displayName}
+            priority
+            className="size-24 ring-2 ring-primary/25 md:size-28"
+            fallbackClassName="bg-secondary font-heading text-2xl font-bold text-secondary-foreground"
+          />
           <div className="flex flex-col items-center gap-2">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] text-primary uppercase">
               <span aria-hidden className="size-1.5 rounded-full bg-gold" />
@@ -114,7 +106,7 @@ export default async function HakkindaPage() {
         <div className="grid w-full grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile
             label="Yorum ortalaması"
-            value="5,0"
+            value={ratingLabel}
             hint={`${coachStats.reviewCount} yorum · Gigbi`}
           />
           <StatTile label="YKS derecesi" value="876." hint="Türkiye sıralaması" />

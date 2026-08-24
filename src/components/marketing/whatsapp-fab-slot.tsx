@@ -11,7 +11,8 @@ import { buildWaLink, DEFAULT_WA_PHONE } from "@/lib/whatsapp";
  *
  * Numara `site_settings`'ten gelir, boşsa `DEFAULT_WA_PHONE`'a düşer. Tek kapatma
  * anahtarı `whatsappVisible`. Fotoğraf ve ad öne çıkan koçtan (`sort_order` en
- * düşük = Ahmet Hakan) okunur; her iki sorgu da `cache()`'li, istek başına bir kez.
+ * düşük = Ahmet Hakan) okunur; her iki sorgu da `cache()`'li (bkz. `@/db/queries/cms`),
+ * yani kabuk/sayfa aynı isteği tekrar sorsa da D1'e bir kez gidilir.
  */
 export async function WhatsappFabSlot() {
   const [site, coach] = await Promise.all([getSiteSettings(), getPublicCoach()]);

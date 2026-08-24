@@ -13,7 +13,7 @@ import {
 import { getPublicCoachBySlug } from "@/db/queries/cms";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { JsonLd } from "@/components/seo/json-ld";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CoachAvatar } from "@/components/brand/coach-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
@@ -23,14 +23,6 @@ import { breadcrumbSchema, profilePageSchema } from "@/lib/schema";
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ slug: string }>;
-
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p.charAt(0).toLocaleUpperCase("tr-TR"))
-    .join("");
-}
 
 export async function generateMetadata({
   params,
@@ -103,14 +95,13 @@ export default async function KoachProfilePage({ params }: { params: Params }) {
 
         <div className="flex flex-col gap-8 px-6 pb-8 sm:px-10 sm:pb-10">
           <div className="-mt-12 flex flex-col items-start gap-5 sm:-mt-14 sm:flex-row sm:items-end">
-            <Avatar className="size-24 ring-4 ring-card sm:size-28">
-              {coach.photoUrl && (
-                <AvatarImage src={coach.photoUrl} alt={coach.displayName} />
-              )}
-              <AvatarFallback className="bg-secondary font-heading text-2xl font-bold text-secondary-foreground">
-                {initialsOf(coach.displayName)}
-              </AvatarFallback>
-            </Avatar>
+            <CoachAvatar
+              photoUrl={coach.photoUrl}
+              name={coach.displayName}
+              priority
+              className="size-24 ring-4 ring-card sm:size-28"
+              fallbackClassName="bg-secondary font-heading text-2xl font-bold text-secondary-foreground"
+            />
             <div className="flex flex-col gap-2 pt-2">
               <h1 className="font-heading text-headline text-balance">
                 {coach.displayName}

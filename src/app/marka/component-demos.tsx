@@ -58,6 +58,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
@@ -193,13 +194,17 @@ export function DropdownDemo() {
 }
 
 export function TooltipDemo() {
+  // Provider kökte DEĞİL, burada: tooltip'i kullanan tek yer bu önizleme.
+  // Kök layout'ta durunca floating-ui zinciri tüm pazarlama sayfalarına iniyordu.
   return (
-    <Tooltip>
-      <TooltipTrigger render={<Button variant="ghost" size="icon" aria-label="Net nedir?" />}>
-        <InfoIcon />
-      </TooltipTrigger>
-      <TooltipContent>Net = doğru − yanlış ÷ 4 (YKS/KPSS)</TooltipContent>
-    </Tooltip>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger render={<Button variant="ghost" size="icon" aria-label="Net nedir?" />}>
+          <InfoIcon />
+        </TooltipTrigger>
+        <TooltipContent>Net = doğru − yanlış ÷ 4 (YKS/KPSS)</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 

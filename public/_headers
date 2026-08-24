@@ -1,0 +1,15 @@
+# https://developers.cloudflare.com/workers/static-assets/headers
+# https://opennext.js.org/cloudflare/caching#static-assets-caching
+#
+# Workers Assets varsayılanı `public, max-age=0, must-revalidate` — yani içerik
+# hash'li chunk'lar bile HER gezinmede koşullu GET ile yeniden doğrulanıyordu
+# (ana sayfada 22 varlık × 1 tur). Mobilde hissedilen "kasma" buydu.
+
+/_next/static/*
+  Cache-Control: public,max-age=31536000,immutable
+
+# Font adları BİLEREK sabit (preload edilebilsinler diye, bkz. AGENTS.md), yani
+# içerik hash'i yok → `immutable` VERİLEMEZ: font yükseltmesinde kimse yeni
+# dosyayı almazdı. 30 gün doğru denge.
+/fonts/*
+  Cache-Control: public,max-age=2592000

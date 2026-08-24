@@ -40,6 +40,7 @@ import {
   ToastDemo,
   TooltipDemo,
 } from "./component-demos";
+import { coachStats, ratingLabel } from "@/db/seed/cms-content";
 import { coachProfile, featuredTestimonials, wallOfLoveTeasers } from "./gigbi-content";
 import { NetChart, SubjectBars } from "./net-chart";
 
@@ -174,7 +175,7 @@ export default function MarkaPage() {
               </Button>
               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                 <StarIcon className="size-4 fill-gold text-gold" />
-                5,0 · {coachProfile.stats.reviewCount} yorum
+                {ratingLabel} · {coachStats.reviewCount} yorum
               </span>
             </div>
           </div>
@@ -572,20 +573,20 @@ export default function MarkaPage() {
           />
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
             <span className="font-heading text-3xl font-bold tabular-nums">
-              5,0
+              {ratingLabel}
             </span>
             <div className="flex flex-col">
               <span
                 className="flex items-center gap-0.5"
                 role="img"
-                aria-label="5 yıldız"
+                aria-label={`${ratingLabel} / 5 yıldız`}
               >
                 {Array.from({ length: 5 }).map((_, i) => (
                   <StarIcon key={i} className="size-4 fill-gold text-gold" />
                 ))}
               </span>
               <span className="text-sm text-muted-foreground">
-                {coachProfile.stats.reviewCount} yorum · KPSS / YKS / LGS
+                {coachStats.reviewCount} yorum · KPSS / YKS / LGS
               </span>
             </div>
             <Separator className="hidden h-8 sm:block" orientation="vertical" />
@@ -635,7 +636,7 @@ export default function MarkaPage() {
                 </div>
               ))}
               <div className="flex w-40 shrink-0 items-center justify-center rounded-lg bg-primary/8 p-3 text-center text-xs font-medium text-primary">
-                +{coachProfile.stats.reviewCount - featuredTestimonials.length}{" "}
+                +{coachStats.reviewCount - featuredTestimonials.length}{" "}
                 yorum daha →
               </div>
             </div>

@@ -1,12 +1,15 @@
 /**
  * Gerçek içerik — Ahmet Hakan Almak'ın Gigbi profilinden
- * (gigbi.com/p/ahmet-hakan-almak1723581674) — 5.0★, 77 yorum.
+ * (gigbi.com/p/ahmet-hakan-almak1723581674). Puan/yorum sayısı BURADA
+ * DEĞİL — tek kaynak `@/db/seed/cms-content` (`coachStats` + `ratingLabel`);
+ * burada ikinci bir kopya tutulunca rakamlar birbirinden kaçıyordu.
  * Pazarlama sitesi + /marka önizlemesi için kaynak. Şema oturunca
  * src/db/seed/* içine taşınacak (coach_profiles, testimonials).
  *
  * GİZLİLİK: Halka açık sitede ad + soyadın ilk harfi kullanılır ("Merve K.").
  */
 import type { Testimonial } from "@/components/brand/testimonial-card";
+import { coachStats } from "@/db/seed/cms-content";
 
 export const coachProfile = {
   fullName: "Ahmet Hakan Almak",
@@ -23,11 +26,9 @@ export const coachProfile = {
     "3+ yıl KPSS / YKS / LGS koçluğu",
   ],
   stats: {
-    ratingAvg: 5.0,
-    reviewCount: 77,
     exams: ["KPSS", "YKS", "LGS"] as const,
   },
-  proofUrl: "https://www.gigbi.com/p/ahmet-hakan-almak1723581674",
+  proofUrl: coachStats.proofUrl,
 };
 
 /** Öne çıkan yorumlar — tam metin, yayına hazır. */

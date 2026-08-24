@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, use, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogInIcon, MenuIcon, SparklesIcon } from "lucide-react";
@@ -21,6 +21,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { SOCIAL_FALLBACK } from "@/lib/seo";
 
 const NAV = [
   { href: "/nasil-calisir", label: "Nasıl Çalışır" },
@@ -32,7 +33,33 @@ const NAV = [
 ] as const;
 
 /** Pazarlama sitesi üst çubuğu — yapışkan, mobilde çekmece menü. */
-export function SiteHeader({ social }: { social: SocialUrls }) {
+/**
+ * Sosyal ikonlar kabuğun D1 sorgusunu bekler. Header'ın TAMAMI beklemesin diye
+ * `use()` bu iki yaprak bileşende çağrılıyor ve her biri kendi `<Suspense>`
+ * sınırında duruyor — fallback `SOCIAL_FALLBACK` ile AYNI markup/boyutta
+ * basıldığı için akış geldiğinde kayma (CLS) olmuyor.
+ */
+function SocialScrollerSlot({
+  social,
+  className,
+}: {
+  social: Promise<SocialUrls>;
+  className?: string;
+}) {
+  return <SocialIconScroller urls={use(social)} className={className} />;
+}
+
+function SocialRowSlot({
+  social,
+  className,
+}: {
+  social: Promise<SocialUrls>;
+  className?: string;
+}) {
+  return <SocialIconRow urls={use(social)} className={className} />;
+}
+
+export function SiteHeader({ social }: { social: Promise<SocialUrls> }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -93,7 +120,16 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
             Sosyal ikonlar: tek-ikon genişliğinde yatay kayan şerit (alan kazanır);
             her breakpoint'te görünür. Mobil çekmecede tam sıra (aşağıda).
           */}
-          <SocialIconScroller urls={social} className="hidden md:flex" />
+          <Suspense
+            fallback={
+              <SocialIconScroller
+                urls={SOCIAL_FALLBACK}
+                className="hidden md:flex"
+              />
+            }
+          >
+            <SocialScrollerSlot social={social} className="hidden md:flex" />
+          </Suspense>
           <ThemeToggle className="hidden sm:inline-flex" />
 
           {/* Mobil menü */}
@@ -161,7 +197,13 @@ export function SiteHeader({ social }: { social: SocialUrls }) {
                   Ücretsiz Ön Görüşme
                 </Button>
                 <div className="flex items-center justify-between">
-                  <SocialIconRow urls={social} className="-ml-2" />
+                  <Suspense
+                    fallback={
+                      <SocialIconRow urls={SOCIAL_FALLBACK} className="-ml-2" />
+                    }
+                  >
+                    <SocialRowSlot social={social} className="-ml-2" />
+                  </Suspense>
                   <ThemeToggle />
                 </div>
                 <span className="text-xs text-muted-foreground">

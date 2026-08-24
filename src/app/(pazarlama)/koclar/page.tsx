@@ -12,13 +12,13 @@ import {
   getPublicTestimonials,
   listOtherPublicCoaches,
 } from "@/db/queries/cms";
-import { coachContent, coachStats } from "@/db/seed/cms-content";
+import { coachContent, coachStats, ratingLabel } from "@/db/seed/cms-content";
 import { CtaBand } from "@/components/marketing/cta-band";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { StatTile } from "@/components/brand/stat-tile";
 import { TestimonialCard } from "@/components/brand/testimonial-card";
 import { JsonLd } from "@/components/seo/json-ld";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CoachAvatar } from "@/components/brand/coach-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildMetadata } from "@/lib/seo";
@@ -34,17 +34,9 @@ export const dynamic = "force-dynamic";
 export const metadata = buildMetadata({
   title: "Koçlar",
   description:
-    "Ahmet Hakan Almak — YKS Türkiye 876., KPSS 93 puan. 3+ yıldır LGS, YKS ve KPSS öğrencilerine birebir koçluk. 5,0★ / 77 yorum.",
+    "Ahmet Hakan Almak — YKS Türkiye 876., KPSS 93 puan. 3+ yıldır LGS, YKS ve KPSS öğrencilerine birebir koçluk. 4,9★ / 83 yorum.",
   path: "/koclar",
 });
-
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p.charAt(0).toLocaleUpperCase("tr-TR"))
-    .join("");
-}
 
 export default async function KoclarPage() {
   const [coach, testimonials, team] = await Promise.all([
@@ -59,8 +51,8 @@ export default async function KoclarPage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-4 py-10 sm:px-6 md:gap-20 md:py-16">
       {/* Yapısal veri: koç profili + puanlı program. Puan Person'a DEĞİL
-          Course'a bağlanır (bkz. @/lib/schema dosya başı notu); 5,0★/77 ve
-          yorumlar sayfada görünür. */}
+          Course'a bağlanır (bkz. @/lib/schema dosya başı notu); puan, yorum
+          sayısı ve yorumlar sayfada görünür. */}
       <JsonLd
         data={[
           profilePageSchema(coach, { profilePath: "/koclar" }),
@@ -79,14 +71,13 @@ export default async function KoclarPage() {
         </div>
         <div className="flex flex-col gap-8 rounded-3xl bg-card p-6 ring-1 ring-foreground/10 sm:p-10">
           <div className="flex flex-col items-start gap-6 md:flex-row md:items-center">
-            <Avatar className="size-24 ring-2 ring-primary/25 md:size-28">
-              {coach.photoUrl && (
-                <AvatarImage src={coach.photoUrl} alt={coach.displayName} />
-              )}
-              <AvatarFallback className="bg-secondary font-heading text-2xl font-bold text-secondary-foreground">
-                {initialsOf(coach.displayName)}
-              </AvatarFallback>
-            </Avatar>
+            <CoachAvatar
+              photoUrl={coach.photoUrl}
+              name={coach.displayName}
+              priority
+              className="size-24 ring-2 ring-primary/25 md:size-28"
+              fallbackClassName="bg-secondary font-heading text-2xl font-bold text-secondary-foreground"
+            />
             <div className="flex flex-col gap-2">
               {/*
                 Ekip büyüdükçe kahramanın kim olduğu belirsizleşmesin: kurucu
@@ -126,7 +117,7 @@ export default async function KoclarPage() {
           </p>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatTile label="Yorum ortalaması" value="5,0" hint={`${coachStats.reviewCount} yorum · Gigbi`} />
+            <StatTile label="Yorum ortalaması" value={ratingLabel} hint={`${coachStats.reviewCount} yorum · Gigbi`} />
             <StatTile label="YKS derecesi" value="876." hint="Türkiye sıralaması" />
             <StatTile label="KPSS puanı" value="93" hint="Türkiye 712." />
             <StatTile label="Koçluk deneyimi" value="3+ yıl" hint="KPSS · YKS · LGS" />
@@ -190,17 +181,12 @@ export default async function KoclarPage() {
                 className="group flex flex-col gap-4 rounded-2xl bg-card p-5 ring-1 ring-foreground/10 transition-shadow hover:ring-primary/30"
               >
                 <div className="flex items-center gap-4">
-                  <Avatar className="size-14 ring-2 ring-primary/20">
-                    {member.photoUrl && (
-                      <AvatarImage
-                        src={member.photoUrl}
-                        alt={member.displayName}
-                      />
-                    )}
-                    <AvatarFallback className="bg-secondary font-heading font-bold text-secondary-foreground">
-                      {initialsOf(member.displayName)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <CoachAvatar
+                    photoUrl={member.photoUrl}
+                    name={member.displayName}
+                    className="size-14 ring-2 ring-primary/20"
+                    fallbackClassName="bg-secondary font-heading font-bold text-secondary-foreground"
+                  />
                   <div className="flex flex-col">
                     <span className="font-heading text-lg font-semibold">
                       {member.displayName}

@@ -7,7 +7,7 @@ import {
   StarIcon,
 } from "lucide-react";
 
-import { coachStats } from "@/db/seed/cms-content";
+import { coachStats, ratingLabel } from "@/db/seed/cms-content";
 import { LeadForm } from "@/components/marketing/lead-form";
 import { CalBooking } from "@/components/marketing/cal-booking";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -110,7 +110,7 @@ export default function IletisimPage() {
           <div className="flex flex-col gap-3 rounded-2xl bg-muted/50 p-4 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2">
               <StarIcon className="size-4 fill-gold text-gold" />
-              5,0 yıldız · {coachStats.reviewCount} yorum — Gigbi&apos;de
+              {ratingLabel} yıldız · {coachStats.reviewCount} yorum — Gigbi&apos;de
               doğrulanabilir
             </span>
             <span className="inline-flex items-center gap-2">

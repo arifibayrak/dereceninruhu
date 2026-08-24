@@ -19,7 +19,7 @@ import {
   getPublicPackages,
   getPublicTestimonials,
 } from "@/db/queries/cms";
-import { coachContent, coachStats } from "@/db/seed/cms-content";
+import { coachContent, coachStats, ratingLabel } from "@/db/seed/cms-content";
 import { cohortView, enrollmentOpen } from "@/lib/cohort";
 import { formatKurus } from "@/lib/format";
 import { AiSystemSection } from "@/components/marketing/ai-system-section";
@@ -34,7 +34,7 @@ import { ScarcityBadge } from "@/components/marketing/scarcity-badge";
 import { SectionHeading } from "@/components/brand/section-heading";
 import { TestimonialCard } from "@/components/brand/testimonial-card";
 import { JsonLd } from "@/components/seo/json-ld";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CoachAvatar } from "@/components/brand/coach-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildMetadata } from "@/lib/seo";
@@ -46,7 +46,7 @@ export const dynamic = "force-dynamic";
 export const metadata = buildMetadata({
   titleAbsolute: "Derecenin Ruhu — LGS, YKS ve KPSS Birebir Koçluk",
   description:
-    "Derece yapmış bir koçla birebir sınav koçluğu: haftalık program, soru takibi ve deneme analiziyle netlerini artır, hedefine ulaş. 5,0★ / 77 yorum.",
+    "Derece yapmış bir koçla birebir sınav koçluğu: haftalık program, soru takibi ve deneme analiziyle netlerini artır, hedefine ulaş. 4,9★ / 83 yorum.",
   path: "/",
 });
 
@@ -92,14 +92,6 @@ const EXAM_CARDS = [
   },
 ] as const;
 
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p.charAt(0).toLocaleUpperCase("tr-TR"))
-    .join("");
-}
-
 export default async function HomePage() {
   const [testimonials, packages, faqs, coach, cohort] = await Promise.all([
     getPublicTestimonials(),
@@ -122,7 +114,7 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-20 px-4 py-10 sm:px-6 md:gap-28 md:py-16">
-      {/* Yapısal veri: koçluk hizmeti + puanlı program (5,0★/77 sayfada
+      {/* Yapısal veri: koçluk hizmeti + puanlı program (puan + yorum sayısı sayfada
           görünür) + SSS. Puan Service'e DEĞİL Course'a bağlanır — bkz.
           @/lib/schema dosya başı notu. */}
       <JsonLd
@@ -177,7 +169,8 @@ export default async function HomePage() {
                   <StarIcon key={i} className="size-4 fill-gold text-gold" />
                 ))}
               </span>
-              5,0 · {coachStats.reviewCount} yorum · Gigbi&apos;de doğrulanabilir
+              {ratingLabel} · {coachStats.reviewCount} yorum · Gigbi&apos;de
+              doğrulanabilir
             </span>
           </HeroReveal>
           <div className="px-2 py-6 sm:px-6 lg:px-0">
@@ -244,14 +237,12 @@ export default async function HomePage() {
         />
         <div className="grid items-center gap-6 rounded-3xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8 lg:grid-cols-[auto_1fr_auto]">
           <div className="flex items-center gap-4 lg:flex-col lg:items-start">
-            <Avatar className="size-20 ring-2 ring-primary/20 sm:size-24">
-              {coach.photoUrl && (
-                <AvatarImage src={coach.photoUrl} alt={coach.displayName} />
-              )}
-              <AvatarFallback className="bg-secondary font-heading text-xl font-bold text-secondary-foreground">
-                {initialsOf(coach.displayName)}
-              </AvatarFallback>
-            </Avatar>
+            <CoachAvatar
+              photoUrl={coach.photoUrl}
+              name={coach.displayName}
+              className="size-20 ring-2 ring-primary/20 sm:size-24"
+              fallbackClassName="bg-secondary font-heading text-xl font-bold text-secondary-foreground"
+            />
             <div className="flex flex-col gap-0.5">
               <span className="font-heading text-lg font-semibold">
                 {coach.displayName}
@@ -301,7 +292,7 @@ export default async function HomePage() {
         <SectionHeading
           eyebrow="Sosyal kanıt"
           title="Öğrenciler ve veliler ne diyor?"
-          description={`Gigbi üzerinde 5,0 yıldız ortalamayla ${coachStats.reviewCount} gerçek yorum. Sitede ad + soyadın ilk harfi kullanılır.`}
+          description={`Gigbi üzerinde ${ratingLabel} yıldız ortalamayla ${coachStats.reviewCount} gerçek yorum. Sitede ad + soyadın ilk harfi kullanılır.`}
           align="center"
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

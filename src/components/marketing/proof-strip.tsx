@@ -1,13 +1,14 @@
 import { ExternalLinkIcon, StarIcon } from "lucide-react";
 
-import { coachStats } from "@/db/seed/cms-content";
+import { coachStats, ratingLabel } from "@/db/seed/cms-content";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 /**
- * 5,0★ / 77 yorum sosyal kanıt şeridi — Gigbi'ye doğrulama linkiyle.
+ * Gigbi puanı + yorum sayısı sosyal kanıt şeridi — doğrulama linkiyle.
+ * Rakamlar `coachStats`/`ratingLabel`'dan gelir; buraya elle yazma.
  * Rozetler (credentials) opsiyonel; ana sayfada koç rozetleri geçilir.
  */
 export function ProofStrip({
@@ -24,12 +25,14 @@ export function ProofStrip({
         className,
       )}
     >
-      <span className="font-heading text-3xl font-bold tabular-nums">5,0</span>
+      <span className="font-heading text-3xl font-bold tabular-nums">
+        {ratingLabel}
+      </span>
       <div className="flex flex-col">
         <span
           className="flex items-center gap-0.5"
           role="img"
-          aria-label="5 yıldız"
+          aria-label={`${ratingLabel} / 5 yıldız`}
         >
           {Array.from({ length: 5 }).map((_, i) => (
             <StarIcon key={i} className="size-4 fill-gold text-gold" />

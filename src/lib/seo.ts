@@ -33,6 +33,22 @@ export const SOCIAL_LINKS = {
   tiktok: "https://www.tiktok.com/@dereceninruhu",
 } as const;
 
+/**
+ * Kabuk verisi akışla gelene kadar basılan sosyal bağlantılar — DB boşken
+ * kullanılan fallback'in ta kendisi, yani ikonlar doğru adreslerle ve doğru
+ * boyutta çıkar, gerçek değer gelince CLS olmaz.
+ *
+ * ⚠️ BURADA duruyor, `@/lib/social`'da DEĞİL: orası `@/db/queries/cms` import
+ * ediyor ve `site-header.tsx` bir CLIENT bileşeni. Sabiti oradan almak, tüm
+ * Drizzle şemasını + D1 sorgu katmanını (139 KB) pazarlama client bundle'ına
+ * sokuyordu. Bu dosya bilerek `@/db`'siz.
+ */
+export const SOCIAL_FALLBACK = {
+  instagram: SOCIAL_LINKS.instagram,
+  tiktok: SOCIAL_LINKS.tiktok,
+  youtube: SOCIAL_LINKS.youtube,
+};
+
 /** Boş olmayan sosyal/kanıt bağlantılarını `sameAs` dizisi olarak döndürür. */
 export function sameAsLinks(extra: string[] = []): string[] {
   return [
