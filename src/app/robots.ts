@@ -7,10 +7,11 @@ import { SITE_URL } from "@/lib/seo";
  * karşılar (GEO: ChatGPT/Claude/Gemini/Perplexity içerik ve profili
  * çekebilsin). Özel uygulama rotalarını dışarıda bırakır.
  *
- * ⚠️ Cloudflare zone düzeyinde "yönetilen robots.txt / Content Signals"
- * özelliği /robots.txt'i EDGE'te ele geçirir (canlıda text/html dönüyor).
- * Bu dosya (text/plain) yalnızca o özellik panelden kapatıldığında/uyumlu
- * hale getirildiğinde sunulur. Bkz. DEPLOY notları.
+ * Not: Cloudflare zone düzeyindeki "yönetilen robots.txt / Content Signals"
+ * özelliği bir dönem /robots.txt'i edge'te ele geçirip text/html döndürüyordu.
+ * 2026-08-24 itibarıyla ÇÖZÜLDÜ — canlıda bu dosya text/plain olarak
+ * sunuluyor. Şüphelenirsen tek komutla bak:
+ *   curl -sSI https://dereceninruhu.com/robots.txt | grep -i content-type
  */
 
 const AI_CRAWLERS = [

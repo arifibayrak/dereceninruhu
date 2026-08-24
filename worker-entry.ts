@@ -25,7 +25,14 @@ export {
   BucketCachePurge,
 } from "./.open-next/worker.js";
 
-/** Cron'un tetikleyeceği dahili POST rotaları. */
+/**
+ * Cron'un tetikleyeceği dahili POST rotaları.
+ *
+ * ⚠️ `/api/cron/billing` burada YOK ve bu bir eksiklik DEĞİL, karardır
+ * (Arif, 2026-08-24): fatura üretmek gerçek öğrencilere gerçek faturalar
+ * demek, bu yüzden elle tetikleniyor. Motor idempotent olduğu için teknik bir
+ * engel yok — eksik olan tek şey "otomatik bassın" onayı. Eklemeden önce sor.
+ */
 const CRON_ROUTES = ["/api/cron/impact"] as const;
 
 export default {

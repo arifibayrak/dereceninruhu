@@ -39,6 +39,17 @@ Turkish exam-prep coaching (mentorluk) OS. All-Cloudflare. Full plan:
   `wrangler.jsonc`). Env interface is the global `CloudflareEnv`.
 - Migrations: edit `src/db/schema.ts` → `pnpm db:generate` → `pnpm db:migrate:local`. Seed: `pnpm db:seed:local`.
 - Local dev/preview uses a local (Miniflare) D1; the placeholder `database_id` in `wrangler.jsonc` is fine locally.
+- **The worker entrypoint is `worker-entry.ts`, NOT `.open-next/worker.js`.** OpenNext regenerates its
+  worker on every build, so a `scheduled` handler can't live there. The wrapper imports the generated
+  worker and passes `fetch` plus the three Durable Object exports through **unchanged**; it only adds
+  `scheduled`. Don't point `main` back at `.open-next/worker.js` — that silently drops every cron.
+  `worker-entry.ts` is in tsconfig `exclude` on purpose (`.open-next/` doesn't exist during `next build`
+  on a clean checkout; wrangler bundles it with esbuild, no typecheck needed).
+- **Cron = `triggers.crons` in `wrangler.jsonc` + `CRON_ROUTES` in `worker-entry.ts`.** The handler POSTs
+  to the app's own route through `openNextWorker.fetch`, so the OpenNext request context (D1 bindings)
+  is set up exactly as in a normal request and the `x-cron-secret` check runs on the same code path.
+  Test it with `npx wrangler dev --test-scheduled` then `curl localhost:8788/__scheduled`.
+  `/api/cron/billing` is deliberately NOT scheduled — generating invoices has monetary consequences.
 - **D1 allows max 100 bound parameters PER QUERY.** Any query whose `?` count grows with the data —
   multi-row `insert … values (…),(…)`, `inArray(col, ids)` — must be split with `chunkForD1(rows, paramsPerRow)`
   from `@/lib/d1` (a row costs one `?` per column that has a value or `$defaultFn`; autoincrement `id` is free).
@@ -115,6 +126,15 @@ All copy and UX should read that way — calm and credible, never bargain-y or h
   on marketing pages with no monospace text — it lives in `/koc`, `/ogrenci`, `/marka` layouts instead.
 - Keep heavyweight client libs off marketing routes. `motion` was 44KB gzip for two animations; `sonner`
   needs BOTH the `<Toaster>` and `StaleVersionWatch` to avoid a static import or it stays in the bundle.
+- **Static assets are cached by `public/_headers`, not by any Next config.** Cloudflare Workers Assets
+  defaults to `public, max-age=0, must-revalidate` — content-hashed chunks included — so every navigation
+  spent a conditional-GET round trip per asset (22 of them on the homepage). `/_next/static/*` is
+  `immutable`; `/fonts/*` is **deliberately not** — font filenames are kept stable so they can be
+  preloaded, so `immutable` would strand everyone on an old face after an upgrade.
+- **A `"use client"` component must never import from a module that imports `@/db`.** Pulling in a single
+  constant drags the whole Drizzle schema + D1 query layer into the browser bundle (139 KB, measured).
+  Nothing warns you: typecheck, lint and build all pass. Shared constants belong in a client-safe module
+  like `@/lib/seo`. Verify after a build — the marketing page's chunks must contain zero `drizzle`.
 - **Measuring:** the anonymous PageSpeed API returns 429 (`quota_limit_value: 0`). Run Lighthouse locally
   and **take the median of 3** — TTFB variance swings the score ~8 points. Measured origin cost is only
   ~100 ms over a pure edge asset, so caching the marketing pages is not the lever it looks like.
