@@ -45,6 +45,26 @@ Turkish exam-prep coaching (mentorluk) OS. All-Cloudflare. Full plan:
   `scheduled`. Don't point `main` back at `.open-next/worker.js` — that silently drops every cron.
   `worker-entry.ts` is in tsconfig `exclude` on purpose (`.open-next/` doesn't exist during `next build`
   on a clean checkout; wrangler bundles it with esbuild, no typecheck needed).
+- **The build must work from a CLEAN CHECKOUT — Cloudflare Workers Builds rebuilds from git on every
+  push to `main`.** Three things are gitignored and therefore absent in CI, and each one used to break
+  that build while everything stayed green locally:
+  1. `worker-configuration.d.ts` (D1/R2/`CloudflareEnv` types) — so `pnpm build` regenerates it first
+     via `node scripts/cf-typegen.mjs`. Never assume the checked-out tree has it.
+  2. `.dev.vars` — `wrangler types` reads secrets from it, so in CI the generated `CloudflareEnv` has
+     **no secret keys**. Secrets read with a type (`getEnv().OPENROUTER_API_KEY`) must be declared in
+     the committed `cloudflare-secrets.d.ts`, which merges into `CloudflareEnv`; declare them `string`
+     to match wrangler's output or the interface merge conflicts. Secrets cast at the call site
+     (`(getEnv() as { CRON_SECRET?: string })`) need no entry.
+  3. `.open-next/` — hence `scripts/cf-typegen.mjs` rather than a bare `wrangler types`: wrangler
+     emits `mainModule: typeof import("./worker-entry")` into the generated `.d.ts`, and that
+     `typeof import(...)` drags `worker-entry.ts` into the TS program **despite** tsconfig `exclude`
+     (exclude does not cover files referenced from elsewhere). The wrapper strips that one line.
+  Verify a change against CI without pushing: copy the tracked files only, then install and build —
+  `git ls-files -z | rsync -a -0 --files-from=- . /tmp/ci && cd /tmp/ci && pnpm install
+  --frozen-lockfile && pnpm exec opennextjs-cloudflare build`.
+  Workers Builds does NOT run D1 migrations (see "Deploy ≠ migrate"), and passes the commit sha as
+  `WORKERS_CI_COMMIT_SHA` — `next.config.ts` falls back to it for `deploymentId` so version-skew
+  protection survives a git-triggered deploy.
 - **Cron = `triggers.crons` in `wrangler.jsonc` + `CRON_ROUTES` in `worker-entry.ts`.** The handler POSTs
   to the app's own route through `openNextWorker.fetch`, so the OpenNext request context (D1 bindings)
   is set up exactly as in a normal request and the `x-cron-secret` check runs on the same code path.

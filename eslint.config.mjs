@@ -17,9 +17,17 @@ const eslintConfig = defineConfig([
     ".wrangler/**",
     // Harness workspace (agent worktrees) — never product code.
     ".claude/**",
+    // `wrangler types` çıktısı — üretilen dosya, elle düzenlenmez.
+    "worker-configuration.d.ts",
     // Tarayıcı eklentisi ayrı bir proje (WXT); kendi tsconfig/eslint'i var.
     "extension/**",
   ]),
+  {
+    // Yazım anında Node'da elle çalıştırılan yardımcı betikler (CommonJS);
+    // Worker paketine girmezler, ESM kuralı burada geçerli değil.
+    files: ["scripts/**/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
 ]);
 
 export default eslintConfig;

@@ -12,9 +12,13 @@ const nextConfig: NextConfig = {
    * (kullanıcı için: "kaydet"e basınca donma). deploymentId tanımlıysa Next
    * istemcinin sürümünü yanıt başlığıyla karşılaştırıp gezinmede TAM SAYFA
    * yenilemesi yapar — sekme eski derlemede takılı kalmaz.
-   * `pnpm run deploy` bunu commit sha'sından geçirir.
+   * `pnpm run deploy` bunu commit sha'sından geçirir. Cloudflare Workers
+   * Builds'te (git'ten dağıtım) o değişken yoktur; oradaki karşılığı
+   * WORKERS_CI_COMMIT_SHA — yedeği olmasa skew koruması sessizce kapanırdı.
    */
-  deploymentId: process.env.NEXT_DEPLOYMENT_ID,
+  deploymentId:
+    process.env.NEXT_DEPLOYMENT_ID ??
+    process.env.WORKERS_CI_COMMIT_SHA?.slice(0, 7),
   // transformers.js canlı-transkript YALNIZ tarayıcıda (WebGPU) dinamik import
   // edilir; sunucu/Cloudflare Worker paketine GİRMEMELİ. onnxruntime-node native
   // .node ikilisi içerir (esbuild yükleyemez) → dışsal tut.
