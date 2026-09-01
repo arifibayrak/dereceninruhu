@@ -4,10 +4,11 @@ import { redirect } from "next/navigation";
 import { PlusIcon, TargetIcon, TimerIcon } from "lucide-react";
 
 import { getEnrollmentDetailByUserId } from "@/db/queries/enrollment";
-import { getMockList } from "@/db/queries/tracking";
+import { getMockList, type MockRow } from "@/db/queries/tracking";
 import { getCurrentUser, type Role } from "@/lib/session";
-import { formatInt, formatNet } from "@/lib/format";
-import { buildPaceViews } from "@/lib/pace";
+import { formatDelta, formatInt, formatNet } from "@/lib/format";
+import { groupMocks, type MockGroup } from "@/lib/mock-groups";
+import { buildPaceViews, type PaceView } from "@/lib/pace";
 import { formatMinutes } from "@/lib/study";
 import { cn } from "@/lib/utils";
 import { MockActions } from "@/components/app/mock-actions";
@@ -35,6 +36,8 @@ export default async function DenemelerPage() {
   const mocks = await getMockList(detail.enrollment.id);
   // Tempo, aynı dersin bir önceki denemesiyle kıyaslanır (bkz. @/lib/pace).
   const paces = buildPaceViews(mocks);
+  // Genel denemeler ve her branş dersi ayrı bloklarda (bkz. @/lib/mock-groups).
+  const groups = groupMocks(mocks);
 
   return (
     <>
@@ -77,10 +80,53 @@ export default async function DenemelerPage() {
           </Button>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {mocks.map((m) => {
-            const pace = paces.get(m.id);
-            return (
+        <div className="flex flex-col gap-5">
+          {groups.map((group) => (
+            <MockGroupSection key={group.key} group={group} paces={paces} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Bir grup (genel deneme bölümü ya da tek branş dersi) + kendi denemeleri. */
+function MockGroupSection({
+  group,
+  paces,
+}: {
+  group: MockGroup<MockRow>;
+  paces: Map<number, PaceView>;
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Badge
+          variant={group.kind === "full" ? "secondary" : "outline"}
+          className="h-5 px-1.5 text-[10px]"
+        >
+          {group.kind === "full" ? "Genel" : "Branş"}
+        </Badge>
+        <h2 className="font-heading text-sm font-semibold">{group.title}</h2>
+        <span className="text-xs text-muted-foreground">
+          {formatInt(group.count)} deneme · ort. {formatNet(group.avgNet)}
+        </span>
+        {group.deltaNet !== null && group.deltaNet !== 0 && (
+          <span
+            className={cn(
+              "text-xs font-medium tabular-nums",
+              group.deltaNet > 0 ? "text-success" : "text-warning",
+            )}
+            title="Bu dersteki bir önceki denemene göre"
+          >
+            {formatDelta(group.deltaNet)} net
+          </span>
+        )}
+      </div>
+      <ul className="flex flex-col gap-2">
+        {group.mocks.map((m) => {
+          const pace = paces.get(m.id);
+          return (
             <li
               key={m.id}
               className="flex items-center gap-2 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10"
@@ -90,19 +136,8 @@ export default async function DenemelerPage() {
                   {m.name?.trim() || m.publisher?.trim() || m.sectionCode}
                 </span>
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                  {dateFmt.format(m.takenOn)} · {m.sectionName}
-                  {/* Branşta asıl kimlik ders adıdır — "TYT" tek başına yetmez. */}
-                  {m.scope === "branch" && m.subjectNames.length > 0 && (
-                    <span className="font-medium text-foreground/70">
-                      {m.subjectNames.join(" · ")}
-                    </span>
-                  )}
-                  <Badge
-                    variant={m.scope === "full" ? "secondary" : "outline"}
-                    className="h-4 px-1.5 text-[10px]"
-                  >
-                    {m.scope === "full" ? "Tam" : "Branş"}
-                  </Badge>
+                  {/* Bölüm/ders artık grup başlığında — satır tarihe odaklanır. */}
+                  {dateFmt.format(m.takenOn)}
                   {m.analysisDone ? (
                     <Badge className="h-4 bg-success/10 px-1.5 text-[10px] text-success">
                       Analiz yapıldı
@@ -160,10 +195,9 @@ export default async function DenemelerPage() {
                 label={m.name?.trim() || m.publisher?.trim() || m.sectionName}
               />
             </li>
-            );
-          })}
-        </ul>
-      )}
-    </>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

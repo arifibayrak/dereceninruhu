@@ -7,6 +7,8 @@
  * gösteriliyor. Veritabanına dokunmaz — hepsi bu dosyadaki sabitler.
  */
 
+import type { GroupableMock } from "@/lib/mock-groups";
+
 export const ORNEK_BASE = "/koc/tur/ornek";
 
 export const ornekOgrenci = {
@@ -164,44 +166,96 @@ export const ornekProgram = {
 };
 
 /** Denemeler — tam ve branş denemeleri. */
-export const ornekDenemeler: {
+/**
+ * Örnek denemeler — GERÇEK kokpit listesiyle aynı şekilde gruplanır
+ * (`groupMocks`), o yüzden alanlar `MockRow`'un turdaki karşılığıdır:
+ * `scope`, `sectionCode/sectionName`, `subjectIds/subjectNames`, `totalNet`.
+ * `tarih` yalnız ekranda basılan kısa etikettir.
+ */
+export type OrnekDeneme = GroupableMock & {
+  /** Ekranda görünen kısa tarih ("14 Haz"). */
   tarih: string;
   ad: string;
-  bolum: string;
-  kapsam: string;
-  net: number;
   analiz: boolean;
-}[] = [
+};
+
+export const ornekDenemeler: OrnekDeneme[] = [
   {
+    id: 1,
     tarih: "14 Haz",
     ad: "3D TYT Deneme 18",
-    bolum: "TYT",
-    kapsam: "Tam",
-    net: 78.25,
+    takenOn: new Date("2027-06-14T00:00:00+03:00"),
+    scope: "full",
+    sectionCode: "TYT",
+    sectionName: "Temel Yeterlilik Testi",
+    subjectIds: [],
+    subjectNames: [],
+    totalNet: 78.25,
     analiz: true,
   },
   {
+    id: 2,
     tarih: "12 Haz",
     ad: "Limit Matematik Branş 7",
-    bolum: "AYT",
-    kapsam: "Branş",
-    net: 28.5,
+    takenOn: new Date("2027-06-12T00:00:00+03:00"),
+    scope: "branch",
+    sectionCode: "AYT",
+    sectionName: "Alan Yeterlilik Testi",
+    subjectIds: [11],
+    subjectNames: ["Matematik"],
+    totalNet: 28.5,
     analiz: true,
   },
   {
+    id: 3,
+    tarih: "9 Haz",
+    ad: "Limit Matematik Branş 6",
+    takenOn: new Date("2027-06-09T00:00:00+03:00"),
+    scope: "branch",
+    sectionCode: "AYT",
+    sectionName: "Alan Yeterlilik Testi",
+    subjectIds: [11],
+    subjectNames: ["Matematik"],
+    totalNet: 24,
+    analiz: true,
+  },
+  {
+    id: 4,
     tarih: "7 Haz",
     ad: "3D TYT Deneme 17",
-    bolum: "TYT",
-    kapsam: "Tam",
-    net: 74.75,
+    takenOn: new Date("2027-06-07T00:00:00+03:00"),
+    scope: "full",
+    sectionCode: "TYT",
+    sectionName: "Temel Yeterlilik Testi",
+    subjectIds: [],
+    subjectNames: [],
+    totalNet: 74.75,
     analiz: true,
   },
   {
+    id: 5,
+    tarih: "4 Haz",
+    ad: "Paragraf Kampı Branş 3",
+    takenOn: new Date("2027-06-04T00:00:00+03:00"),
+    scope: "branch",
+    sectionCode: "TYT",
+    sectionName: "Temel Yeterlilik Testi",
+    subjectIds: [21],
+    subjectNames: ["Türkçe"],
+    totalNet: 31,
+    analiz: false,
+  },
+  {
+    id: 6,
     tarih: "31 May",
     ad: "Bilgi Sarmal TYT 12",
-    bolum: "TYT",
-    kapsam: "Tam",
-    net: 72.5,
+    takenOn: new Date("2027-05-31T00:00:00+03:00"),
+    scope: "full",
+    sectionCode: "TYT",
+    sectionName: "Temel Yeterlilik Testi",
+    subjectIds: [],
+    subjectNames: [],
+    totalNet: 72.5,
     analiz: false,
   },
 ];

@@ -634,6 +634,8 @@ export type WeeklyMockRow = {
   /** Çözüm süresi (dk) + tempo paydası — branş denemelerinde hız takibi. */
   durationMinutes: number | null;
   questionCount: number;
+  /** Branş denemesinde hangi ders(ler) — pano ders ders okunsun diye. */
+  subjectNames: string[];
 };
 
 /**
@@ -669,6 +671,7 @@ export async function getWeeklyMockResults(opts: {
       durationMinutes: mockExams.durationMinutes,
       totalNet: sql<number>`coalesce(sum(${mockExamResults.net}), 0)`,
       questionCount: sql<number>`coalesce(sum(${mockExamResults.correctCount} + ${mockExamResults.wrongCount} + ${mockExamResults.blankCount}), 0)`,
+      subjectNames: sql<string | null>`group_concat(${subjects.name}, '|')`,
     })
     .from(mockExams)
     .innerJoin(enrollments, eq(enrollments.id, mockExams.enrollmentId))
@@ -679,6 +682,8 @@ export async function getWeeklyMockResults(opts: {
       eq(examTemplates.id, examSections.examTemplateId),
     )
     .leftJoin(mockExamResults, eq(mockExamResults.mockExamId, mockExams.id))
+    // Ders adı yalnız satır etiketi için; sonuç satırları zaten okunuyor.
+    .leftJoin(subjects, eq(subjects.id, mockExamResults.subjectId))
     .where(
       and(
         gte(mockExams.takenOn, start),
@@ -696,6 +701,7 @@ export async function getWeeklyMockResults(opts: {
       (r.isCombined ? combinedMockLabel(r.examCode) : null) ?? r.sectionName,
     totalNet: Number(r.totalNet),
     questionCount: Number(r.questionCount),
+    subjectNames: splitConcat(r.subjectNames, "|"),
   }));
 
   if (opts.sort === "isim") {

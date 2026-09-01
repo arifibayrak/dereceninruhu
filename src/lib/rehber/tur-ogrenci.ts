@@ -503,8 +503,12 @@ export const ogrenciTuru: Tour = {
         "Girdiğin tüm denemeler burada listelenir; yeni deneme girişi ve analiz de buradan başlar.",
       highlights: [
         {
+          label: "Ders ders bloklar",
+          text: "Genel denemeler ve her branş dersi ayrı başlık altında toplanır (\u201cGenel · TYT\u201d, \u201cBranş · Matematik\u201d gibi); başlıkta o bloğun deneme sayısı, ortalaması ve son denemenin bir öncekine göre farkı yazar.",
+        },
+        {
           label: "Deneme listesi",
-          text: "Her denemenin tarihi, yayınevi, adı, neti ve analiz durumu tek satırda görünür — geçmişin tek listede.",
+          text: "Blok içinde her denemenin tarihi, adı, süresi/temposu, neti ve analiz durumu tek satırda görünür.",
         },
         {
           label: "Analiz durumu",

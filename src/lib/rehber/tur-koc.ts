@@ -414,8 +414,12 @@ export const kocTuru: Tour = {
         "Deneme sonuçlarını D/Y/B olarak girersin, net otomatik hesaplanır; ardından analizle yanlışları konu konu işlersin.",
       highlights: [
         {
+          label: "Ayrı ayrı bloklar",
+          text: "Genel denemeler ve her branş dersi kendi bloğunda listelenir — Matematik branşının gidişatını görmek için tabloyu taramazsın. Her bloğun başlığında deneme sayısı, ortalama, en iyi ve son denemenin bir öncekine göre farkı yazar.",
+        },
+        {
           label: "Deneme tablosu",
-          text: "Tarih, Deneme, Bölüm, Kapsam (Tam / Branş), Net ve Analiz sütunlarıyla tüm geçmiş tek listede.",
+          text: "Blok içinde Tarih, Deneme, Süre / tempo, Net ve Analiz sütunları var; bölüm ve ders adı blok başlığında olduğu için satırlarda tekrar etmez.",
         },
         {
           label: "Net hesabı",
@@ -487,15 +491,11 @@ export const kocTuru: Tour = {
       highlights: [
         {
           label: "Özet kutular",
-          text: "Deneme sayısı, Ortalama net ve En yüksek net haftanın fotoğrafını üç kutuda verir.",
+          text: "Deneme sayısı, Genel ortalama ve Branş ortalaması haftanın fotoğrafını üç kutuda verir; iki ortalama ayrı çünkü 30 soruluk branş neti ile 120 soruluk genel net aynı ölçek değildir.",
         },
         {
-          label: "Sonuçlar tablosu",
-          text: "O hafta girilen her deneme öğrenci adı, deneme adı, bölüm, net ve tarihle satır satır listelenir.",
-        },
-        {
-          label: "Branş rozeti",
-          text: 'Branş denemeleri "Branş" rozetiyle ayrışır — tam denemelerle aynı kefeye koymadan okursun.',
+          label: "İki ayrı tablo",
+          text: "Pano \"Genel denemeler\" ve \"Branş denemeleri\" olarak ikiye ayrılır; her tablo kendi içinde sıralanır, branş satırında ders adı da yazar.",
         },
       ],
       tip: "Pano girilmiş denemeleri gösterir; yeni deneme girişi öğrencinin kokpitindeki Denemeler sekmesinden yapılır.",

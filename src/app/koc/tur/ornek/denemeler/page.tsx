@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { ornekDenemeler, ornekEksikler } from "@/lib/rehber/ornek-ogrenci";
-import { formatNet } from "@/lib/format";
+import { formatDelta, formatInt, formatNet } from "@/lib/format";
+import { groupMocks } from "@/lib/mock-groups";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -14,6 +16,8 @@ import {
 export const metadata: Metadata = { title: "Örnek öğrenci · Denemeler" };
 
 export default function OrnekDenemelerPage() {
+  // Gerçek kokpitle AYNI gruplama: genel denemeler ve her branş dersi ayrı.
+  const gruplar = groupMocks(ornekDenemeler);
   const maxEksik = Math.max(...ornekEksikler.map((e) => e.eksik));
   // Gerçek ekrandaki "Ders ders eksikler" panosunun statik karşılığı.
   const dersler = [...new Set(ornekEksikler.map((e) => e.ders))]
@@ -32,48 +36,85 @@ export default function OrnekDenemelerPage() {
         <CardHeader>
           <CardTitle>Denemeler · {ornekDenemeler.length}</CardTitle>
           <CardDescription>
-            Net, kaydedildiği anki formülle hesaplanır ve dondurulur.
+            Genel denemeler ve her branş dersi ayrı bloklarda; net kaydedildiği
+            anki formülle hesaplanır ve dondurulur.
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[34rem] text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                {["Tarih", "Deneme", "Bölüm", "Kapsam", "Net", "Analiz"].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className="py-2 pr-3 text-xs font-semibold text-muted-foreground uppercase"
-                    >
-                      {h}
-                    </th>
-                  ),
+        <CardContent className="flex flex-col gap-4">
+          {gruplar.map((grup) => (
+            <section
+              key={grup.key}
+              className="rounded-xl ring-1 ring-foreground/10"
+            >
+              <header className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-foreground/10 px-3 py-2">
+                <Badge
+                  variant={grup.kind === "full" ? "secondary" : "outline"}
+                >
+                  {grup.kind === "full" ? "Genel" : "Branş"}
+                </Badge>
+                <h3 className="text-sm font-semibold">{grup.title}</h3>
+                {grup.subtitle && (
+                  <span className="text-xs text-muted-foreground">
+                    {grup.subtitle}
+                  </span>
                 )}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {ornekDenemeler.map((d) => (
-                <tr key={d.ad}>
-                  <td className="py-2.5 pr-3 text-muted-foreground">{d.tarih}</td>
-                  <td className="py-2.5 pr-3 font-medium">{d.ad}</td>
-                  <td className="py-2.5 pr-3 text-muted-foreground">{d.bolum}</td>
-                  <td className="py-2.5 pr-3">
-                    <Badge variant={d.kapsam === "Tam" ? "secondary" : "outline"}>
-                      {d.kapsam}
-                    </Badge>
-                  </td>
-                  <td className="py-2.5 pr-3 font-medium tabular-nums">
-                    {formatNet(d.net)}
-                  </td>
-                  <td className="py-2.5 pr-3">
-                    <Badge variant={d.analiz ? "secondary" : "outline"}>
-                      {d.analiz ? "Edildi" : "Bekliyor"}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                <div className="ml-auto flex flex-wrap items-center gap-x-3 text-xs tabular-nums text-muted-foreground">
+                  <span>{formatInt(grup.count)} deneme</span>
+                  <span>ort. {formatNet(grup.avgNet)}</span>
+                  <span className="flex items-center gap-1">
+                    son
+                    <span className="font-semibold text-foreground">
+                      {formatNet(grup.lastNet)}
+                    </span>
+                    {grup.deltaNet !== null && grup.deltaNet !== 0 && (
+                      <span
+                        className={cn(
+                          "font-medium",
+                          grup.deltaNet > 0 ? "text-success" : "text-warning",
+                        )}
+                      >
+                        {formatDelta(grup.deltaNet)}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </header>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[24rem] text-sm">
+                  <thead>
+                    <tr className="border-b text-left">
+                      {["Tarih", "Deneme", "Net", "Analiz"].map((h) => (
+                        <th
+                          key={h}
+                          className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase"
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {grup.mocks.map((d) => (
+                      <tr key={d.id}>
+                        <td className="px-3 py-2.5 text-muted-foreground">
+                          {d.tarih}
+                        </td>
+                        <td className="px-3 py-2.5 font-medium">{d.ad}</td>
+                        <td className="px-3 py-2.5 font-medium tabular-nums">
+                          {formatNet(d.totalNet)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Badge variant={d.analiz ? "secondary" : "outline"}>
+                            {d.analiz ? "Edildi" : "Bekliyor"}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
         </CardContent>
       </Card>
 
