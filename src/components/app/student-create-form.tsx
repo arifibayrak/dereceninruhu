@@ -11,6 +11,11 @@ import type { z } from "zod";
 import { callAction } from "@/lib/action-client";
 import { createStudent, type CreatedStudent } from "@/actions/students";
 import {
+  trackFieldLabel,
+  trackFieldPossessive,
+  tracksFor,
+} from "@/lib/tracks";
+import {
   createStudentSchema,
   type CreateStudentInput,
 } from "@/lib/validation";
@@ -40,12 +45,6 @@ const EXAMS = [
   { value: "KPSS", label: "KPSS" },
   { value: "YKS", label: "YKS" },
   { value: "LGS", label: "LGS" },
-] as const;
-
-const TRACKS = [
-  { value: "SAY", label: "Sayısal" },
-  { value: "EA", label: "Eşit Ağırlık" },
-  { value: "SOZ", label: "Sözel" },
 ] as const;
 
 type FormInput = z.input<typeof createStudentSchema>;
@@ -112,6 +111,9 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
     control: form.control,
     name: "secondaryExamCode",
   });
+  /* Bölüm = YKS'de alan, KPSS'de düzey; LGS bölümsüz (liste boş → alan gizli). */
+  const tracks = tracksFor(examCode);
+  const secondaryTracks = tracksFor(secondaryExamCode);
 
   const onSubmit = async (values: CreateStudentInput) => {
     setSubmitting(true);
@@ -219,10 +221,9 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
                   value={field.value}
                   onValueChange={(value) => {
                     field.onChange(value);
-                    if (value !== "YKS") {
-                      form.setValue("trackCode", undefined);
-                      form.clearErrors("trackCode");
-                    }
+                    // Bölüm listesi sınava özgü — sınav değişince seçim düşer.
+                    form.setValue("trackCode", undefined);
+                    form.clearErrors("trackCode");
                   }}
                 >
                   <SelectTrigger id="ogr-sinav" className="w-full">
@@ -241,15 +242,17 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
             <FieldError errors={[errors.examCode]} />
           </Field>
 
-          {examCode === "YKS" && (
+          {tracks.length > 0 && (
             <Field data-invalid={errors.trackCode ? true : undefined}>
-              <FieldLabel htmlFor="ogr-alan">Alan *</FieldLabel>
+              <FieldLabel htmlFor="ogr-alan">
+                {trackFieldLabel(examCode)} *
+              </FieldLabel>
               <Controller
                 control={form.control}
                 name="trackCode"
                 render={({ field }) => (
                   <Select
-                    items={[...TRACKS]}
+                    items={tracks}
                     value={field.value ?? null}
                     onValueChange={(value) => field.onChange(value ?? undefined)}
                   >
@@ -258,10 +261,12 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
                       className="w-full"
                       aria-invalid={errors.trackCode ? true : undefined}
                     >
-                      <SelectValue placeholder="Alan seç" />
+                      <SelectValue
+                        placeholder={`${trackFieldLabel(examCode)} seç`}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {TRACKS.map((track) => (
+                      {tracks.map((track) => (
                         <SelectItem key={track.value} value={track.value}>
                           {track.label}
                         </SelectItem>
@@ -291,10 +296,8 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
                   value={field.value ?? ""}
                   onValueChange={(value) => {
                     field.onChange(value ?? "");
-                    if (value !== "YKS") {
-                      form.setValue("secondaryTrackCode", "");
-                      form.clearErrors("secondaryTrackCode");
-                    }
+                    form.setValue("secondaryTrackCode", "");
+                    form.clearErrors("secondaryTrackCode");
                   }}
                 >
                   <SelectTrigger id="ogr-sinav-2" className="w-full">
@@ -318,15 +321,17 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
             <FieldError errors={[errors.secondaryExamCode]} />
           </Field>
 
-          {secondaryExamCode === "YKS" && (
+          {secondaryTracks.length > 0 && (
             <Field data-invalid={errors.secondaryTrackCode ? true : undefined}>
-              <FieldLabel htmlFor="ogr-alan-2">İkinci sınavın alanı *</FieldLabel>
+              <FieldLabel htmlFor="ogr-alan-2">
+                İkinci sınavın {trackFieldPossessive(secondaryExamCode)} *
+              </FieldLabel>
               <Controller
                 control={form.control}
                 name="secondaryTrackCode"
                 render={({ field }) => (
                   <Select
-                    items={[...TRACKS]}
+                    items={secondaryTracks}
                     value={field.value ?? null}
                     onValueChange={(value) => field.onChange(value ?? "")}
                   >
@@ -337,10 +342,12 @@ export function StudentCreateForm({ prefill }: { prefill?: StudentPrefill }) {
                         errors.secondaryTrackCode ? true : undefined
                       }
                     >
-                      <SelectValue placeholder="Alan seç" />
+                      <SelectValue
+                        placeholder={`${trackFieldLabel(secondaryExamCode)} seç`}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {TRACKS.map((track) => (
+                      {secondaryTracks.map((track) => (
                         <SelectItem key={track.value} value={track.value}>
                           {track.label}
                         </SelectItem>

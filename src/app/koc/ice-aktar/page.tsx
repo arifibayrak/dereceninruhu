@@ -37,7 +37,10 @@ export default async function IceAktarPage() {
           </li>
           <li>
             <b>examCode</b>: KPSS / YKS / LGS. YKS için <b>trackCode</b> (SAY /
-            EA / SOZ) gerekli.
+            EA / SOZ) gerekli. KPSS&apos;de <b>trackCode</b> düzeydir (LISANS /
+            ONLISANS / ORTAOGRETIM) — isteğe bağlıdır, boş bırakılırsa kadroda
+            &quot;Düzey belirtilmemiş&quot; grubunda görünür ve kokpitin Profil
+            sekmesinden seçilir.
           </li>
           <li>
             <b>status</b>: aktif / pasif / mezun (boşsa <b>aktif</b>). Not:{" "}

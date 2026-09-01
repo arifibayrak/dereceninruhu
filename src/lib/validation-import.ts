@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isTrackOfExam } from "@/lib/tracks";
 import { examCodeSchema, phoneSchema, trackCodeSchema } from "@/lib/validation";
 
 /** CSV `status` sözlüğü → öğrenci durumu. */
@@ -21,6 +22,15 @@ export const rosterRowSchema = z
   })
   .refine((v) => v.examCode !== "YKS" || !!v.trackCode, {
     message: "YKS için alan (SAY/EA/SOZ) gerekli.",
+    path: ["trackCode"],
+  })
+  /*
+   * KPSS düzeyi (LISANS/ONLISANS/ORTAOGRETIM) CSV'de İSTEĞE BAĞLI: eski dosyalar
+   * bu sütunu taşımıyor, içe aktarım onlar yüzünden patlamamalı. Yazıldıysa
+   * doğru sınava ait olması aranır — koç düzeyi sonradan kokpitten seçer.
+   */
+  .refine((v) => !v.trackCode || isTrackOfExam(v.examCode, v.trackCode), {
+    message: "Bölüm kodu bu sınava ait değil.",
     path: ["trackCode"],
   });
 export type RosterRowInput = z.infer<typeof rosterRowSchema>;

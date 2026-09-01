@@ -159,8 +159,12 @@ export const kocTuru: Tour = {
           text: "Üstteki Tümü / KPSS / YKS / LGS çipleriyle listeyi tek dokunuşla daraltırsın.",
         },
         {
+          label: "Bölüm bölüm gruplar",
+          text: "Kadro sınav ve bölüme göre ayrılır: KPSS Lisans / Ön Lisans / Ortaöğretim ve YKS Sayısal / Eşit Ağırlık / Sözel kendi başlığı altında, öğrenci sayısıyla listelenir.",
+        },
+        {
           label: "Tek tablo",
-          text: "Ad, Sınav, Bu hafta soru, Süre, Ödeme, Son giriş ve Davet sütunları yan yana — nasıl okunduklarını sıradaki adımda göreceğiz.",
+          text: "Ad, Bu hafta soru, Süre, Ödeme, Son giriş ve Davet sütunları yan yana — sınav ve bölüm artık grup başlığında yazdığı için satırda tekrar etmez.",
         },
         {
           label: "Ada tıkla",
@@ -215,7 +219,7 @@ export const kocTuru: Tour = {
       highlights: [
         {
           label: "Zorunlu alanlar",
-          text: "Yalnız Ad Soyad ve sınav (KPSS / YKS / LGS) zorunlu; YKS'de Sayısal / Eşit Ağırlık / Sözel alanını da seçersin.",
+          text: "Yalnız Ad Soyad ve sınav (KPSS / YKS / LGS) zorunlu; YKS'de Sayısal / Eşit Ağırlık / Sözel alanını, KPSS'de Lisans / Ön Lisans / Ortaöğretim düzeyini de seçersin.",
         },
         {
           label: "Telefon",

@@ -14,8 +14,10 @@ import {
 import { findStudentsByPhone } from "@/db/queries/students";
 import { syncLoginPhone } from "@/lib/auth-identity";
 import { normalizePhone } from "@/lib/phone";
+import { isTrackOfExam, trackFieldLabel, trackLabel } from "@/lib/tracks";
 import {
   createStudentSchema,
+  setPrimaryTrackSchema,
   setSecondaryExamSchema,
   updateStudentProfileSchema,
 } from "@/lib/validation";
@@ -236,6 +238,77 @@ export async function setSecondaryExam(
 
     revalidatePath(`/koc/ogrenciler/${v.studentId}`);
     return { ok: true, data: { studentId: v.studentId } };
+  });
+}
+
+/**
+ * Koç: BİRİNCİ sınavın bölümünü (YKS alanı / KPSS düzeyi) seçer ya da düzeltir.
+ *
+ * Şablonun kendisi bilerek değiştirilemez (geçmiş satırlar o şablonun ders
+ * id'lerine bağlı) — burada yalnız `track_id` yazılır. KPSS'de düzey ders
+ * listesini hiç etkilemez; YKS'de yalnız seçilebilir AYT derslerini değiştirir,
+ * girilmiş veri olduğu yerde kalır.
+ */
+export async function setPrimaryTrack(
+  input: unknown,
+): Promise<ActionResult<{ studentId: number; trackName: string | null }>> {
+  return guarded(async () => {
+    await requireCoach();
+    const parsed = setPrimaryTrackSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError(
+        "Lütfen formu kontrol edin.",
+        fieldErrorsOf(parsed.error.issues),
+      );
+    }
+    const v = parsed.data;
+    const db = getDb();
+
+    const enrollment = await db.query.enrollments.findFirst({
+      where: and(
+        eq(enrollments.studentId, v.studentId),
+        eq(enrollments.status, "active"),
+      ),
+    });
+    if (!enrollment) return actionError("Aktif kayıt bulunamadı.");
+
+    const template = await db.query.examTemplates.findFirst({
+      where: eq(examTemplates.id, enrollment.examTemplateId),
+    });
+    if (!template) return actionError("Sınav şablonu bulunamadı.");
+
+    if (v.trackCode && !isTrackOfExam(template.code, v.trackCode)) {
+      return actionError(
+        `Seçilen ${trackFieldLabel(template.code).toLocaleLowerCase("tr")} ${template.code} sınavına ait değil.`,
+      );
+    }
+
+    let trackId: number | null = null;
+    if (v.trackCode) {
+      const track = await db.query.tracks.findFirst({
+        where: and(
+          eq(tracks.examTemplateId, template.id),
+          eq(tracks.code, v.trackCode),
+        ),
+      });
+      if (!track) return actionError("Seçilen bölüm bulunamadı.");
+      trackId = track.id;
+    }
+
+    await db
+      .update(enrollments)
+      .set({ trackId, updatedAt: new Date() })
+      .where(eq(enrollments.id, enrollment.id));
+
+    revalidatePath(`/koc/ogrenciler/${v.studentId}`);
+    revalidatePath("/koc/ogrenciler");
+    return {
+      ok: true,
+      data: {
+        studentId: v.studentId,
+        trackName: trackLabel(template.code, v.trackCode || null),
+      },
+    };
   });
 }
 

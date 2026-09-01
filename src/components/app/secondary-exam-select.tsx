@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { setSecondaryExam } from "@/actions/students";
+import { trackFieldLabel, tracksFor } from "@/lib/tracks";
 import {
   Select,
   SelectContent,
@@ -15,13 +16,6 @@ import {
 } from "@/components/ui/select";
 
 const NONE = "yok";
-
-/** Alan seçimi yalnız YKS için anlamlıdır (KPSS/LGS alansızdır). */
-const TRACKS = [
-  { value: "SAY", label: "Sayısal" },
-  { value: "EA", label: "Eşit Ağırlık" },
-  { value: "SOZ", label: "Sözel" },
-] as const;
 
 /**
  * Öğrencinin İKİNCİ sınavı — aynı dönemde iki sınava hazırlananlar için
@@ -54,9 +48,13 @@ export function SecondaryExamSelect({
       .map((code) => ({ value: code, label: code })),
   ];
 
+  /** İkinci sınavın bölümleri — YKS alanı / KPSS düzeyi (LGS'de yok). */
+  const trackItems = tracksFor(exam);
+
   const save = (nextExam: string, nextTrack: string) => {
-    // YKS ikinci sınavsa alan seçilene kadar kaydetme — sunucu da reddeder.
-    if (nextExam === "YKS" && !nextTrack) return;
+    // Bölümlü sınavda (YKS alan, KPSS düzey) seçim yapılana dek kaydetme —
+    // sunucu da reddeder.
+    if (tracksFor(nextExam).length > 0 && !nextTrack) return;
     startTransition(async () => {
       const res = await callAction(setSecondaryExam, {
         studentId,
@@ -92,8 +90,9 @@ export function SecondaryExamSelect({
         onValueChange={(v) => {
           const next = v as string;
           setExam(next);
-          if (next !== "YKS") setTrack("");
-          save(next, next === "YKS" ? track : "");
+          const keeps = tracksFor(next).some((t) => t.value === track);
+          if (!keeps) setTrack("");
+          save(next, keeps ? track : "");
         }}
         disabled={pending}
       >
@@ -113,22 +112,25 @@ export function SecondaryExamSelect({
         </SelectContent>
       </Select>
 
-      {exam === "YKS" && (
+      {trackItems.length > 0 && (
         <Select
-          items={[...TRACKS]}
+          items={[...trackItems]}
           value={track}
           onValueChange={(v) => {
             const next = v as string;
             setTrack(next);
-            save("YKS", next);
+            save(exam, next);
           }}
           disabled={pending}
         >
-          <SelectTrigger size="sm" aria-label="İkinci sınavın alanı">
-            <SelectValue placeholder="Alan seç" />
+          <SelectTrigger
+            size="sm"
+            aria-label={`İkinci sınavın ${trackFieldLabel(exam).toLocaleLowerCase("tr")} seçimi`}
+          >
+            <SelectValue placeholder={`${trackFieldLabel(exam)} seç`} />
           </SelectTrigger>
           <SelectContent>
-            {TRACKS.map((t) => (
+            {trackItems.map((t) => (
               <SelectItem key={t.value} value={t.value}>
                 {t.label}
               </SelectItem>

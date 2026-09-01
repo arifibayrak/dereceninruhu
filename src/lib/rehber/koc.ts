@@ -168,12 +168,13 @@ export const kocRehberi: Guide = {
       blocks: [
         {
           kind: "para",
-          text: "Bu listede yalnız sana atanan öğrenciler görünür — atama yöneticide. Üstteki çiplerle sınava göre süzersin. Ad sütunundaki isme tıklamak öğrencinin kokpitini açar. Sağdaki Davet sütunu, öğrencinin hesabını açıp açmadığını ve davet/PIN araçlarını taşır.",
+          text: "Bu listede yalnız sana atanan öğrenciler görünür — atama yöneticide. Üstteki çiplerle sınava göre süzersin. Liste ayrıca bölüm bölüm gruplanır: KPSS Lisans / Ön Lisans / Ortaöğretim, YKS Sayısal / Eşit Ağırlık / Sözel ayrı başlıklar altında durur. Ad sütunundaki isme tıklamak öğrencinin kokpitini açar. Sağdaki Davet sütunu, öğrencinin hesabını açıp açmadığını ve davet/PIN araçlarını taşır.",
         },
         {
           kind: "steps",
           items: [
             "Sınav filtresi seç: Tümü, KPSS, YKS ya da LGS.",
+            "Öğrencinin bölümü grup başlığında yazar; \"Düzey belirtilmemiş\" grubundaki öğrenciler için kokpitin Profil sekmesinden bölümü seç.",
             "\"Son giriş\" sütununda sararmış (3+ gün) öğrencileri tespit et.",
             "\"Ödeme\" sütununda Gecikmiş rozetlerini kontrol et.",
             "İsme tıklayıp kokpite geç.",
@@ -217,7 +218,7 @@ export const kocRehberi: Guide = {
       blocks: [
         {
           kind: "para",
-          text: "Zorunlu alanlar Ad Soyad ve Sınav; YKS seçersen Alan (Sayısal / Eşit Ağırlık / Sözel) da zorunlu olur. Telefon zorunlu değil ama kritik: WhatsApp daveti ve hatırlatmalar bu numaraya gider ve öğrenci uygulamaya bu numarayla girer. Kalan alanlar (veli telefonu, hedef, okul, şehir…) sonradan kokpitin Profil sekmesinden de doldurulabilir.",
+          text: "Zorunlu alanlar Ad Soyad ve Sınav; YKS seçersen Alan (Sayısal / Eşit Ağırlık / Sözel), KPSS seçersen Düzey (Lisans / Ön Lisans / Ortaöğretim) da zorunlu olur — kadro listesi bu bilgiye göre bölüm bölüm ayrılıyor. Telefon zorunlu değil ama kritik: WhatsApp daveti ve hatırlatmalar bu numaraya gider ve öğrenci uygulamaya bu numarayla girer. Kalan alanlar (veli telefonu, hedef, okul, şehir…) sonradan kokpitin Profil sekmesinden de doldurulabilir.",
         },
         {
           kind: "para",

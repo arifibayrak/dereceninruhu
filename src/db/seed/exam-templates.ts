@@ -46,7 +46,17 @@ export const examTemplateSeeds: TemplateSeed[] = [
   {
     code: "KPSS",
     name: "KPSS (GY-GK)",
-    tracks: [],
+    /*
+     * KPSS'de "alan" yerine DÜZEY var: aynı GY-GK derslerini üç ayrı oturum
+     * çözer. Ders listesini değiştirmediği için tüm derslerin trackCodes'u
+     * boş kalır (hepsi her düzeye uygulanır) — düzey yalnız kadroyu bölmek
+     * ve doğru sınav tarihini seçmek için tutulur. Etiketler `@/lib/tracks`.
+     */
+    tracks: [
+      { code: "LISANS", name: "Lisans", sortOrder: 1 },
+      { code: "ONLISANS", name: "Ön Lisans", sortOrder: 2 },
+      { code: "ORTAOGRETIM", name: "Ortaöğretim", sortOrder: 3 },
+    ],
     sections: [
       {
         code: "KPSS_GY",

@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { normalizePhone } from "@/lib/phone";
 import { MAX_TASK_RESOURCES } from "@/lib/plan-resources";
+import {
+  isTrackOfExam,
+  KPSS_TRACKS,
+  trackFieldLabel,
+  trackRequired,
+  tracksFor,
+  YKS_TRACKS,
+} from "@/lib/tracks";
 
 /** TR mobile: 10 digits after normalization, starts with 5. */
 export const phoneSchema = z
@@ -11,7 +19,57 @@ export const phoneSchema = z
   });
 
 export const examCodeSchema = z.enum(["KPSS", "YKS", "LGS"]);
-export const trackCodeSchema = z.enum(["SAY", "EA", "SOZ"]);
+
+/**
+ * Bölüm kodu — YKS'de alan (SAY/EA/SOZ), KPSS'de düzey (LISANS/…).
+ * Kodun DOĞRU sınava ait olduğu ayrıca `trackIssues` ile denetlenir; burada
+ * yalnız bilinen bir kod olması aranır (katalog: `@/lib/tracks`).
+ */
+const ALL_TRACK_CODES = [...YKS_TRACKS, ...KPSS_TRACKS].map((t) => t.value);
+export const trackCodeSchema = z
+  .string()
+  .refine((v) => ALL_TRACK_CODES.includes(v), { message: "Geçersiz bölüm." });
+
+/** "YKS için alan (Sayısal/Eşit Ağırlık/Sözel) seçin." */
+function trackMissingMessage(examCode: string): string {
+  const list = tracksFor(examCode)
+    .map((t) => t.label)
+    .join("/");
+  const what = trackFieldLabel(examCode).toLocaleLowerCase("tr");
+  return `${examCode} için ${what} (${list}) seçin.`;
+}
+
+/**
+ * Sınav ↔ bölüm tutarlılığı. Bölümü olan her sınavda (YKS alan, KPSS düzey)
+ * seçim zorunludur — kadro listesi bölüm bölüm ayrıldığı için boş bırakılan
+ * kayıt "belirtilmemiş" kovasında kalır. LGS bölümsüzdür.
+ */
+function trackIssues(
+  ctx: z.RefinementCtx,
+  examCode: string | undefined,
+  trackCode: string | undefined,
+  trackPath: string,
+) {
+  if (!examCode) return;
+  const code = trackCode || undefined;
+  if (!code) {
+    if (trackRequired(examCode)) {
+      ctx.addIssue({
+        code: "custom",
+        path: [trackPath],
+        message: trackMissingMessage(examCode),
+      });
+    }
+    return;
+  }
+  if (!isTrackOfExam(examCode, code)) {
+    ctx.addIssue({
+      code: "custom",
+      path: [trackPath],
+      message: `Seçilen bölüm ${examCode} sınavına ait değil.`,
+    });
+  }
+}
 
 /** Ortak opsiyonel profil alanları. */
 const optionalEmail = z
@@ -50,13 +108,14 @@ export const createStudentSchema = z
     birthYear: optionalBirthYear,
     startDate: z.coerce.date().optional(),
   })
-  .refine((v) => v.examCode !== "YKS" || !!v.trackCode, {
-    message: "YKS için alan (Sayısal/Eşit Ağırlık/Sözel) seçin.",
-    path: ["trackCode"],
-  })
-  .refine((v) => v.secondaryExamCode !== "YKS" || !!v.secondaryTrackCode, {
-    message: "İkinci sınav YKS ise alan seçin.",
-    path: ["secondaryTrackCode"],
+  .superRefine((v, ctx) => {
+    trackIssues(ctx, v.examCode, v.trackCode, "trackCode");
+    trackIssues(
+      ctx,
+      v.secondaryExamCode || undefined,
+      v.secondaryTrackCode,
+      "secondaryTrackCode",
+    );
   })
   .refine((v) => !v.secondaryExamCode || v.secondaryExamCode !== v.examCode, {
     message: "İkinci sınav birinciyle aynı olamaz.",
@@ -76,11 +135,30 @@ export const setSecondaryExamSchema = z
     secondaryExamCode: examCodeSchema.or(z.literal("")),
     secondaryTrackCode: trackCodeSchema.optional().or(z.literal("")),
   })
-  .refine((v) => v.secondaryExamCode !== "YKS" || !!v.secondaryTrackCode, {
-    message: "YKS için alan (Sayısal/Eşit Ağırlık/Sözel) seçin.",
-    path: ["secondaryTrackCode"],
+  .superRefine((v, ctx) => {
+    trackIssues(
+      ctx,
+      v.secondaryExamCode || undefined,
+      v.secondaryTrackCode,
+      "secondaryTrackCode",
+    );
   });
 export type SetSecondaryExamInput = z.infer<typeof setSecondaryExamSchema>;
+
+/**
+ * Koç: BİRİNCİ sınavın bölümünü (YKS alanı / KPSS düzeyi) düzeltir.
+ *
+ * Şablon değişmez — yalnız `enrollments.track_id`. Bölüm, ders listesini
+ * KPSS'de hiç etkilemez (tüm dersler her düzeye açık), YKS'de yalnız hangi AYT
+ * derslerinin seçilebildiğini değiştirir; geçmiş satırlar ders id'lerine bağlı
+ * olduğu için bozulmaz.
+ */
+export const setPrimaryTrackSchema = z.object({
+  studentId: z.coerce.number().int().positive(),
+  /** Boş dize = bölümü kaldır (yalnız bölümsüz sınavlarda anlamlı). */
+  trackCode: trackCodeSchema.or(z.literal("")),
+});
+export type SetPrimaryTrackInput = z.infer<typeof setPrimaryTrackSchema>;
 
 /**
  * Profil düzenleme — sınav/alan değiştirmez, yalnız kişisel bilgiler + hedef.

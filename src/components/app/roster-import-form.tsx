@@ -86,7 +86,7 @@ export function RosterImportForm() {
           rows={10}
           spellCheck={false}
           placeholder={
-            "fullName,phone,examCode,trackCode,targetText,grade,status\nAyşe Yılmaz,05321234567,KPSS,,İstanbul Adliyesi,,aktif"
+            "fullName,phone,examCode,trackCode,targetText,grade,status\nAyşe Yılmaz,05321234567,KPSS,LISANS,İstanbul Adliyesi,,aktif\nMert Demir,05339876543,YKS,SAY,İTÜ Bilgisayar,12,aktif"
           }
           className="font-mono text-xs"
         />

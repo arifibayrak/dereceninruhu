@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { listCoaches } from "@/db/queries/admin";
 import { CoachAssignSelect } from "@/components/app/coach-assign-select";
+import { PrimaryTrackSelect } from "@/components/app/primary-track-select";
 import { SecondaryExamSelect } from "@/components/app/secondary-exam-select";
 import { StudentProfileForm } from "@/components/app/student-profile-form";
 import {
@@ -58,9 +59,14 @@ export default async function ProfilPage({
               <ProfileRow label="Koç" value={enrollment.coachName} />
             )}
             <dt className="self-center text-muted-foreground">Sınav</dt>
-            <dd className="py-1 text-sm">
-              {enrollment.examCode}
-              {enrollment.trackName ? ` · ${enrollment.trackName}` : ""}
+            <dd>
+              {/* Sınavın kendisi değişmez; yalnız bölüm (YKS alanı / KPSS düzeyi). */}
+              <PrimaryTrackSelect
+                key={enrollment.trackCode ?? "bolum-yok"}
+                studentId={studentId}
+                examCode={enrollment.examCode}
+                trackCode={enrollment.trackCode}
+              />
             </dd>
             <dt className="self-center text-muted-foreground">İkinci sınav</dt>
             <dd>

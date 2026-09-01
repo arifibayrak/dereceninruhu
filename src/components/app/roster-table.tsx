@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import { UserRoundCheckIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -11,6 +11,13 @@ import { bulkAssignStudentCoach } from "@/actions/admin";
 import type { RosterPayment } from "@/db/queries/muhasebe";
 import { formatInt } from "@/lib/format";
 import { formatMinutes } from "@/lib/study";
+import {
+  examSortIndex,
+  examTrackLabel,
+  trackFieldLabel,
+  trackRequired,
+  trackSortIndex,
+} from "@/lib/tracks";
 import {
   CoachAssignSelect,
   type CoachOption,
@@ -61,6 +68,54 @@ export type RosterTableRow = {
 
 const UNASSIGNED = "yok";
 
+type RosterGroup = {
+  key: string;
+  label: string;
+  /** Bölümü olan sınavda bölüm seçilmemiş — koç profilden doldurmalı. */
+  missingTrack: boolean;
+  rows: RosterTableRow[];
+};
+
+/**
+ * Kadroyu SINAV + BÖLÜM'e böler: KPSS Lisans / Ön Lisans / Ortaöğretim ve YKS
+ * Sayısal / Eşit Ağırlık / Sözel ayrı ayrı listelenir — tek düz listede aynı
+ * bölümün öğrencileri birbirine karışıyordu. Bölümü seçilmemiş kayıtlar en
+ * sonda kendi kovasında toplanır (görünür kalsın, sessizce kaybolmasın).
+ */
+function groupRoster(rows: RosterTableRow[]): RosterGroup[] {
+  const map = new Map<string, RosterGroup>();
+  for (const r of rows) {
+    const key = `${r.examCode}:${r.trackCode ?? ""}`;
+    let group = map.get(key);
+    if (!group) {
+      const missingTrack = !r.trackCode && trackRequired(r.examCode);
+      group = {
+        key,
+        label: missingTrack
+          ? `${r.examCode} · ${trackFieldLabel(r.examCode)} belirtilmemiş`
+          : examTrackLabel(r.examCode, r.trackCode),
+        missingTrack,
+        rows: [],
+      };
+      map.set(key, group);
+    }
+    group.rows.push(r);
+  }
+  for (const g of map.values()) {
+    g.rows.sort((a, b) => a.fullName.localeCompare(b.fullName, "tr"));
+  }
+  return [...map.values()].sort((a, b) => {
+    const [aExam, aTrack] = a.key.split(":");
+    const [bExam, bTrack] = b.key.split(":");
+    return (
+      examSortIndex(aExam) - examSortIndex(bExam) ||
+      trackSortIndex(aExam, aTrack || null) -
+        trackSortIndex(bExam, bTrack || null) ||
+      a.label.localeCompare(b.label, "tr")
+    );
+  });
+}
+
 /**
  * Kadro tablosu. Yönetici satır seçimi + koç sütunu + toplu atama görür;
  * koç yalnız kendi öğrencilerinin salt listesini görür.
@@ -84,6 +139,10 @@ export function RosterTable({
     ...coaches.map((c) => ({ value: c.id, label: c.name })),
   ];
 
+  const groups = groupRoster(rows);
+  // Ad + Sınav sütunu birleşti: bölüm artık grup başlığında (bkz. groupRoster).
+  const colSpan = isAdmin ? 8 : 6;
+
   const visibleIds = rows.map((r) => r.enrollmentId);
   const selectedVisible = visibleIds.filter((id) => selected.has(id));
   const allSelected =
@@ -102,6 +161,18 @@ export function RosterTable({
 
   const toggleAll = (checked: boolean) => {
     setSelected(checked ? new Set(visibleIds) : new Set());
+  };
+
+  /** Bir bölümün tamamını seç / bırak — toplu koç ataması bölüm bazlı yapılır. */
+  const toggleGroup = (group: RosterGroup, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const r of group.rows) {
+        if (checked) next.add(r.enrollmentId);
+        else next.delete(r.enrollmentId);
+      }
+      return next;
+    });
   };
 
   const applyBulk = () => {
@@ -189,7 +260,6 @@ export function RosterTable({
                 </TableHead>
               )}
               <TableHead className={isAdmin ? undefined : "pl-4"}>Ad</TableHead>
-              <TableHead>Sınav</TableHead>
               {isAdmin && <TableHead>Koç</TableHead>}
               <TableHead className="text-right">Bu hafta soru</TableHead>
               <TableHead className="text-right">Süre</TableHead>
@@ -199,96 +269,134 @@ export function RosterTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((r) => (
-              <TableRow
-                key={r.enrollmentId}
-                data-state={selected.has(r.enrollmentId) ? "selected" : undefined}
-              >
-                {isAdmin && (
-                  <TableCell className="w-10 pl-4">
-                    <Checkbox
-                      aria-label={`${r.fullName} seç`}
-                      checked={selected.has(r.enrollmentId)}
-                      onCheckedChange={(checked) =>
-                        toggleRow(r.enrollmentId, checked)
-                      }
-                    />
-                  </TableCell>
-                )}
-                <TableCell className={isAdmin ? "font-medium" : "pl-4 font-medium"}>
-                  <Link
-                    href={`/koc/ogrenciler/${r.studentId}`}
-                    className="hover:text-primary"
-                  >
-                    {r.fullName}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">
-                    {r.examCode}
-                    {r.trackCode ? ` · ${r.trackCode}` : ""}
-                  </Badge>
-                </TableCell>
-                {isAdmin && (
-                  <TableCell>
-                    <CoachAssignSelect
-                      key={`${r.enrollmentId}:${r.coachUserId ?? UNASSIGNED}`}
-                      enrollmentId={r.enrollmentId}
-                      coachUserId={r.coachUserId}
-                      coaches={coaches}
-                    />
-                  </TableCell>
-                )}
-                <TableCell className="text-right font-medium tabular-nums">
-                  {formatInt(r.weekQuestionTotal)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex flex-col items-end gap-0.5">
-                    <span className="font-medium tabular-nums">
-                      {formatMinutes(r.studyWeek)}
-                    </span>
-                    <span className="text-xs tabular-nums text-muted-foreground">
-                      bugün {formatMinutes(r.studyToday)} · ay{" "}
-                      {formatMinutes(r.studyMonth)}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <PaymentStatusBadge payment={r.payment} />
-                </TableCell>
-                <TableCell>
-                  <StalenessBadge staleDays={r.staleDays} />
-                </TableCell>
-                <TableCell className="pr-4">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {r.inviteAccepted ? (
-                      <Badge className="bg-success/10 text-success">
-                        Kabul edildi
-                      </Badge>
-                    ) : r.inviteCode ? (
-                      <>
-                        <CopyInviteButton invitePath={`/davet/${r.inviteCode}`} />
-                        {r.phone && (
-                          <WaInviteButton
-                            phone={r.phone}
-                            studentName={r.fullName.split(" ")[0]}
-                            invitePath={`/davet/${r.inviteCode}`}
+            {groups.map((g) => {
+              const groupIds = g.rows.map((r) => r.enrollmentId);
+              const groupSelected = groupIds.filter((id) => selected.has(id));
+              return (
+                <Fragment key={g.key}>
+                  <TableRow className="bg-muted/60 hover:bg-muted/60">
+                    <TableCell colSpan={colSpan} className="py-2 pl-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {isAdmin && (
+                          <Checkbox
+                            aria-label={`${g.label} bölümünü seç`}
+                            checked={groupSelected.length === groupIds.length}
+                            indeterminate={
+                              groupSelected.length > 0 &&
+                              groupSelected.length < groupIds.length
+                            }
+                            onCheckedChange={(checked) =>
+                              toggleGroup(g, checked)
+                            }
                           />
                         )}
-                      </>
-                    ) : (
-                      <Badge variant="outline">Davet yok</Badge>
-                    )}
-                    <PinResetButton
-                      studentId={r.studentId}
-                      phone={r.phone}
-                      fullName={r.fullName}
-                      inviteAccepted={r.inviteAccepted}
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                        <span className="font-heading text-sm font-semibold">
+                          {g.label}
+                        </span>
+                        <Badge variant="secondary">
+                          {formatInt(g.rows.length)} öğrenci
+                        </Badge>
+                        {g.missingTrack && (
+                          <span className="text-xs text-warning">
+                            Profil sekmesinden seç
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {g.rows.map((r) => (
+                    <TableRow
+                      key={r.enrollmentId}
+                      data-state={
+                        selected.has(r.enrollmentId) ? "selected" : undefined
+                      }
+                    >
+                      {isAdmin && (
+                        <TableCell className="w-10 pl-4">
+                          <Checkbox
+                            aria-label={`${r.fullName} seç`}
+                            checked={selected.has(r.enrollmentId)}
+                            onCheckedChange={(checked) =>
+                              toggleRow(r.enrollmentId, checked)
+                            }
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell
+                        className={isAdmin ? "font-medium" : "pl-4 font-medium"}
+                      >
+                        <Link
+                          href={`/koc/ogrenciler/${r.studentId}`}
+                          className="hover:text-primary"
+                        >
+                          {r.fullName}
+                        </Link>
+                      </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <CoachAssignSelect
+                            key={`${r.enrollmentId}:${r.coachUserId ?? UNASSIGNED}`}
+                            enrollmentId={r.enrollmentId}
+                            coachUserId={r.coachUserId}
+                            coaches={coaches}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatInt(r.weekQuestionTotal)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="font-medium tabular-nums">
+                            {formatMinutes(r.studyWeek)}
+                          </span>
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            bugün {formatMinutes(r.studyToday)} · ay{" "}
+                            {formatMinutes(r.studyMonth)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <PaymentStatusBadge payment={r.payment} />
+                      </TableCell>
+                      <TableCell>
+                        <StalenessBadge staleDays={r.staleDays} />
+                      </TableCell>
+                      <TableCell className="pr-4">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {r.inviteAccepted ? (
+                            <Badge className="bg-success/10 text-success">
+                              Kabul edildi
+                            </Badge>
+                          ) : r.inviteCode ? (
+                            <>
+                              <CopyInviteButton
+                                invitePath={`/davet/${r.inviteCode}`}
+                              />
+                              {r.phone && (
+                                <WaInviteButton
+                                  phone={r.phone}
+                                  studentName={r.fullName.split(" ")[0]}
+                                  invitePath={`/davet/${r.inviteCode}`}
+                                />
+                              )}
+                            </>
+                          ) : (
+                            <Badge variant="outline">Davet yok</Badge>
+                          )}
+                          <PinResetButton
+                            studentId={r.studentId}
+                            phone={r.phone}
+                            fullName={r.fullName}
+                            inviteAccepted={r.inviteAccepted}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </Fragment>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
