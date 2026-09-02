@@ -1,3 +1,10 @@
+# Bu dosya tek paketli repo'da SADECE ayar taşımak için var; yine de `packages`
+# alanı — boş bile olsa — BULUNMALI. pnpm 9 onu göremeyince "packages field
+# missing or empty" ile ANINDA çıkıyor: Cloudflare Workers Builds,
+# package.json'da `packageManager` pin'i olmadığı için pnpm 9'a düşüyordu ve her
+# build install adımında ölüyordu. Pin artık var, bu satır ikinci emniyet kemeri.
+packages: []
+
 # pnpm 11 artık package.json'daki `pnpm.onlyBuiltDependencies` alanını OKUMUYOR;
 # derleme betiği çalıştırma izni buradan verilir. Boş bırakılırsa pnpm yükleme
 # sonunda ERR_PNPM_IGNORED_BUILDS ile çıkar ve better-sqlite3 native ikilisi
