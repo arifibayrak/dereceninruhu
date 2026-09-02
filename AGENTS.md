@@ -45,6 +45,12 @@ Turkish exam-prep coaching (mentorluk) OS. All-Cloudflare. Full plan:
   `scheduled`. Don't point `main` back at `.open-next/worker.js` — that silently drops every cron.
   `worker-entry.ts` is in tsconfig `exclude` on purpose (`.open-next/` doesn't exist during `next build`
   on a clean checkout; wrangler bundles it with esbuild, no typecheck needed).
+- **`pnpm build` IS the OpenNext build, not `next build`.** Workers Builds calls `pnpm run build` and
+  then `npx wrangler deploy`; if `build` were plain `next build` there is no `.open-next/` and the
+  deploy dies with "Could not find compiled Open Next config". So `build` → `opennextjs-cloudflare
+  build`, and the inner Next step is `build:next`. OpenNext would otherwise default to calling
+  `pnpm build` itself, so `buildCommand: "pnpm build:next"` in `open-next.config.ts` is what stops
+  `build` from recursing into itself — don't drop it, and don't "restore" `build` to `next build`.
 - **The build must work from a CLEAN CHECKOUT — Cloudflare Workers Builds rebuilds from git on every
   push to `main`.** Three things are gitignored and therefore absent in CI, and each one used to break
   that build while everything stayed green locally:

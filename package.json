@@ -5,7 +5,8 @@
   "packageManager": "pnpm@10.33.2",
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/cf-typegen.mjs && next build",
+    "build": "opennextjs-cloudflare build",
+    "build:next": "node scripts/cf-typegen.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
