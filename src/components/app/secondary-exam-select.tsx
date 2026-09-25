@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { setSecondaryExam } from "@/actions/students";
-import { trackFieldLabel, tracksFor } from "@/lib/tracks";
+import { EXAM_CODES, trackFieldLabel, tracksFor } from "@/lib/tracks";
 import {
   Select,
   SelectContent,
@@ -43,7 +43,7 @@ export function SecondaryExamSelect({
 
   const examItems = [
     { value: NONE, label: "Yok" },
-    ...["KPSS", "YKS", "LGS"]
+    ...EXAM_CODES
       .filter((code) => code !== primaryExamCode)
       .map((code) => ({ value: code, label: code })),
   ];

@@ -12,7 +12,7 @@
 
 export type TrackOption = { value: string; label: string };
 
-export const EXAM_CODES = ["KPSS", "YKS", "LGS"] as const;
+export const EXAM_CODES = ["KPSS", "YKS", "LGS", "DGS"] as const;
 export type ExamCode = (typeof EXAM_CODES)[number];
 
 export const KPSS_TRACKS: readonly TrackOption[] = [
@@ -31,14 +31,15 @@ const BY_EXAM: Record<string, readonly TrackOption[]> = {
   KPSS: KPSS_TRACKS,
   YKS: YKS_TRACKS,
   LGS: [],
+  DGS: [],
 };
 
-/** Sınavın bölümleri — LGS'de boş dizi (bölümsüz sınav). */
+/** Sınavın bölümleri — LGS ve DGS'de boş dizi (bölümsüz sınav). */
 export function tracksFor(examCode: string | null | undefined): TrackOption[] {
   return [...(BY_EXAM[examCode ?? ""] ?? [])];
 }
 
-/** Bölüm seçimi zorunlu mu? LGS hariç her sınavda evet. */
+/** Bölüm seçimi zorunlu mu? Bölümsüz sınavlar (LGS, DGS) hariç evet. */
 export function trackRequired(examCode: string | null | undefined): boolean {
   return tracksFor(examCode).length > 0;
 }

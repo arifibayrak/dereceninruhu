@@ -7,6 +7,7 @@ import { listCoaches } from "@/db/queries/admin";
 import { getHiddenStudents, getRoster } from "@/db/queries/roster";
 import { getDuplicateGroups } from "@/db/queries/students";
 import { formatInt } from "@/lib/format";
+import { EXAM_CODES } from "@/lib/tracks";
 import { getViewer } from "@/lib/session";
 import { DuplicateStudents } from "@/components/app/duplicate-students";
 import { RestoreStudentButton } from "@/components/app/hide-student-actions";
@@ -16,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Öğrenciler" };
 
-const FILTERS = ["KPSS", "YKS", "LGS"] as const;
+const FILTERS = EXAM_CODES;
 
 /** Atanmamış öğrenciler için ?koc= değeri. */
 const KOC_YOK = "yok";

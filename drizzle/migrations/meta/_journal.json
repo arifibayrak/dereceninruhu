@@ -218,6 +218,13 @@
       "when": 1788000000000,
       "tag": "0030_kpss_duzeyleri",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1790000000000,
+      "tag": "0031_dgs_maarif",
+      "breakpoints": true
     }
   ]
 }

@@ -26,7 +26,7 @@ export type SeedDb = BetterSQLite3Database<typeof schema>;
 const { examTemplates, examSections, subjects, topics } = schema;
 
 interface TopicGroup {
-  /** Template natural key (KPSS | YKS | LGS). */
+  /** Template natural key (KPSS | YKS | LGS | DGS). */
   template: string;
   /** Section natural key within the template. */
   section: string;
@@ -200,7 +200,7 @@ const KPSS: TopicGroup[] = [
 /*  YKS (TYT) — standart ÖSYM müfredatı                                       */
 /* -------------------------------------------------------------------------- */
 
-const YKS: TopicGroup[] = [
+const YKS_KLASIK: TopicGroup[] = [
   {
     template: "YKS",
     section: "TYT",
@@ -411,6 +411,117 @@ const YKS: TopicGroup[] = [
 ];
 
 /* -------------------------------------------------------------------------- */
+/*  Türkiye Yüzyılı Maarif Modeli — TYT                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Maarif Modeli konuları eski TYT konularının YERİNE değil YANINA eklenir:
+ * 2027 YKS'ye giren 12. sınıflar hâlâ eski müfredatla sınava giriyor. Koç /
+ * öğrenci hangisini kullanacağını seçer. "Maarif · " öneki listede ikisini
+ * ayırır ve 9./10. sınıfta tekrar eden ünite adlarını (Sayılar…) tekilleştirir.
+ * Sıralamada eski konuların arkasına düşerler. Migration 0031 ile birebir aynı.
+ */
+const MAARIF_TYT: Record<string, string[]> = {
+  TUR: [
+    "Sözcükte Anlam",
+    "Cümlede Anlam",
+    "Paragrafta Anlam",
+    "Anlatım Biçimleri",
+    "Düşünceyi Geliştirme Yolları",
+    "Ses Bilgisi",
+    "Yazım Kuralları",
+    "Noktalama İşaretleri",
+    "Sözcük Türleri",
+    "Fiiller",
+    "Ekler",
+    "Cümlenin Ögeleri",
+    "Anlatım Bozuklukları",
+  ],
+  MAT: [
+    "9. Sınıf Sayılar",
+    "9. Sınıf Nicelikler ve Değişimler",
+    "9. Sınıf Algoritma ve Bilişim",
+    "9. Sınıf İstatistiksel Araştırma Süreci",
+    "9. Sınıf Veriden Olasılığa",
+    "10. Sınıf Sayılar",
+    "10. Sınıf Nicelikler ve Değişimler",
+    "10. Sınıf Sayma, Algoritma ve Bilişim",
+    "10. Sınıf İstatistiksel Araştırma Süreci",
+    "10. Sınıf Veriden Olasılığa",
+  ],
+  // Geometri üniteleri GEO alt dersine (net yine MAT'a toplanır).
+  GEO: [
+    "9. Sınıf Geometrik Şekiller",
+    "9. Sınıf Eşlik ve Benzerlik",
+    "10. Sınıf Geometrik Şekiller (Trigonometriye Giriş)",
+    "10. Sınıf Analitik İnceleme",
+  ],
+  TYT_FIZ: [
+    "9. Sınıf Fizik Bilimi ve Kariyer Keşfi",
+    "9. Sınıf Kuvvet ve Hareket",
+    "9. Sınıf Akışkanlar",
+    "9. Sınıf Enerji",
+    "10. Sınıf Kuvvet ve Hareket",
+    "10. Sınıf Enerji",
+    "10. Sınıf Elektrik",
+    "10. Sınıf Dalgalar",
+  ],
+  TYT_KIM: [
+    "Etkileşim",
+    "Çeşitlilik",
+    "Sürdürülebilirlik (Redoks, Yeşil Kimya)",
+  ],
+  TYT_BIY: [
+    "9. Sınıf Yaşam",
+    "9. Sınıf Organizasyon",
+    "10. Sınıf Enerji",
+    "10. Sınıf Ekoloji",
+  ],
+  TYT_TAR: [
+    "Geçmişin İnşa Sürecinde Tarih",
+    "Eski Çağ Medeniyetleri",
+    "Orta Çağ Medeniyetleri",
+  ],
+  TYT_COG: [
+    "Coğrafyanın Doğası",
+    "Mekânsal Bilgi Teknolojileri",
+    "Doğal Sistemler ve Süreçler",
+    "Beşerî Sistemler ve Süreçler",
+    "Ekonomik Faaliyetler",
+    "Afetler ve Sürdürülebilir Çevre",
+    "Bölgeler, Ülkeler ve Küresel Bağlantılar",
+  ],
+  TYT_FEL: ["Felsefeye Giriş ve Temel Kavramlar"],
+  TYT_DIN: ["9-10. Sınıf Din Kültürü ve Ahlak"],
+};
+
+export const MAARIF_PREFIX = "Maarif · ";
+
+const YKS: TopicGroup[] = YKS_KLASIK.map((g) =>
+  g.section === "TYT" && MAARIF_TYT[g.subject]
+    ? {
+        ...g,
+        topics: [
+          ...g.topics,
+          ...MAARIF_TYT[g.subject].map((t) => MAARIF_PREFIX + t),
+        ],
+      }
+    : g,
+);
+
+/* -------------------------------------------------------------------------- */
+/*  DGS — yalnız Türkçe + Matematik; TYT'nin klasik + Maarif konuları          */
+/* -------------------------------------------------------------------------- */
+
+const DGS: TopicGroup[] = ["TUR", "MAT", "GEO"].map((subject) => ({
+  template: "DGS",
+  section: "DGS",
+  subject,
+  topics: YKS.find((g) => g.section === "TYT" && g.subject === subject)!
+    .topics,
+}));
+
+/* -------------------------------------------------------------------------- */
 /*  LGS — 8. sınıf MEB müfredatı                                              */
 /* -------------------------------------------------------------------------- */
 
@@ -515,7 +626,7 @@ const LGS: TopicGroup[] = [
   },
 ];
 
-export const topicSeeds: TopicGroup[] = [...KPSS, ...YKS, ...LGS];
+export const topicSeeds: TopicGroup[] = [...KPSS, ...YKS, ...LGS, ...DGS];
 
 /* -------------------------------------------------------------------------- */
 /*  Runner                                                                    */

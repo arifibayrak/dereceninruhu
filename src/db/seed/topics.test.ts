@@ -12,31 +12,48 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import * as schema from "../schema";
 import { examTemplateSeeds } from "./exam-templates";
-import { seedTopics, topicSeeds, type SeedDb } from "./topics";
+import {
+  MAARIF_PREFIX,
+  seedTopics,
+  topicSeeds,
+  type SeedDb,
+} from "./topics";
 
 const { examTemplates, examSections, subjects, topics } = schema;
 
-function createDbWithSchema(): SeedDb {
+const migrationsDir = path.join(process.cwd(), "drizzle", "migrations");
+
+function runMigrationFile(sqlite: Database.Database, file: string) {
+  const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+  for (const stmt of sql.split("--> statement-breakpoint")) {
+    const trimmed = stmt.trim();
+    if (trimmed) sqlite.exec(trimmed);
+  }
+}
+
+function createDbWithSchema(): { db: SeedDb; sqlite: Database.Database } {
   const sqlite = new Database(":memory:");
   sqlite.pragma("foreign_keys = ON");
-  const migrationsDir = path.join(process.cwd(), "drizzle", "migrations");
   const files = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
     .sort();
-  for (const file of files) {
-    const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
-    for (const stmt of sql.split("--> statement-breakpoint")) {
-      const trimmed = stmt.trim();
-      if (trimmed) sqlite.exec(trimmed);
-    }
-  }
-  return drizzle(sqlite, { schema });
+  for (const file of files) runMigrationFile(sqlite, file);
+  return { db: drizzle(sqlite, { schema }), sqlite };
 }
 
-/** Şablon seed verisinden template/section/subject satırlarını düz ekler. */
+/**
+ * Şablon seed verisinden template/section/subject satırlarını düz ekler.
+ * Migration'ın zaten eklediği şablonlar (DGS — 0031) atlanır.
+ */
 function insertTemplates(db: SeedDb) {
   for (const tpl of examTemplateSeeds) {
+    const exists = db
+      .select({ id: examTemplates.id })
+      .from(examTemplates)
+      .where(eq(examTemplates.code, tpl.code))
+      .get();
+    if (exists) continue;
     const template = db
       .insert(examTemplates)
       .values({ code: tpl.code, name: tpl.name })
@@ -76,6 +93,32 @@ function insertTemplates(db: SeedDb) {
   }
 }
 
+function topicNames(
+  db: SeedDb,
+  templateCode: string,
+  sectionCode: string,
+  subjectCode: string,
+): { name: string; sortOrder: number }[] {
+  return db
+    .select({ name: topics.name, sortOrder: topics.sortOrder })
+    .from(topics)
+    .innerJoin(subjects, eq(subjects.id, topics.subjectId))
+    .innerJoin(examSections, eq(examSections.id, subjects.examSectionId))
+    .innerJoin(
+      examTemplates,
+      eq(examTemplates.id, examSections.examTemplateId),
+    )
+    .where(
+      and(
+        eq(examTemplates.code, templateCode),
+        eq(examSections.code, sectionCode),
+        eq(subjects.code, subjectCode),
+      ),
+    )
+    .all()
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 function topicCountFor(
   db: SeedDb,
   templateCode: string,
@@ -104,9 +147,15 @@ function topicCountFor(
 
 describe("topic seed", () => {
   let db: SeedDb;
+  let sqlite: Database.Database;
+  /** Migration 0031'in boş veritabanına eklediği DGS konuları (seed'den önce). */
+  let dgsFromMigration: Record<string, { name: string; sortOrder: number }[]>;
 
   beforeAll(() => {
-    db = createDbWithSchema();
+    ({ db, sqlite } = createDbWithSchema());
+    dgsFromMigration = Object.fromEntries(
+      ["TUR", "MAT", "GEO"].map((c) => [c, topicNames(db, "DGS", "DGS", c)]),
+    );
     insertTemplates(db);
   });
 
@@ -114,8 +163,38 @@ describe("topic seed", () => {
     const result = seedTopics(db);
     expect(result.missingSubjects).toEqual([]);
     const expected = topicSeeds.reduce((acc, g) => acc + g.topics.length, 0);
-    expect(result.inserted).toBe(expected);
-    expect(result.updated).toBe(0);
+    // DGS konularını migration 0031 zaten ekledi; seed onları yalnız günceller.
+    const dgs = topicSeeds
+      .filter((g) => g.template === "DGS")
+      .reduce((acc, g) => acc + g.topics.length, 0);
+    expect(result.inserted).toBe(expected - dgs);
+    expect(result.updated).toBe(dgs);
+  });
+
+  it("migration 0031 DGS konuları seed ile birebir aynı (ad + sıra)", () => {
+    for (const g of topicSeeds.filter((g) => g.template === "DGS")) {
+      expect(dgsFromMigration[g.subject]).toEqual(
+        g.topics.map((name, i) => ({ name, sortOrder: i + 1 })),
+      );
+    }
+    expect(topicCountFor(db, "DGS", "DGS", "TUR")).toBe(23 + 13);
+    expect(topicCountFor(db, "DGS", "DGS", "MAT")).toBe(29 + 10);
+    expect(topicCountFor(db, "DGS", "DGS", "GEO")).toBe(13 + 4);
+  });
+
+  it("migration 0031 Maarif konuları seed ile aynı ve tekrar çalıştırılabilir", () => {
+    const before = db.select({ id: topics.id }).from(topics).all().length;
+    runMigrationFile(sqlite, "0031_dgs_maarif.sql");
+    runMigrationFile(sqlite, "0031_dgs_maarif.sql");
+    expect(db.select({ id: topics.id }).from(topics).all().length).toBe(before);
+
+    const kim = topicNames(db, "YKS", "TYT", "TYT_KIM");
+    expect(kim.filter((t) => t.name.startsWith(MAARIF_PREFIX))).toHaveLength(3);
+    // Maarif konuları eski konuların ARKASINDA.
+    expect(kim[0].name).toBe("Kimya Bilimi");
+    expect(kim[kim.length - 1].name).toBe(
+      "Maarif · Sürdürülebilirlik (Redoks, Yeşil Kimya)",
+    );
   });
 
   it("seeds the exact KPSS sheet lists", () => {

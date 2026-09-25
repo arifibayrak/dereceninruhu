@@ -11,6 +11,7 @@ import type { z } from "zod";
 import { callAction } from "@/lib/action-client";
 import { createStudent, type CreatedStudent } from "@/actions/students";
 import {
+  type ExamCode,
   trackFieldLabel,
   trackFieldPossessive,
   tracksFor,
@@ -45,6 +46,7 @@ const EXAMS = [
   { value: "KPSS", label: "KPSS" },
   { value: "YKS", label: "YKS" },
   { value: "LGS", label: "LGS" },
+  { value: "DGS", label: "DGS" },
 ] as const;
 
 type FormInput = z.input<typeof createStudentSchema>;
@@ -74,7 +76,7 @@ const FIELD_NAMES: FieldName[] = [
 export type StudentPrefill = {
   fullName?: string;
   phone?: string;
-  examCode?: "KPSS" | "YKS" | "LGS";
+  examCode?: ExamCode;
 };
 
 /** Yeni öğrenci formu + başarı ekranında davet linki ve WhatsApp gönderimi. */

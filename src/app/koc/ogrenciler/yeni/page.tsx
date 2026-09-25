@@ -7,6 +7,7 @@ import {
   type StudentPrefill,
 } from "@/components/app/student-create-form";
 import { SectionHeading } from "@/components/brand/section-heading";
+import { EXAM_CODES } from "@/lib/tracks";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Yeni Öğrenci" };
@@ -27,7 +28,7 @@ export default async function YeniOgrenciPage({
     fullName: str(sp.ad),
     phone: str(sp.telefon),
     examCode:
-      sinav === "KPSS" || sinav === "YKS" || sinav === "LGS" ? sinav : undefined,
+      EXAM_CODES.find((c) => c === sinav),
   };
 
   return (

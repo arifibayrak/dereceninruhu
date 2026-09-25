@@ -1,5 +1,5 @@
 /**
- * Seed definitions for the three exam templates (KPSS, YKS, LGS).
+ * Seed definitions for the exam templates (KPSS, YKS, LGS, DGS).
  * Pure data — no DB access. Upserted by natural keys (template.code,
  * section.code within template, subject.code within section) by the runner.
  *
@@ -405,6 +405,49 @@ export const examTemplateSeeds: TemplateSeed[] = [
             isScored: true,
             sortOrder: 2,
             chartColor: "#059669",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    /*
+     * DGS: yalnız Türkçe (sözel) + Matematik (sayısal), tek oturum, 4 yanlış 1
+     * doğruyu götürür. Bölümsüz (LGS gibi). Ders kodları ve renkleri TYT ile
+     * aynı; konular TYT'den kopyalanır (bkz. topics.ts, migration 0031).
+     */
+    code: "DGS",
+    name: "DGS",
+    tracks: [],
+    sections: [
+      {
+        code: "DGS",
+        name: "Dikey Geçiş Sınavı",
+        wrongPenaltyDivisor: 4,
+        sortOrder: 1,
+        subjects: [
+          {
+            code: "TUR",
+            name: "Türkçe",
+            officialQuestionCount: 50,
+            isScored: true,
+            sortOrder: 1,
+            chartColor: "#E11D48",
+          },
+          {
+            code: "MAT",
+            name: "Matematik",
+            officialQuestionCount: 50,
+            isScored: true,
+            sortOrder: 2,
+            chartColor: "#2563EB",
+          },
+          {
+            code: "GEO",
+            name: "Geometri",
+            isScored: false,
+            parentCode: "MAT",
+            sortOrder: 3,
           },
         ],
       },

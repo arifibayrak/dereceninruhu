@@ -2,6 +2,7 @@ import { z } from "zod";
 import { normalizePhone } from "@/lib/phone";
 import { MAX_TASK_RESOURCES } from "@/lib/plan-resources";
 import {
+  EXAM_CODES,
   isTrackOfExam,
   KPSS_TRACKS,
   trackFieldLabel,
@@ -18,7 +19,7 @@ export const phoneSchema = z
     message: "Geçerli bir cep telefonu girin (5XX XXX XX XX).",
   });
 
-export const examCodeSchema = z.enum(["KPSS", "YKS", "LGS"]);
+export const examCodeSchema = z.enum(EXAM_CODES);
 
 /**
  * Bölüm kodu — YKS'de alan (SAY/EA/SOZ), KPSS'de düzey (LISANS/…).
