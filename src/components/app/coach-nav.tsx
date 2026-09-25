@@ -11,6 +11,7 @@ import {
   InboxIcon,
   LayoutDashboardIcon,
   LibraryIcon,
+  ListTreeIcon,
   MegaphoneIcon,
   MicIcon,
   NewspaperIcon,
@@ -108,6 +109,12 @@ const ENTRIES: NavEntry[] = [
     items: [
       { href: "/koc/icerik", label: "İçerik", icon: LibraryIcon },
       { href: "/koc/blog", label: "Blog", icon: NewspaperIcon },
+      {
+        href: "/koc/konular",
+        label: "Konular",
+        icon: ListTreeIcon,
+        adminOnly: true,
+      },
     ],
   },
   {
