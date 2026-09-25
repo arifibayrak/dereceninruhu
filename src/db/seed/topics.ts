@@ -419,7 +419,8 @@ const YKS_KLASIK: TopicGroup[] = [
  * 2027 YKS'ye giren 12. sınıflar hâlâ eski müfredatla sınava giriyor. Koç /
  * öğrenci hangisini kullanacağını seçer. "Maarif · " öneki listede ikisini
  * ayırır ve 9./10. sınıfta tekrar eden ünite adlarını (Sayılar…) tekilleştirir.
- * Sıralamada eski konuların arkasına düşerler. Migration 0031 ile birebir aynı.
+ * Sıralamada eski konuların arkasına düşerler. Migration 0031 ile birebir aynı
+ * (prod'da seed dışı TYT konuları olduğu için 0032 Maarif sırasını +1000 kaydırır).
  */
 const MAARIF_TYT: Record<string, string[]> = {
   TUR: [
