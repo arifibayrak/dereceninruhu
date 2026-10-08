@@ -102,7 +102,7 @@ export default async function BasarilarPage() {
           <Badge variant="secondary">YKS</Badge>
           <Badge variant="secondary">LGS</Badge>
           <Badge className="bg-gold text-gold-foreground">
-            {ratingLabel}★ · {coachStats.reviewCount} yorum
+            {`${ratingLabel}★ · ${coachStats.reviewCount} yorum`}
           </Badge>
         </div>
       </section>

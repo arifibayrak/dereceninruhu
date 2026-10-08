@@ -50,8 +50,9 @@ export default async function BeklemeListesiPage() {
       <div className="flex flex-col gap-4 rounded-2xl bg-muted/50 p-4 text-sm text-muted-foreground">
         <span className="inline-flex items-center gap-2">
           <StarIcon className="size-4 fill-gold text-gold" />
-          {ratingLabel} yıldız · {coachStats.reviewCount} yorum — Gigbi&apos;de
-          doğrulanabilir
+          <span>
+            {`${ratingLabel} yıldız · ${coachStats.reviewCount} yorum — Gigbi'de doğrulanabilir`}
+          </span>
         </span>
         <span className="inline-flex items-center gap-2">
           <ClockIcon className="size-4" />

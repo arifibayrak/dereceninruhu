@@ -63,7 +63,7 @@ export function SiteFooter({ social }: { social: SocialUrls }) {
             </p>
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
               <StarIcon className="size-4 fill-gold text-gold" />
-              {ratingLabel} · {coachStats.reviewCount} yorum
+              {`${ratingLabel} · ${coachStats.reviewCount} yorum`}
               <a
                 href={coachStats.proofUrl}
                 target="_blank"

@@ -39,7 +39,7 @@ export function ProofStrip({
           ))}
         </span>
         <span className="text-sm text-muted-foreground">
-          {coachStats.reviewCount} yorum · KPSS / YKS / LGS
+          {`${coachStats.reviewCount} yorum · KPSS / YKS / LGS`}
         </span>
       </div>
       {credentials.length > 0 && (

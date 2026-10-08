@@ -175,7 +175,7 @@ export default function MarkaPage() {
               </Button>
               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                 <StarIcon className="size-4 fill-gold text-gold" />
-                {ratingLabel} · {coachStats.reviewCount} yorum
+                {`${ratingLabel} · ${coachStats.reviewCount} yorum`}
               </span>
             </div>
           </div>
@@ -586,7 +586,7 @@ export default function MarkaPage() {
                 ))}
               </span>
               <span className="text-sm text-muted-foreground">
-                {coachStats.reviewCount} yorum · KPSS / YKS / LGS
+                {`${coachStats.reviewCount} yorum · KPSS / YKS / LGS`}
               </span>
             </div>
             <Separator className="hidden h-8 sm:block" orientation="vertical" />

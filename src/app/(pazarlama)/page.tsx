@@ -169,8 +169,9 @@ export default async function HomePage() {
                   <StarIcon key={i} className="size-4 fill-gold text-gold" />
                 ))}
               </span>
-              {ratingLabel} · {coachStats.reviewCount} yorum · Gigbi&apos;de
-              doğrulanabilir
+              <span>
+                {`${ratingLabel} · ${coachStats.reviewCount} yorum · Gigbi'de doğrulanabilir`}
+              </span>
             </span>
           </HeroReveal>
           <div className="px-2 py-6 sm:px-6 lg:px-0">
@@ -326,8 +327,7 @@ export default async function HomePage() {
                 href="/basarilar"
                 className="flex w-40 shrink-0 items-center justify-center rounded-lg bg-primary/8 p-3 text-center text-xs font-medium text-primary transition-colors hover:bg-primary/15"
               >
-                +{Math.max(coachStats.reviewCount - featured.length, 0)} yorum
-                daha →
+                {`+${Math.max(coachStats.reviewCount - featured.length, 0)} yorum daha →`}
               </Link>
             </div>
           </div>
