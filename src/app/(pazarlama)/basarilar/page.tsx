@@ -25,8 +25,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = buildMetadata({
   title: "Başarı Hikayeleri",
-  description:
-    "Derecenin Ruhu öğrencilerinin ve velilerinin gerçek yorumları — Gigbi üzerinde 4,9 yıldız ortalama, 83 yorum.",
+  description: `Derecenin Ruhu öğrencilerinin ve velilerinin gerçek yorumları — Gigbi üzerinde ${ratingLabel} yıldız ortalama, ${coachStats.reviewCount} yorum.`,
   path: "/basarilar",
 });
 

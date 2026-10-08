@@ -46,7 +46,7 @@ export const dynamic = "force-dynamic";
 export const metadata = buildMetadata({
   titleAbsolute: "Derecenin Ruhu — LGS, YKS ve KPSS Birebir Koçluk",
   description:
-    "Derece yapmış bir koçla birebir sınav koçluğu: haftalık program, soru takibi ve deneme analiziyle netlerini artır, hedefine ulaş. 4,9★ / 83 yorum.",
+    `Derece yapmış bir koçla birebir sınav koçluğu: haftalık program, soru takibi ve deneme analiziyle netlerini artır, hedefine ulaş. ${ratingLabel}★ / ${coachStats.reviewCount} yorum.`,
   path: "/",
 });
 

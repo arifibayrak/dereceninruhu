@@ -34,7 +34,7 @@ export const dynamic = "force-dynamic";
 export const metadata = buildMetadata({
   title: "Koçlar",
   description:
-    "Ahmet Hakan Almak — YKS Türkiye 876., KPSS 93 puan. 3+ yıldır LGS, YKS ve KPSS öğrencilerine birebir koçluk. 4,9★ / 83 yorum.",
+    `Ahmet Hakan Almak — YKS Türkiye 876., KPSS 93 puan. 3+ yıldır LGS, YKS ve KPSS öğrencilerine birebir koçluk. ${ratingLabel}★ / ${coachStats.reviewCount} yorum.`,
   path: "/koclar",
 });
 

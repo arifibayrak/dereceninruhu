@@ -1,6 +1,6 @@
 /**
  * Faz 3 CMS içerik modülü — Ahmet Hakan Almak'ın Gigbi profilinden
- * (gigbi.com/p/ahmet-hakan-almak1723581674 — 4.9★, 83 yorum) türetilen gerçek
+ * (gigbi.com/p/ahmet-hakan-almak1723581674 — 4.9★, 91 yorum) türetilen gerçek
  * içerik + koçluk sitesi için yazılmış SSS / paket / blog tohumları.
  *
  * Saf veri modülü — server, client ve seed script'ten güvenle import edilir.
@@ -38,7 +38,7 @@ export const coachContent = {
 /** Marka düzeyi sosyal kanıt — Gigbi kaynaklı; tablo değil sabit. */
 export const coachStats = {
   ratingAvg: 4.9,
-  reviewCount: 83,
+  reviewCount: 91,
   proofUrl: "https://www.gigbi.com/p/ahmet-hakan-almak1723581674",
 } as const;
 

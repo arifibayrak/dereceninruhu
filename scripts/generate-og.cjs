@@ -96,7 +96,7 @@ const ogTree = h(
   h(
     "div",
     { style: { display: "flex", alignItems: "center", fontSize: 27, color: "rgba(255,255,255,0.62)" } },
-    "5,0 / 5 yıldız   ·   77 yorum   ·   dereceninruhu.com",
+    "4,9 / 5 yıldız   ·   91 yorum   ·   dereceninruhu.com",
   ),
 );
 
