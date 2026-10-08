@@ -129,7 +129,8 @@ export const teamCoachSeeds: TeamCoachSeed[] = [
 export type TestimonialSeed = {
   /** Sitede görünen isim (ad + soyadın ilk harfi). */
   studentName: string;
-  exam: SeedExam;
+  /** null = Gigbi yorumu sınavı belirtmiyor → kartta rozet çizilmez. */
+  exam: SeedExam | null;
   quote: string;
   /** Yorumun Gigbi'deki tarihi — testimonials.created_at'e yazılır. */
   date: string;
@@ -259,6 +260,65 @@ export const testimonialSeeds: TestimonialSeed[] = [
     date: "2025-12-31",
     quote: "Bilgisiyle, ilgisiyle ve enerjisiyle fark yaratan…",
     isActive: false,
+  },
+  // -- Eylül 2026 yorumları. Gigbi sınavı göstermiyor; yalnız metinden
+  //    anlaşılan etiketlendi, kalanı null (rozet yok). ----------------------
+  {
+    studentName: "Gizem N.",
+    exam: null,
+    date: "2026-09-25",
+    quote:
+      "56 netle başladık ve 3 aylık planlı, disiplinli çalışmanın sonunda 81 neti gördüm. İyi ki Ahmet Hoca 🙏🏻🤍",
+    isActive: true,
+  },
+  {
+    studentName: "Leyla Ü. (veli)",
+    exam: "YKS",
+    date: "2026-09-25",
+    quote:
+      "Ben oğluma bir koç arıyordum fakat bir abi buldum. Disiplini, çalışma kalitesi gayet iyi gidiyor. " +
+      "Biz YKS için başvurmuştuk fakat kendisi gençleri anlayan biri olarak önce KPSS'ye çalıştırmak istedi. " +
+      "Yani bir tek sınav için değil, gençlerin geleceğini de düşündüğü için kendisine teşekkür ediyorum.",
+    isActive: true,
+  },
+  {
+    studentName: "Semanur S.",
+    exam: null,
+    date: "2026-09-25",
+    quote:
+      "Çok iyi bir koç. Pes etmek istediğim zamanlarda bana destek olup moralimi iyi tuttuğu için çok teşekkür ederim kendisine ❤️",
+    isActive: true,
+  },
+  {
+    studentName: "Kerem A.",
+    exam: null,
+    date: "2026-09-25",
+    quote:
+      "Her açıdan öğrencisi ile ilgilenen ve yanında olan bir koç. Herkese şiddetle tavsiye ediyorum 👍👍",
+    isActive: true,
+  },
+  {
+    studentName: "Mehmet B.",
+    exam: null,
+    date: "2026-09-26",
+    quote:
+      "Aldığım bu hizmetten gayet memnunum. Ahmet Hocam da gerçekten işinde ehl-i pir; gösterdiği özen ve ilgi için teşekkür ederim.",
+    isActive: true,
+  },
+  {
+    studentName: "Cebrail A.",
+    exam: null,
+    date: "2026-09-27",
+    quote:
+      "Kesinlikle tavsiye ederim. Kız arkadaşım için görüştük; sayesinde netleri ve günlük ders saatleri iki katına çıkarak sorumluluklarını daha fazla yerine getirmenizi sağlıyor.",
+    isActive: true,
+  },
+  {
+    studentName: "Yaren T.",
+    exam: null,
+    date: "2026-09-25",
+    quote: "0'dan tepeye taşıdınız, emeğiniz çok büyük hocam 🙏🙏",
+    isActive: true,
   },
 ];
 

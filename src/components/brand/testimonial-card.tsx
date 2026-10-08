@@ -6,8 +6,11 @@ import { cn } from "@/lib/utils";
 export type Testimonial = {
   /** Gizlilik: sitede ad + soyadın ilk harfi, örn. "Merve K." */
   displayName: string;
-  /** Genelde "LGS" | "YKS" | "KPSS"; CMS serbest metnine tolerans var. */
-  exam: string;
+  /**
+   * Genelde "LGS" | "YKS" | "KPSS"; CMS serbest metnine tolerans var.
+   * Boşsa rozet çizilmez — kaynak (Gigbi) sınavı söylemiyorsa uydurmuyoruz.
+   */
+  exam?: string | null;
   quote: string;
   /** ISO tarih (örn. "2026-07-09") — "Temmuz 2026" olarak gösterilir. */
   date?: string;
@@ -78,16 +81,18 @@ export function TestimonialCard({
             </span>
           )}
         </div>
-        <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-          <span
-            aria-hidden
-            className={cn(
-              "size-1.5 rounded-full",
-              EXAM_DOT[exam] ?? "bg-muted-foreground",
-            )}
-          />
-          {exam}
-        </span>
+        {exam && (
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+            <span
+              aria-hidden
+              className={cn(
+                "size-1.5 rounded-full",
+                EXAM_DOT[exam] ?? "bg-muted-foreground",
+              )}
+            />
+            {exam}
+          </span>
+        )}
       </figcaption>
     </figure>
   );

@@ -57,7 +57,8 @@ import type { PackageKind } from "@/lib/ozel-ders";
 
 export type PublicTestimonial = {
   displayName: string;
-  exam: string;
+  /** NULL = sınav bilinmiyor → kartta rozet yok. */
+  exam: string | null;
   quote: string;
   result?: string | null;
   /** ISO tarih — kart "Temmuz 2026" olarak gösterir. */
@@ -154,7 +155,7 @@ export async function getPublicTestimonials(): Promise<PublicTestimonial[]> {
   if (rows.length > 0) {
     return rows.map((r) => ({
       displayName: r.studentName,
-      exam: r.exam ?? "YKS",
+      exam: r.exam,
       quote: r.quote,
       result: r.result,
       date: r.createdAt.toISOString(),
