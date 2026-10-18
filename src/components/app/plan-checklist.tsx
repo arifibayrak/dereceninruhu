@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2Icon,
@@ -8,11 +7,8 @@ import {
   CircleIcon,
   GraduationCapIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 
-import { useRefresh } from "@/lib/use-refresh";
-import { callAction } from "@/lib/action-client";
-import { togglePlanTaskDone } from "@/actions/plans";
+import { setPlanTaskDone, usePlanTaskDone } from "@/lib/plan-task-done";
 import { formatInt } from "@/lib/format";
 import { formatLessonMinutes } from "@/lib/ozel-ders";
 import { DAY_COLORS, type DayColorKey } from "@/lib/plan-layout";
@@ -54,25 +50,14 @@ export type ChecklistDay = {
   lessons?: ChecklistLesson[];
 };
 
-/** İyimser tamam/geri-al: yerel override + server action + refresh. */
+/**
+ * İyimser tamam/geri-al — ızgarayla ORTAK depo (`@/lib/plan-task-done`).
+ * Sayfa yenilenmez: yeni durum yerelde tutulur, action arkada kaydeder.
+ */
 function useTaskToggle() {
-  const { refresh } = useRefresh();
-  const [overrides, setOverrides] = useState<Record<number, boolean>>({});
-
-  const doneOf = (t: ChecklistTask) => overrides[t.id] ?? t.isDone;
-
-  const toggle = async (t: ChecklistTask) => {
-    const next = !doneOf(t);
-    setOverrides((prev) => ({ ...prev, [t.id]: next }));
-    const res = await callAction(togglePlanTaskDone, { taskId: t.id, isDone: next });
-    if (!res.ok) {
-      setOverrides((prev) => ({ ...prev, [t.id]: !next }));
-      toast.error(res.error);
-    } else {
-      refresh();
-    }
-  };
-
+  const isDone = usePlanTaskDone();
+  const doneOf = (t: ChecklistTask) => isDone(t.id, t.isDone);
+  const toggle = (t: ChecklistTask) => void setPlanTaskDone(t.id, !doneOf(t));
   return { doneOf, toggle };
 }
 
@@ -237,8 +222,10 @@ function DaySection({
       <div
         className={cn(
           // Yapışkan: uzun günlerde hangi güne baktığın kaybolmasın.
-          "sticky top-0 z-10 -mx-1 flex items-baseline justify-between gap-2 bg-background/95 px-1 py-1.5 backdrop-blur",
-          isToday && "rounded-lg bg-primary/10 backdrop-blur-none",
+          // Düz zemin: her gün başlığında backdrop-blur, kaydırırken düşük uçlu
+          // Android'de kare kaçırtıyordu.
+          "sticky top-0 z-10 -mx-1 flex items-baseline justify-between gap-2 bg-background px-1 py-1.5",
+          isToday && "rounded-lg bg-primary/10",
         )}
       >
         <h2

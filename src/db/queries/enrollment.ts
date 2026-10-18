@@ -33,12 +33,16 @@ export type EnrollmentDetail = {
     inviteCode: string | null;
     userId: string | null;
     status: "active" | "inactive" | "alumni";
+    /** Özel öğrenci grubu ("bilad") — null = normal öğrenci. */
+    segment: "bilad" | null;
   };
   enrollment: {
     id: number;
     examTemplateId: number;
     targetText: string | null;
     startDate: Date | null;
+    /** Erişim bitişi — yalnız gösterim, hiçbir yerde zorlanmaz. */
+    endDate: Date | null;
     examCode: string;
     examName: string;
     trackCode: string | null;
@@ -66,17 +70,23 @@ export type EnrollmentDetail = {
 export async function getEnrollmentDetailByStudentId(
   studentId: number,
 ): Promise<EnrollmentDetail | null> {
-  const db = getDb();
-  const student = await db.query.students.findFirst({
+  const student = await getDb().query.students.findFirst({
     where: eq(students.id, studentId),
   });
-  if (!student) return null;
+  return student ? detailForStudent(student) : null;
+}
+
+/** Öğrenci satırı elde — aktif kaydı + sınav/alan/koç ile birleştirir. */
+async function detailForStudent(
+  student: typeof students.$inferSelect,
+): Promise<EnrollmentDetail | null> {
+  const db = getDb();
   // Gizlenmiş (soft-delete) öğrenci: kokpit 404, öğrencinin kendi sayfaları
   // boş (giriş engeli), ajan işlem yapamaz. Geri getirmek deletedAt'i temizler.
   if (student.deletedAt) return null;
   const enrollment = await db.query.enrollments.findFirst({
     where: and(
-      eq(enrollments.studentId, studentId),
+      eq(enrollments.studentId, student.id),
       eq(enrollments.status, "active"),
     ),
     with: {
@@ -105,12 +115,14 @@ export async function getEnrollmentDetailByStudentId(
       inviteCode: student.inviteCode,
       userId: student.userId,
       status: student.status,
+      segment: student.segment ?? null,
     },
     enrollment: {
       id: enrollment.id,
       examTemplateId: enrollment.examTemplateId,
       targetText: enrollment.targetText,
       startDate: enrollment.startDate,
+      endDate: enrollment.endDate,
       examCode: enrollment.examTemplate.code,
       examName: enrollment.examTemplate.name,
       trackCode: enrollment.track?.code ?? null,
@@ -136,8 +148,7 @@ export async function getEnrollmentDetailByUserId(
   const student = await db.query.students.findFirst({
     where: eq(students.userId, userId),
   });
-  if (!student) return null;
-  return getEnrollmentDetailByStudentId(student.id);
+  return student ? detailForStudent(student) : null;
 }
 
 /** Bir bölümün alan-filtreli ders listeleri (soru takibi + deneme girişi). */

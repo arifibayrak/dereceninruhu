@@ -24,8 +24,16 @@ const KOC_YOK = "yok";
 
 const HIDDEN_DATE_FMT = new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" });
 
-function rosterHref(params: { sinav?: string | null; koc?: string | null }) {
+/** BİLAD öğrencileri için ?grup= değeri. */
+const GRUP_BILAD = "bilad";
+
+function rosterHref(params: {
+  sinav?: string | null;
+  koc?: string | null;
+  grup?: string | null;
+}) {
   const qs = new URLSearchParams();
+  if (params.grup) qs.set("grup", params.grup);
   if (params.sinav) qs.set("sinav", params.sinav);
   if (params.koc) qs.set("koc", params.koc);
   const s = qs.toString();
@@ -35,9 +43,9 @@ function rosterHref(params: { sinav?: string | null; koc?: string | null }) {
 export default async function OgrencilerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sinav?: string; koc?: string }>;
+  searchParams: Promise<{ sinav?: string; koc?: string; grup?: string }>;
 }) {
-  const { sinav, koc } = await searchParams;
+  const { sinav, koc, grup } = await searchParams;
   const viewer = await getViewer();
   if (!viewer) redirect("/giris");
   const isAdmin = viewer.role === "admin";
@@ -55,9 +63,13 @@ export default async function OgrencilerPage({
       ? koc
       : null;
 
-  let rows = activeFilter
-    ? roster.filter((r) => r.examCode === activeFilter)
+  const biladCount = roster.filter((r) => r.segment === "bilad").length;
+  const activeGrup = grup === GRUP_BILAD && biladCount > 0 ? GRUP_BILAD : null;
+
+  let rows = activeGrup
+    ? roster.filter((r) => r.segment === "bilad")
     : roster;
+  if (activeFilter) rows = rows.filter((r) => r.examCode === activeFilter);
   if (activeKoc) {
     rows =
       activeKoc === KOC_YOK
@@ -87,19 +99,31 @@ export default async function OgrencilerPage({
         <div data-tour="ogrenciler-filtre" className="flex flex-wrap items-center gap-2">
           <FilterChip
             href={rosterHref({ koc: activeKoc })}
-            active={activeFilter === null}
+            active={activeFilter === null && activeGrup === null}
           >
             Tümü
           </FilterChip>
           {FILTERS.map((f) => (
             <FilterChip
               key={f}
-              href={rosterHref({ sinav: f, koc: activeKoc })}
+              href={rosterHref({ sinav: f, koc: activeKoc, grup: activeGrup })}
               active={activeFilter === f}
             >
               {f}
             </FilterChip>
           ))}
+          {biladCount > 0 && (
+            <FilterChip
+              href={rosterHref({
+                grup: activeGrup ? null : GRUP_BILAD,
+                sinav: activeFilter,
+                koc: activeKoc,
+              })}
+              active={activeGrup !== null}
+            >
+              BİLAD · {formatInt(biladCount)}
+            </FilterChip>
+          )}
         </div>
 
         {isAdmin && (
@@ -108,7 +132,7 @@ export default async function OgrencilerPage({
               Koça göre:
             </span>
             <FilterChip
-              href={rosterHref({ sinav: activeFilter })}
+              href={rosterHref({ sinav: activeFilter, grup: activeGrup })}
               active={activeKoc === null}
             >
               Tümü
@@ -116,14 +140,14 @@ export default async function OgrencilerPage({
             {coaches.map((c) => (
               <FilterChip
                 key={c.id}
-                href={rosterHref({ sinav: activeFilter, koc: c.id })}
+                href={rosterHref({ sinav: activeFilter, koc: c.id, grup: activeGrup })}
                 active={activeKoc === c.id}
               >
                 {c.name}
               </FilterChip>
             ))}
             <FilterChip
-              href={rosterHref({ sinav: activeFilter, koc: KOC_YOK })}
+              href={rosterHref({ sinav: activeFilter, koc: KOC_YOK, grup: activeGrup })}
               active={activeKoc === KOC_YOK}
             >
               Atanmamış{unassignedCount > 0 ? ` · ${formatInt(unassignedCount)}` : ""}
@@ -139,7 +163,7 @@ export default async function OgrencilerPage({
           </span>
           <div className="flex flex-col gap-1">
             <p className="font-heading text-lg font-semibold">
-              {activeKoc
+              {activeKoc || activeGrup
                 ? "Bu filtrede öğrenci yok"
                 : activeFilter
                   ? `${activeFilter} öğrencisi yok`
@@ -176,6 +200,8 @@ export default async function OgrencilerPage({
             inviteAccepted: r.inviteAccepted,
             inviteCode: r.inviteCode,
             coachUserId: r.coachUserId,
+            segment: r.segment,
+            endDate: r.endDate,
           }))}
           coaches={coaches.map((c) => ({ id: c.id, name: c.name }))}
           isAdmin={isAdmin}

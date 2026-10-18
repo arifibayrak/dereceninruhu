@@ -64,7 +64,14 @@ export type RosterTableRow = {
   inviteAccepted: boolean;
   inviteCode: string | null;
   coachUserId: string | null;
+  segment: "bilad" | null;
+  endDate: Date | null;
 };
+
+const END_DATE_FMT = new Intl.DateTimeFormat("tr-TR", {
+  dateStyle: "medium",
+  timeZone: "Europe/Istanbul",
+});
 
 const UNASSIGNED = "yok";
 
@@ -331,6 +338,24 @@ export function RosterTable({
                         >
                           {r.fullName}
                         </Link>
+                        {r.segment === "bilad" && (
+                          <Badge
+                            variant="outline"
+                            className="ml-2 align-middle"
+                            title={
+                              r.endDate
+                                ? `Erişim bitiş: ${END_DATE_FMT.format(r.endDate)}`
+                                : undefined
+                            }
+                          >
+                            BİLAD
+                          </Badge>
+                        )}
+                        {r.segment === "bilad" && r.endDate && (
+                          <span className="block text-xs font-normal text-muted-foreground">
+                            Erişim bitiş: {END_DATE_FMT.format(r.endDate)}
+                          </span>
+                        )}
                       </TableCell>
                       {isAdmin && (
                         <TableCell>

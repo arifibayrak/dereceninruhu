@@ -162,6 +162,22 @@ export const setPrimaryTrackSchema = z.object({
 export type SetPrimaryTrackInput = z.infer<typeof setPrimaryTrackSchema>;
 
 /**
+ * Koç: öğrencinin özel grubunu (BİLAD) ve erişim bitişini ayarlar. Öğrencinin
+ * kendi profil formundan AYRI tutulur — öğrenci kendini gruba alamamalı.
+ */
+export const setStudentSegmentSchema = z.object({
+  studentId: z.coerce.number().int().positive(),
+  /** Boş dize = normal öğrenci. */
+  segment: z.enum(["bilad"]).or(z.literal("")),
+  /** YYYY-AA-GG; boş dize = bitiş yok. */
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Geçerli bir tarih girin.")
+    .or(z.literal("")),
+});
+export type SetStudentSegmentInput = z.infer<typeof setStudentSegmentSchema>;
+
+/**
  * Profil düzenleme — sınav/alan değiştirmez, yalnız kişisel bilgiler + hedef.
  * Hem koç (öğrenci profili) hem öğrenci (kendi profili) için kullanılır.
  */

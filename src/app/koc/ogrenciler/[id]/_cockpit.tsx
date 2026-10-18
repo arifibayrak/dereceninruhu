@@ -88,6 +88,9 @@ export async function CockpitShell({
                 {label}
               </Badge>
             ))}
+            {student.segment === "bilad" && (
+              <Badge variant="outline">BİLAD</Badge>
+            )}
             {student.userId ? (
               <Badge className="bg-success/10 text-success">
                 Davet kabul edildi

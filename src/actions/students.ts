@@ -19,6 +19,7 @@ import {
   createStudentSchema,
   setPrimaryTrackSchema,
   setSecondaryExamSchema,
+  setStudentSegmentSchema,
   updateStudentProfileSchema,
 } from "@/lib/validation";
 import {
@@ -309,6 +310,57 @@ export async function setPrimaryTrack(
         trackName: trackLabel(template.code, v.trackCode || null),
       },
     };
+  });
+}
+
+/**
+ * Koç: BİLAD grubu + erişim bitişi. Bitiş yalnız gösterilir; erişimi kesmez
+ * (süre dolunca koç öğrenciyi elle pasife alır).
+ */
+export async function setStudentSegment(
+  input: unknown,
+): Promise<ActionResult<{ studentId: number }>> {
+  return guarded(async () => {
+    const coach = await requireCoach();
+    const parsed = setStudentSegmentSchema.safeParse(input);
+    if (!parsed.success) {
+      return actionError(
+        "Lütfen formu kontrol edin.",
+        fieldErrorsOf(parsed.error.issues),
+      );
+    }
+    const v = parsed.data;
+    const db = getDb();
+
+    const enrollment = await db.query.enrollments.findFirst({
+      where: and(
+        eq(enrollments.studentId, v.studentId),
+        eq(enrollments.status, "active"),
+      ),
+      columns: { id: true, coachUserId: true },
+    });
+    if (!enrollment) return actionError("Aktif kayıt bulunamadı.");
+    if (coach.role === "coach" && enrollment.coachUserId !== coach.id) {
+      return actionError("Bu öğrenci size atanmamış.");
+    }
+
+    const now = new Date();
+    // Gün sonu, İstanbul (+03:00): bitiş günü boyunca erişim sürüyor sayılır.
+    const endDate = v.endDate ? new Date(`${v.endDate}T23:59:59+03:00`) : null;
+    await db.batch([
+      db
+        .update(students)
+        .set({ segment: v.segment || null, updatedAt: now })
+        .where(eq(students.id, v.studentId)),
+      db
+        .update(enrollments)
+        .set({ endDate, updatedAt: now })
+        .where(eq(enrollments.id, enrollment.id)),
+    ]);
+
+    revalidatePath(`/koc/ogrenciler/${v.studentId}`);
+    revalidatePath("/koc/ogrenciler");
+    return { ok: true, data: { studentId: v.studentId } };
   });
 }
 

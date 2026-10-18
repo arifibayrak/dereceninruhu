@@ -5,6 +5,8 @@ import { CoachAssignSelect } from "@/components/app/coach-assign-select";
 import { PrimaryTrackSelect } from "@/components/app/primary-track-select";
 import { SecondaryExamSelect } from "@/components/app/secondary-exam-select";
 import { StudentProfileForm } from "@/components/app/student-profile-form";
+import { StudentSegmentControl } from "@/components/app/student-segment-control";
+import { trDayKey } from "@/lib/dates";
 import {
   Card,
   CardContent,
@@ -75,6 +77,15 @@ export default async function ProfilPage({
                 primaryExamCode={enrollment.examCode}
                 secondaryExamCode={enrollment.secondaryExamCode}
                 secondaryTrackCode={enrollment.secondaryTrackCode}
+              />
+            </dd>
+            <dt className="self-start pt-0.5 text-muted-foreground">Grup</dt>
+            <dd>
+              <StudentSegmentControl
+                key={`${student.segment ?? "yok"}:${enrollment.endDate?.getTime() ?? 0}`}
+                studentId={studentId}
+                segment={student.segment}
+                endDate={enrollment.endDate ? trDayKey(enrollment.endDate) : ""}
               />
             </dd>
             <ProfileRow

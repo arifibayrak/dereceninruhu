@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
@@ -13,12 +13,9 @@ import { toast } from "sonner";
 
 import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
-import {
-  addPlanTask,
-  deletePlanTask,
-  togglePlanTaskDone,
-  updatePlanTask,
-} from "@/actions/plans";
+import { addPlanTask, deletePlanTask, updatePlanTask } from "@/actions/plans";
+import { setPlanTaskDone, usePlanTaskDone } from "@/lib/plan-task-done";
+import { useIsDesktop } from "@/lib/use-is-desktop";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -127,32 +124,16 @@ type DialogState =
   | { mode: "edit"; task: GridTask }
   | null;
 
-/** İyimser tamam/geri-al — check modunda konu hücresine dokununca. */
-function useDoneToggle() {
-  const { refresh } = useRefresh();
-  const [overrides, setOverrides] = useState<Record<number, boolean>>({});
-  const doneOf = (t: GridTask) => overrides[t.id] ?? t.isDone;
-  const toggle = async (t: GridTask) => {
-    const next = !doneOf(t);
-    setOverrides((prev) => ({ ...prev, [t.id]: next }));
-    const res = await callAction(togglePlanTaskDone, { taskId: t.id, isDone: next });
-    if (!res.ok) {
-      setOverrides((prev) => ({ ...prev, [t.id]: !next }));
-      toast.error(res.error);
-    } else {
-      refresh();
-    }
-  };
-  return { doneOf, toggle };
-}
-
 /**
  * Ders × konu programı (Görsel: HAFTALIK DERS ÇALIŞMA PROGRAMI). Masaüstünde
  * ders kolonları (yatay kaydırılır), mobilde ders başına açılır kapanır kart.
  * `check` modunda öğrenci konuları işaretler; `edit` modunda koç ya da öğrenci
  * kendi taslağında konu ekler/düzenler/siler.
+ *
+ * memo: koç kurucusunda motto/not yazarken ızgara yeniden çizilmesin (tüm
+ * prop'lar sunucudan gelir, referansları sabittir).
  */
-export function ProgramGrid({
+export const ProgramGrid = memo(function ProgramGrid({
   enrollmentId,
   weekKey,
   subjects,
@@ -163,7 +144,8 @@ export function ProgramGrid({
 }: Props) {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [examFilter, setExamFilter] = useState<string | null>(null);
-  const { doneOf, toggle } = useDoneToggle();
+  const doneOf = usePlanTaskDone();
+  const isDesktop = useIsDesktop();
   const allColumns = useMemo(
     () => toColumns(subjects, tasks),
     [subjects, tasks],
@@ -192,7 +174,6 @@ export function ProgramGrid({
         )
       : allColumns;
 
-  const cellProps = { editable, doneOf, toggle, setDialog };
 
   return (
     <div className="flex flex-col gap-3">
@@ -216,7 +197,11 @@ export function ProgramGrid({
           ))}
         </div>
       )}
-      {/* Masaüstü — ders kolonları, yatay kaydırma + yapışkan başlıklar yok */}
+      {/*
+        Masaüstü — ders kolonları, yatay kaydırma + yapışkan başlıklar yok.
+        Ekran genişliği bilinince yalnız uyan düzen render edilir (null = SSR).
+      */}
+      {isDesktop !== false && (
       <div className="hidden overflow-x-auto rounded-2xl bg-card p-3 ring-1 ring-foreground/10 lg:block">
         <div className="flex gap-3">
           {columns.map((col) => (
@@ -240,7 +225,13 @@ export function ProgramGrid({
                 </span>
               </div>
               {col.tasks.map((t) => (
-                <TopicCell key={t.id} task={t} {...cellProps} />
+                <TopicCell
+                  key={t.id}
+                  task={t}
+                  done={doneOf(t.id, t.isDone)}
+                  editable={editable}
+                  setDialog={setDialog}
+                />
               ))}
               {editable && (
                 <Button
@@ -259,8 +250,10 @@ export function ProgramGrid({
           ))}
         </div>
       </div>
+      )}
 
       {/* Mobil — ders başına açılır kapanır kart */}
+      {isDesktop !== true && (
       <div className="flex flex-col gap-2.5 lg:hidden">
         {columns.map((col) => (
           <SubjectCard
@@ -269,11 +262,11 @@ export function ProgramGrid({
             multiExam={multiExam}
             editable={editable}
             doneOf={doneOf}
-            toggle={toggle}
             setDialog={setDialog}
           />
         ))}
       </div>
+      )}
 
       {editable && dialog && (
         <Dialog
@@ -307,7 +300,7 @@ export function ProgramGrid({
       )}
     </div>
   );
-}
+});
 
 /* -------------------------------------------------------------------------- */
 /*  Konu hücresi                                                               */
@@ -326,26 +319,23 @@ function TopicMeta({ task }: { task: GridTask }) {
   return <span className="text-[11px] text-muted-foreground">{meta}</span>;
 }
 
-function TopicCell({
+/** memo: bir konu işaretlenince yalnız o hücre yeniden çizilir. */
+const TopicCell = memo(function TopicCell({
   task,
+  done,
   editable,
-  doneOf,
-  toggle,
   setDialog,
 }: {
   task: GridTask;
+  done: boolean;
   editable: boolean;
-  doneOf: (t: GridTask) => boolean;
-  toggle: (t: GridTask) => void;
   setDialog: (s: DialogState) => void;
 }) {
-  const done = doneOf(task);
-
   if (!editable) {
     return (
       <button
         type="button"
-        onClick={() => toggle(task)}
+        onClick={() => void setPlanTaskDone(task.id, !done)}
         aria-pressed={done}
         className={cn(
           "flex w-full items-start gap-2 rounded-lg bg-muted/50 p-2 text-left transition-colors active:bg-muted",
@@ -391,7 +381,7 @@ function TopicCell({
       </div>
     </div>
   );
-}
+});
 
 function DeleteTopicButton({ taskId }: { taskId: number }) {
   const { refresh } = useRefresh();
@@ -430,20 +420,18 @@ function SubjectCard({
   multiExam,
   editable,
   doneOf,
-  toggle,
   setDialog,
 }: {
   col: Column;
   /** Çift sınavlı kayıtta ders adının altına sınav kodu yazılır. */
   multiExam: boolean;
   editable: boolean;
-  doneOf: (t: GridTask) => boolean;
-  toggle: (t: GridTask) => void;
+  doneOf: (taskId: number, serverDone: boolean) => boolean;
   setDialog: (s: DialogState) => void;
 }) {
   // Dolu dersler açık başlar; boş dersler (edit) kapalı.
   const [open, setOpen] = useState(col.tasks.length > 0);
-  const done = col.tasks.filter(doneOf).length;
+  const done = col.tasks.filter((t) => doneOf(t.id, t.isDone)).length;
 
   return (
     <section className="flex flex-col rounded-xl bg-card ring-1 ring-foreground/10">
@@ -486,9 +474,8 @@ function SubjectCard({
             <TopicCell
               key={t.id}
               task={t}
+              done={doneOf(t.id, t.isDone)}
               editable={editable}
-              doneOf={doneOf}
-              toggle={toggle}
               setDialog={setDialog}
             />
           ))}

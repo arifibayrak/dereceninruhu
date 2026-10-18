@@ -67,20 +67,20 @@ export default async function OgrenciProgramPage({
 
   // Taslaklar dahil çek; yalnız öğrencinin KENDİ taslağı ya da yayınlanmış plan
   // görünür (koçun yayınlanmamış taslağı öğrenciye gösterilmez).
-  const raw = await getWeeklyPlan(enrollment.id, monday);
-  const isPublished =
-    raw?.status === "published" || raw?.status === "completed";
-  const isOwnDraft = raw?.status === "draft" && raw.proposedByStudent;
-  const visible = isPublished || isOwnDraft ? raw : null;
-  const status = isPublished ? "published" : isOwnDraft ? "draft-own" : "none";
-
-  const [sections, resources, layout, weekLessons] = await Promise.all([
+  // Plan ve geri kalanı birbirinden bağımsız — hepsi tek dalgada.
+  const [raw, sections, resources, layout, weekLessons] = await Promise.all([
+    getWeeklyPlan(enrollment.id, monday),
     getSectionsForEnrollment(enrollment),
     getResourcesForEnrollment(enrollment.id),
     getPlanDayLayout(enrollment.id),
     // Özel dersler programda GÖRÜNÜR ama plan_tasks satırı üretmez.
     listLessonsInRange(enrollment.id, monday, addDays(monday, 7)),
   ]);
+  const isPublished =
+    raw?.status === "published" || raw?.status === "completed";
+  const isOwnDraft = raw?.status === "draft" && raw.proposedByStudent;
+  const visible = isPublished || isOwnDraft ? raw : null;
+  const status = isPublished ? "published" : isOwnDraft ? "draft-own" : "none";
 
   const lessonsByDay = new Map<number, ChecklistLesson[]>();
   for (const l of weekLessons) {

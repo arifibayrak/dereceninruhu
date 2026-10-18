@@ -65,6 +65,10 @@ export type RosterRow = {
   /** Davet kabul edildi mi (öğrenci hesabı bağlı mı). */
   inviteAccepted: boolean;
   inviteCode: string | null;
+  /** Özel öğrenci grubu ("bilad") — null = normal öğrenci. */
+  segment: "bilad" | null;
+  /** Kayıt erişim bitişi (BİLAD için gösterim amaçlı). */
+  endDate: Date | null;
 };
 
 /**
@@ -135,6 +139,8 @@ export async function getRoster(
       phone: students.phone,
       userId: students.userId,
       inviteCode: students.inviteCode,
+      segment: students.segment,
+      endDate: enrollments.endDate,
       examCode: examTemplates.code,
       trackCode: tracks.code,
       trackName: tracks.name,
@@ -241,6 +247,8 @@ export async function getRoster(
       staleDays: lastActivity ? daysBetween(lastActivity, now) : null,
       inviteAccepted: r.userId != null,
       inviteCode: r.inviteCode,
+      segment: r.segment ?? null,
+      endDate: r.endDate ?? null,
     };
   });
 }

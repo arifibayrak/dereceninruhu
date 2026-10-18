@@ -258,11 +258,18 @@ export const students = sqliteTable(
      */
     deletedAt: integer("deleted_at", { mode: "timestamp" }),
     notes: text("notes"),
+    /**
+     * Özel öğrenci grubu. "bilad" = BİLAD derneği üzerinden gelen, Ahmet Hakan'ın
+     * sınırlı süre rehberlik ettiği öğrenciler — tam erişimli, ama koç tarafında
+     * ayrı görünürler. Erişim bitişi `enrollments.end_date`'te (yalnız gösterim).
+     */
+    segment: text("segment", { enum: ["bilad"] }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     index("students_user_id_idx").on(t.userId),
+    index("students_segment_idx").on(t.segment),
     /*
      * Telefon = giriş kimliği (giriş e-postası ondan türetilir), bu yüzden
      * görünür kayıtlar arasında TEKİL olmak zorunda. Aynı numarada ikinci kayıt
