@@ -4,13 +4,11 @@ import { useState } from "react";
 import { Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
-import { useRefresh } from "@/lib/use-refresh";
 import { callAction } from "@/lib/action-client";
 import { deleteStudyLog } from "@/actions/study";
 import { Button } from "@/components/ui/button";
 
 export function StudyLogDelete({ id }: { id: number }) {
-  const { refresh } = useRefresh();
   const [busy, setBusy] = useState(false);
 
   const onDelete = async () => {
@@ -22,7 +20,6 @@ export function StudyLogDelete({ id }: { id: number }) {
       return;
     }
     toast.success("Kayıt silindi");
-    refresh();
   };
 
   return (

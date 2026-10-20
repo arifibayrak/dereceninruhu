@@ -314,12 +314,10 @@ export function MockForm({
       setDuration("");
     }
     onSuccess?.();
-    if (redirectTo) {
-      router.push(redirectTo);
-      refresh();
-    } else {
-      refresh();
-    }
+    // push hedef sayfayı zaten taze render eder (dinamik sayfa, staleTimes 0);
+    // ardından refresh() aynı sayfayı ikinci kez çekiyordu.
+    if (redirectTo) router.push(redirectTo);
+    else refresh();
   };
 
   if (!section) {

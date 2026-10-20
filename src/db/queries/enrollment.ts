@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
@@ -66,38 +67,70 @@ export type EnrollmentDetail = {
   };
 };
 
-/** Öğrencinin (id ile) aktif kaydı — koç kokpiti girişi. */
-export async function getEnrollmentDetailByStudentId(
-  studentId: number,
-): Promise<EnrollmentDetail | null> {
-  const student = await getDb().query.students.findFirst({
-    where: eq(students.id, studentId),
-  });
-  return student ? detailForStudent(student) : null;
+const detailRelations = {
+  student: true,
+  examTemplate: true,
+  track: true,
+  coach: true,
+  secondaryExamTemplate: true,
+  secondaryTrack: true,
+} as const;
+
+/**
+ * Öğrencinin (id ile) aktif kaydı — koç kokpiti girişi.
+ *
+ * Öğrenci + kayıt + sınav/alan/koç TEK sorgu (eskiden öğrenci, sonra kayıt:
+ * her öğrenci sayfasında iki ardışık D1 turu). `cache()`: aynı istekte layout,
+ * sayfa ve yardımcılar tekrar çağırırsa D1'e gitmez.
+ */
+export const getEnrollmentDetailByStudentId = cache(
+  async (studentId: number): Promise<EnrollmentDetail | null> => {
+    const enrollment = await getDb().query.enrollments.findFirst({
+      where: and(
+        eq(enrollments.studentId, studentId),
+        eq(enrollments.status, "active"),
+      ),
+      with: detailRelations,
+    });
+    return enrollment ? toDetail(enrollment) : null;
+  },
+);
+
+/** Oturumdaki öğrenci kullanıcısından aktif kaydını çözer — tek sorgu. */
+export const getEnrollmentDetailByUserId = cache(
+  async (userId: string): Promise<EnrollmentDetail | null> => {
+    const db = getDb();
+    const enrollment = await db.query.enrollments.findFirst({
+      where: and(
+        eq(enrollments.status, "active"),
+        inArray(
+          enrollments.studentId,
+          db
+            .select({ id: students.id })
+            .from(students)
+            .where(eq(students.userId, userId)),
+        ),
+      ),
+      with: detailRelations,
+    });
+    return enrollment ? toDetail(enrollment) : null;
+  },
+);
+
+type EnrollmentWithDetail = NonNullable<
+  Awaited<ReturnType<typeof findDetailShape>>
+>;
+// Yalnız tip çıkarımı için — çağrılmaz.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function findDetailShape() {
+  return getDb().query.enrollments.findFirst({ with: detailRelations });
 }
 
-/** Öğrenci satırı elde — aktif kaydı + sınav/alan/koç ile birleştirir. */
-async function detailForStudent(
-  student: typeof students.$inferSelect,
-): Promise<EnrollmentDetail | null> {
-  const db = getDb();
+function toDetail(enrollment: EnrollmentWithDetail): EnrollmentDetail | null {
+  const student = enrollment.student;
   // Gizlenmiş (soft-delete) öğrenci: kokpit 404, öğrencinin kendi sayfaları
   // boş (giriş engeli), ajan işlem yapamaz. Geri getirmek deletedAt'i temizler.
   if (student.deletedAt) return null;
-  const enrollment = await db.query.enrollments.findFirst({
-    where: and(
-      eq(enrollments.studentId, student.id),
-      eq(enrollments.status, "active"),
-    ),
-    with: {
-      examTemplate: true,
-      track: true,
-      coach: true,
-      secondaryExamTemplate: true,
-      secondaryTrack: true,
-    },
-  });
-  if (!enrollment) return null;
   return {
     student: {
       id: student.id,
@@ -140,16 +173,6 @@ async function detailForStudent(
   };
 }
 
-/** Oturumdaki öğrenci kullanıcısından aktif kaydını çözer. */
-export async function getEnrollmentDetailByUserId(
-  userId: string,
-): Promise<EnrollmentDetail | null> {
-  const db = getDb();
-  const student = await db.query.students.findFirst({
-    where: eq(students.userId, userId),
-  });
-  return student ? detailForStudent(student) : null;
-}
 
 /** Bir bölümün alan-filtreli ders listeleri (soru takibi + deneme girişi). */
 export type SectionSubjects = {

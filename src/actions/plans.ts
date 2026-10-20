@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb, type DB } from "@/db";
 import {
   enrollments,
@@ -33,6 +33,7 @@ import {
   submitPlanForReviewSchema,
   togglePlanTaskSchema,
   upsertWeeklyPlanSchema,
+  type PlanTasksCreateInput,
 } from "@/lib/validation";
 import {
   actionError,
@@ -123,23 +124,6 @@ async function assertPlanWritable(
 }
 
 /**
- * Koçun kurduğu programda ayrı bir "Yayınla" adımı YOKTUR: ilk görev eklendiği
- * an program canlıya çıkar. Tek istisna öğrencinin kendi önerdiği taslaktır
- * (`proposedByStudent`) — o, koç `publishPlan` ile onaylayana kadar taslak
- * kalır; öğrenci kendi taslağını zaten görür ama işaretleyemez.
- */
-async function autoPublishCoachPlan(
-  db: DB,
-  plan: { id: number; status: PlanStatus; proposedByStudent: boolean },
-): Promise<void> {
-  if (plan.status !== "draft" || plan.proposedByStudent) return;
-  await db
-    .update(weeklyPlans)
-    .set({ status: "published", updatedAt: new Date() })
-    .where(eq(weeklyPlans.id, plan.id));
-}
-
-/**
  * Haftalık plan üst bilgisi (motto, not, durum) — hafta bazında upsert.
  * Koç durumu değiştirebilir; öğrenci yalnız kendi taslağının motto/notunu
  * yazar (durum değişmez, taslak öğrenci önerisi olarak işaretlenir).
@@ -204,6 +188,124 @@ export async function upsertWeeklyPlan(
   });
 }
 
+type NewPlanTask = PlanTasksCreateInput["tasks"][number];
+
+/**
+ * Görev yazımının TEK yolu — tekli ekleme, toplu ekleme, geçen haftayı kopyalama
+ * ve koç ajanı hep buradan geçer.
+ *
+ * Eskiden `addPlanTask` görev başına ~6 ardışık D1 turu atıyordu (kayıt, plan,
+ * yetki, `max(slot)`, kaynak, insert, yayın) ve kopyalama/ajan onu döngüde
+ * çağırıyordu: 30 konuluk bir hafta ~180 tur. Burada bağımsız okumalar aynı
+ * dalgada gider, slot bellekte ilerletilir, insert'ler + yayın tek `batch`.
+ */
+async function insertPlanTasks(
+  db: DB,
+  user: SessionUser,
+  enrollmentId: number,
+  weekStartInput: Date,
+  tasks: NewPlanTask[],
+): Promise<ActionResult<{ taskIds: number[]; planId: number }>> {
+  const weekStart = mondayOf(weekStartInput);
+  const [enrollment, existing] = await Promise.all([
+    db.query.enrollments.findFirst({
+      where: eq(enrollments.id, enrollmentId),
+      columns: { id: true },
+    }),
+    db.query.weeklyPlans.findFirst({
+      where: and(
+        eq(weeklyPlans.enrollmentId, enrollmentId),
+        eq(weeklyPlans.weekStart, weekStart),
+      ),
+    }),
+  ]);
+  if (!enrollment) return actionError("Kayıt bulunamadı.");
+  await assertPlanWritable(db, enrollmentId, user, existing ?? null);
+
+  const plan =
+    existing ?? (await getOrCreateWeeklyPlan(db, enrollmentId, weekStartInput));
+  // Öğrenci yeni taslak açtıysa sahiplen — kendi görüp düzenleyebilsin.
+  const claim = isStudentRole(user) && !plan.proposedByStudent;
+  const proposedByStudent = plan.proposedByStudent || isStudentRole(user);
+
+  const [slotRows, ownedResourceIds] = await Promise.all([
+    // Gün başına sıradaki slot — tek sorguda, sonra bellekte ilerletilir.
+    db
+      .select({ day: planTasks.day, max: sql<number | null>`max(${planTasks.slot})` })
+      .from(planTasks)
+      .where(eq(planTasks.weeklyPlanId, plan.id))
+      .groupBy(planTasks.day),
+    // Kaynak sahipliği bir kez doğrulanır — görev başına sorgu atmaya gerek yok.
+    ownedResourceIdsFor(
+      db,
+      enrollmentId,
+      tasks.flatMap((t) => [
+        ...(t.resourceIds ?? []),
+        ...(t.resourceId != null ? [t.resourceId] : []),
+      ]),
+    ),
+  ]);
+  const nextSlot = new Map<number, number>();
+  for (const r of slotRows) {
+    // Haftalık konular (`day = null`) tek kovada toplanır; anahtar 0.
+    nextSlot.set(r.day ?? 0, Number(r.max ?? -1) + 1);
+  }
+
+  const rows = tasks.map((t) => {
+    const day = t.day ?? null;
+    const bucket = day ?? 0;
+    const slot = nextSlot.get(bucket) ?? 0;
+    nextSlot.set(bucket, slot + 1);
+    const resourceIds = [
+      ...new Set([
+        ...(t.resourceIds ?? []),
+        ...(t.resourceId != null ? [t.resourceId] : []),
+      ]),
+    ].filter((id) => ownedResourceIds.has(id));
+    return {
+      weeklyPlanId: plan.id,
+      day,
+      slot,
+      subjectId: t.subjectId ?? null,
+      // Tekil kolon listenin ilk öğesini yansıtır (tarihsel; bkz. schema).
+      resourceId: resourceIds[0] ?? null,
+      resourceIds: serializeResourceIds(resourceIds),
+      description: clean(t.description),
+      targetQuestions: t.targetQuestions ?? null,
+    };
+  });
+
+  const now = new Date();
+  // Koçun kurduğu programda ayrı bir "Yayınla" adımı YOKTUR: ilk görevle
+  // program canlıya çıkar. İstisna öğrencinin kendi taslağı — koç `publishPlan`
+  // ile onaylayana kadar taslak kalır.
+  const publish = plan.status === "draft" && !proposedByStudent;
+  const planUpdate =
+    claim || publish
+      ? [
+          db
+            .update(weeklyPlans)
+            .set({
+              ...(claim ? { proposedByStudent: true } : {}),
+              ...(publish ? { status: "published" as const } : {}),
+              updatedAt: now,
+            })
+            .where(eq(weeklyPlans.id, plan.id)),
+        ]
+      : [];
+  // Satır başına 10 `?` — D1'in 100 parametre sınırı (bkz. param-budget.test).
+  const inserts = chunkForD1(rows, 10).map((part) =>
+    db.insert(planTasks).values(part).returning({ id: planTasks.id }),
+  );
+  const [first, ...rest] = [...inserts, ...planUpdate];
+  const results = await db.batch([first, ...rest]);
+  const taskIds = (results.slice(0, inserts.length) as { id: number }[][]).flatMap(
+    (r) => r.map((x) => x.id),
+  );
+
+  return { ok: true, data: { taskIds, planId: plan.id } };
+}
+
 /**
  * Görev ekler; hafta planı yoksa taslak olarak oluşturulur. `day` boşsa
  * haftalık konu (güne atanmamış). Koç ya da öğrenci (kendi taslağı) çağırır.
@@ -217,66 +319,15 @@ export async function addPlanTask(
     if (!parsed.success) {
       return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
     }
-    const v = parsed.data;
-    const db = getDb();
-
-    const enrollment = await db.query.enrollments.findFirst({
-      where: eq(enrollments.id, v.enrollmentId),
-    });
-    if (!enrollment) return actionError("Kayıt bulunamadı.");
-
-    const weekStart = mondayOf(v.weekStart);
-    const existing = await db.query.weeklyPlans.findFirst({
-      where: and(
-        eq(weeklyPlans.enrollmentId, v.enrollmentId),
-        eq(weeklyPlans.weekStart, weekStart),
-      ),
-    });
-    await assertPlanWritable(db, v.enrollmentId, user, existing ?? null);
-
-    const plan =
-      existing ?? (await getOrCreateWeeklyPlan(db, v.enrollmentId, v.weekStart));
-    // Öğrenci yeni taslak açtıysa sahiplen — kendi görüp düzenleyebilsin.
-    const proposedByStudent = plan.proposedByStudent || isStudentRole(user);
-    if (isStudentRole(user) && !plan.proposedByStudent) {
-      await db
-        .update(weeklyPlans)
-        .set({ proposedByStudent: true, updatedAt: new Date() })
-        .where(eq(weeklyPlans.id, plan.id));
-    }
-
-    const day = v.day ?? null;
-    const [maxRow] = await db
-      .select({ max: sql<number | null>`max(${planTasks.slot})` })
-      .from(planTasks)
-      .where(
-        and(
-          eq(planTasks.weeklyPlanId, plan.id),
-          day == null ? isNull(planTasks.day) : eq(planTasks.day, day),
-        ),
-      );
-    const slot = Number(maxRow?.max ?? -1) + 1;
-    const resourceIds = await taskResourceIdsFor(db, v.enrollmentId, v);
-
-    const [task] = await db
-      .insert(planTasks)
-      .values({
-        weeklyPlanId: plan.id,
-        day,
-        slot,
-        subjectId: v.subjectId ?? null,
-        // Tekil kolon listenin ilk öğesini yansıtır (tarihsel; bkz. schema).
-        resourceId: resourceIds[0] ?? null,
-        resourceIds: serializeResourceIds(resourceIds),
-        description: clean(v.description),
-        targetQuestions: v.targetQuestions ?? null,
-      })
-      .returning({ id: planTasks.id });
-
-    // İlk görevle birlikte program kendiliğinden yayına girer (koç tarafı).
-    await autoPublishCoachPlan(db, { ...plan, proposedByStudent });
-
-    return { ok: true, data: { taskId: task.id, planId: plan.id } };
+    const { enrollmentId, weekStart, ...task } = parsed.data;
+    const res = await insertPlanTasks(getDb(), user, enrollmentId, weekStart, [
+      task,
+    ]);
+    if (!res.ok) return res;
+    return {
+      ok: true,
+      data: { taskId: res.data.taskIds[0], planId: res.data.planId },
+    };
   });
 }
 
@@ -284,10 +335,9 @@ export async function addPlanTask(
  * Görevleri TEK ÇAĞRIDA ekler (AI taslağının onaylanması gibi toplu yazımlar).
  *
  * `addPlanTask`'ı döngüde çağırmak istemciden görev başına ayrı bir Server
- * Action isteği demekti: 40 konuluk bir taslak 40 HTTP turu + her turda ~6 D1
- * sorgusu ediyordu; telefonda dakikalarca "kaydediliyor"da kalıyor, aradaki tek
- * bir kopma da geri kalan konuları düşürüyordu. Burada yetki/plan/slot bir kez
- * çözülür, satırlar D1'in parametre sınırına göre parça parça yazılır.
+ * Action isteği demekti: 40 konuluk bir taslak 40 HTTP turu ediyordu; telefonda
+ * dakikalarca "kaydediliyor"da kalıyor, aradaki tek bir kopma da geri kalan
+ * konuları düşürüyordu.
  */
 export async function addPlanTasks(
   input: unknown,
@@ -299,85 +349,18 @@ export async function addPlanTasks(
       return actionError("Geçersiz giriş.", fieldErrorsOf(parsed.error.issues));
     }
     const v = parsed.data;
-    const db = getDb();
-
-    const enrollment = await db.query.enrollments.findFirst({
-      where: eq(enrollments.id, v.enrollmentId),
-    });
-    if (!enrollment) return actionError("Kayıt bulunamadı.");
-
-    const weekStart = mondayOf(v.weekStart);
-    const existing = await db.query.weeklyPlans.findFirst({
-      where: and(
-        eq(weeklyPlans.enrollmentId, v.enrollmentId),
-        eq(weeklyPlans.weekStart, weekStart),
-      ),
-    });
-    await assertPlanWritable(db, v.enrollmentId, user, existing ?? null);
-
-    const plan =
-      existing ?? (await getOrCreateWeeklyPlan(db, v.enrollmentId, v.weekStart));
-    const proposedByStudent = plan.proposedByStudent || isStudentRole(user);
-    if (isStudentRole(user) && !plan.proposedByStudent) {
-      await db
-        .update(weeklyPlans)
-        .set({ proposedByStudent: true, updatedAt: new Date() })
-        .where(eq(weeklyPlans.id, plan.id));
-    }
-
-    // Gün başına sıradaki slot — tek sorguda, sonra bellekte ilerletilir.
-    const slotRows = await db
-      .select({ day: planTasks.day, max: sql<number | null>`max(${planTasks.slot})` })
-      .from(planTasks)
-      .where(eq(planTasks.weeklyPlanId, plan.id))
-      .groupBy(planTasks.day);
-    const nextSlot = new Map<number, number>();
-    for (const r of slotRows) {
-      // Haftalık konular (`day = null`) tek kovada toplanır; anahtar 0.
-      nextSlot.set(r.day ?? 0, Number(r.max ?? -1) + 1);
-    }
-
-    // Kaynak sahipliği bir kez doğrulanır — görev başına sorgu atmaya gerek yok.
-    const ownedResourceIds = await ownedResourceIdsFor(
-      db,
+    const res = await insertPlanTasks(
+      getDb(),
+      user,
       v.enrollmentId,
-      v.tasks.flatMap((t) => [
-        ...(t.resourceIds ?? []),
-        ...(t.resourceId != null ? [t.resourceId] : []),
-      ]),
+      v.weekStart,
+      v.tasks,
     );
-
-    const rows = v.tasks.map((t) => {
-      const day = t.day ?? null;
-      const bucket = day ?? 0;
-      const slot = nextSlot.get(bucket) ?? 0;
-      nextSlot.set(bucket, slot + 1);
-      const resourceIds = [
-        ...new Set([
-          ...(t.resourceIds ?? []),
-          ...(t.resourceId != null ? [t.resourceId] : []),
-        ]),
-      ].filter((id) => ownedResourceIds.has(id));
-      return {
-        weeklyPlanId: plan.id,
-        day,
-        slot,
-        subjectId: t.subjectId ?? null,
-        resourceId: resourceIds[0] ?? null,
-        resourceIds: serializeResourceIds(resourceIds),
-        description: clean(t.description),
-        targetQuestions: t.targetQuestions ?? null,
-      };
-    });
-
-    // Satır başına 10 `?` — D1'in 100 parametre sınırı (bkz. param-budget.test).
-    for (const part of chunkForD1(rows, 10)) {
-      await db.insert(planTasks).values(part);
-    }
-
-    await autoPublishCoachPlan(db, { ...plan, proposedByStudent });
-
-    return { ok: true, data: { added: rows.length, planId: plan.id } };
+    if (!res.ok) return res;
+    return {
+      ok: true,
+      data: { added: res.data.taskIds.length, planId: res.data.planId },
+    };
   });
 }
 
@@ -512,36 +495,39 @@ export async function copyPreviousWeekPlan(
     const db = getDb();
     const monday = mondayOf(weekStart);
 
-    const existing = await db.query.weeklyPlans.findFirst({
-      where: and(
-        eq(weeklyPlans.enrollmentId, enrollmentId),
-        eq(weeklyPlans.weekStart, monday),
-      ),
-    });
+    const [existing, source] = await Promise.all([
+      db.query.weeklyPlans.findFirst({
+        where: and(
+          eq(weeklyPlans.enrollmentId, enrollmentId),
+          eq(weeklyPlans.weekStart, monday),
+        ),
+      }),
+      getPlanForReuse(enrollmentId, addDays(monday, -7)),
+    ]);
     await assertPlanWritable(db, enrollmentId, user, existing ?? null);
 
-    const source = await getPlanForReuse(enrollmentId, addDays(monday, -7));
     const items = source.filter((t) => t.description && t.description.trim());
     if (items.length === 0) {
       return actionError("Geçen hafta için kopyalanacak plan yok.");
     }
 
-    const weekKey = trDayKey(monday);
-    let added = 0;
-    for (const t of items) {
-      const res = await addPlanTask({
-        enrollmentId,
-        weekStart: weekKey,
+    // Tek yazım: görev başına ayrı action yerine hepsi bir batch'te.
+    const res = await insertPlanTasks(
+      db,
+      user,
+      enrollmentId,
+      monday,
+      items.map((t) => ({
         day: t.day,
         subjectId: t.subjectId,
         resourceIds: t.resourceIds,
-        description: t.description,
+        description: t.description!.trim().slice(0, 300),
         targetQuestions: t.targetQuestions,
-      });
-      if (res.ok) added++;
-    }
-    if (added === 0) return actionError("Kopyalama başarısız.");
-    return { ok: true, data: { added } };
+      })),
+    );
+    if (!res.ok) return res;
+    if (res.data.taskIds.length === 0) return actionError("Kopyalama başarısız.");
+    return { ok: true, data: { added: res.data.taskIds.length } };
   });
 }
 

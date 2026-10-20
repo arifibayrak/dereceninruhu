@@ -15,7 +15,7 @@ import { AI_MODELS, chatModel } from "@/lib/ai/openrouter";
 import { recordAiUsage } from "@/lib/ai/usage";
 import { AGENT_WRITE_TOOLS, buildAgentTools } from "@/lib/ai/agent-tools";
 import { getEnrollmentDetailByStudentId } from "@/db/queries/enrollment";
-import { addPlanTask } from "@/actions/plans";
+import { addPlanTask, addPlanTasks } from "@/actions/plans";
 import { upsertQuestionLogs } from "@/actions/tracking";
 import { DAY_NAMES_TR, mondayOf, trDayKey, trWeekday } from "@/lib/dates";
 import {
@@ -231,22 +231,25 @@ export async function confirmCoachAgentWrite(
       const items = Array.isArray(args.items)
         ? (args.items as ProgramItem[])
         : [];
-      let added = 0;
-      for (const it of items) {
-        const r = await addPlanTask({
-          enrollmentId,
-          weekStart: args.weekStart,
+      // Tek toplu yazım (görev başına ayrı action değil). Açıklaması boş
+      // öğeler eskiden tek tek düşüyordu; burada baştan ayıklanır.
+      const tasks = items
+        .filter((it) => typeof it.description === "string" && it.description.trim())
+        .slice(0, 60)
+        .map((it) => ({
           day: it.day ?? null,
           description: it.description,
           subjectId: it.subjectId ?? null,
           targetQuestions: it.targetQuestions ?? null,
-        });
-        if (r.ok) added++;
-      }
+        }));
+      const r =
+        tasks.length > 0
+          ? await addPlanTasks({ enrollmentId, weekStart: args.weekStart, tasks })
+          : null;
       result =
-        added > 0
-          ? { ok: true, data: { added } }
-          : actionError("Program eklenemedi.");
+        r?.ok
+          ? { ok: true, data: { added: r.data.added } }
+          : actionError(r && !r.ok ? r.error : "Program eklenemedi.");
     } else {
       result = await upsertQuestionLogs({
         enrollmentId,

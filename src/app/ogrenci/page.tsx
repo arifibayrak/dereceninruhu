@@ -65,18 +65,24 @@ export default async function OgrenciBugunPage() {
 
   const now = new Date();
   const todayKey = trDayKey(now);
-  const [sections, grid, insightInput, weekPlan, nextSession, studyWeek] =
-    await Promise.all([
-      getSectionsForEnrollment(enrollment),
-      getWeekGrid(enrollment.id, now),
-      getStudentInsightInput(enrollment.id, now),
-      getWeeklyPlan(enrollment.id, now, { publishedOnly: true }),
-      getNextSessionForEnrollment(enrollment.id, now),
-      getStudyWeekTotal(enrollment.id, now),
-    ]);
-
-  // Özel ders kartı yalnız paketi olan öğrencide çıkar — kimseye satış yapmaz.
-  const lessonSummary = await getStudentPackageSummary(enrollment.id);
+  const [
+    sections,
+    grid,
+    insightInput,
+    weekPlan,
+    nextSession,
+    studyWeek,
+    // Özel ders kartı yalnız paketi olan öğrencide çıkar — kimseye satış yapmaz.
+    lessonSummary,
+  ] = await Promise.all([
+    getSectionsForEnrollment(enrollment),
+    getWeekGrid(enrollment.id, now),
+    getStudentInsightInput(enrollment.id, now),
+    getWeeklyPlan(enrollment.id, now, { publishedOnly: true }),
+    getNextSessionForEnrollment(enrollment.id, now),
+    getStudyWeekTotal(enrollment.id, now),
+    getStudentPackageSummary(enrollment.id),
+  ]);
 
   const todayDay = trWeekday(now);
   const todayTasks: ChecklistTask[] = (weekPlan?.tasks ?? [])

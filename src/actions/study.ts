@@ -55,6 +55,8 @@ export async function createStudyLog(
       })
       .returning({ id: studyLogs.id });
 
+    // Action yanıtı güncel kronometre sayfasını zaten taşır — istemci ayrıca
+    // refresh() ETMEZ (sayfa iki kez render ediliyordu).
     revalidatePath("/ogrenci/kronometre");
     revalidatePath("/ogrenci");
     return { ok: true, data: { id: row.id } };

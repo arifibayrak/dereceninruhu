@@ -94,30 +94,33 @@ export async function getWeeklyPlan(
 ): Promise<WeeklyPlanView | null> {
   const db = getDb();
   const weekStart = mondayOf(anyDayOfWeek);
-  const plan = await db.query.weeklyPlans.findFirst({
-    where: and(
-      eq(weeklyPlans.enrollmentId, enrollmentId),
-      eq(weeklyPlans.weekStart, weekStart),
-      ...(opts?.publishedOnly
-        ? [inArray(weeklyPlans.status, ["published", "completed"])]
-        : []),
-    ),
-    with: {
-      tasks: {
-        // Güne atanmış görevler gün sırasında; haftalık konular (day null) sona.
-        orderBy: [
-          sql`${planTasks.day} is null`,
-          asc(planTasks.day),
-          asc(planTasks.slot),
-          asc(planTasks.id),
-        ],
-        with: { subject: true },
+  // Plan ve kaynak adları aynı dalgada — kaynak listesi kayda bağlı, plana değil
+  // (görev başına join yok, kaydın kaynak listesi zaten kısa).
+  const [plan, resourceNames] = await Promise.all([
+    db.query.weeklyPlans.findFirst({
+      where: and(
+        eq(weeklyPlans.enrollmentId, enrollmentId),
+        eq(weeklyPlans.weekStart, weekStart),
+        ...(opts?.publishedOnly
+          ? [inArray(weeklyPlans.status, ["published", "completed"])]
+          : []),
+      ),
+      with: {
+        tasks: {
+          // Güne atanmış görevler gün sırasında; haftalık konular (day null) sona.
+          orderBy: [
+            sql`${planTasks.day} is null`,
+            asc(planTasks.day),
+            asc(planTasks.slot),
+            asc(planTasks.id),
+          ],
+          with: { subject: true },
+        },
       },
-    },
-  });
+    }),
+    resourceNameMap(db, enrollmentId),
+  ]);
   if (!plan) return null;
-  // Kaynak adları tek seferde: görev başına join yok, kaydın kaynak listesi zaten kısa.
-  const resourceNames = await resourceNameMap(db, plan.enrollmentId);
   return {
     id: plan.id,
     enrollmentId: plan.enrollmentId,

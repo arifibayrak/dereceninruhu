@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   examSections,
@@ -63,8 +63,9 @@ export async function upsertQuestionLogs(
 
     // D1: sorgu başına 100 parametre sınırı — satır başına 9 `?` harcanıyor
     // (7 sütun + created_at/updated_at), o yüzden ders listesi büyüdükçe böl.
-    for (const part of chunkForD1(rows, 9)) {
-      await db
+    // Parçalar TEK batch'te gider: parça başına ayrı D1 turu atılmaz.
+    const upserts = chunkForD1(rows, 9).map((part) =>
+      db
         .insert(questionLogs)
         .values(part)
         .onConflictDoUpdate({
@@ -81,8 +82,10 @@ export async function upsertQuestionLogs(
             blankCount: sql`excluded.blank_count`,
             updatedAt: new Date(),
           },
-        });
-    }
+        }),
+    );
+    const [first, ...rest] = upserts;
+    if (first) await db.batch([first, ...rest]);
 
     return { ok: true, data: { count: rows.length } };
   });
@@ -121,45 +124,47 @@ async function prepareMock(
   db: ReturnType<typeof getDb>,
   v: MockPayload,
 ): Promise<PreparedMock> {
-  const section = await db.query.examSections.findFirst({
-    where: eq(examSections.id, v.examSectionId),
-  });
-  if (!section) throw new Error("Deneme bölümü bulunamadı.");
-
   /*
    * Birleşik deneme (KPSS GY + GK) tek oturumdur: dersler şablonun BÜTÜN
    * bölümlerinden gelebilir. Anchor satır şablonun ilk bölümüdür; her dersin
    * neti kendi bölümünün böleniyle hesaplanır (bölenler bölümden bölüme
    * değişebilir, örn. LGS 3 / YKS 4).
+   *
+   * Bölümler ve dersler AYNI dalgada okunur: şablon, bölüm id'sinden alt
+   * sorguyla çözülür (eskiden bölüm → kapsam → dersler, üç ardışık tur).
    */
-  const scopeSections = v.combined
-    ? await db
-        .select({
-          id: examSections.id,
-          sortOrder: examSections.sortOrder,
-          wrongPenaltyDivisor: examSections.wrongPenaltyDivisor,
-        })
-        .from(examSections)
-        .where(eq(examSections.examTemplateId, section.examTemplateId))
-    : [section];
-
-  // Roll child subjects (GEO/MANTIK…) up into their scored parent before net.
-  const sectionSubjects = await db
-    .select({
-      id: subjects.id,
-      examSectionId: subjects.examSectionId,
-      parentSubjectId: subjects.parentSubjectId,
-      isScored: subjects.isScored,
-    })
-    .from(subjects)
-    .where(
-      scopeSections.length === 1
-        ? eq(subjects.examSectionId, scopeSections[0].id)
-        : inArray(
-            subjects.examSectionId,
-            scopeSections.map((s) => s.id),
-          ),
-    );
+  const templateOf = sql`(select ${examSections.examTemplateId} from ${examSections} where ${examSections.id} = ${v.examSectionId})`;
+  const [scopeSections, sectionSubjects] = await Promise.all([
+    db
+      .select({
+        id: examSections.id,
+        sortOrder: examSections.sortOrder,
+        wrongPenaltyDivisor: examSections.wrongPenaltyDivisor,
+      })
+      .from(examSections)
+      .where(
+        v.combined
+          ? eq(examSections.examTemplateId, templateOf)
+          : eq(examSections.id, v.examSectionId),
+      ),
+    // Roll child subjects (GEO/MANTIK…) up into their scored parent before net.
+    db
+      .select({
+        id: subjects.id,
+        examSectionId: subjects.examSectionId,
+        parentSubjectId: subjects.parentSubjectId,
+        isScored: subjects.isScored,
+      })
+      .from(subjects)
+      .innerJoin(examSections, eq(examSections.id, subjects.examSectionId))
+      .where(
+        v.combined
+          ? eq(examSections.examTemplateId, templateOf)
+          : eq(subjects.examSectionId, v.examSectionId),
+      ),
+  ]);
+  const section = scopeSections.find((s) => s.id === v.examSectionId);
+  if (!section) throw new Error("Deneme bölümü bulunamadı.");
 
   const divisorOfSection = new Map(
     scopeSections.map((s) => [s.id, s.wrongPenaltyDivisor]),
@@ -212,9 +217,11 @@ export async function createMock(
     }
     const v = parsed.data;
     const db = getDb();
-    await assertEnrollmentAccess(db, v.enrollmentId, user);
-
-    const { anchorSectionId, rows } = await prepareMock(db, v);
+    // Yetki ve net hesabı birbirinden bağımsız — aynı dalgada.
+    const [, { anchorSectionId, rows }] = await Promise.all([
+      assertEnrollmentAccess(db, v.enrollmentId, user),
+      prepareMock(db, v),
+    ]);
 
     const [exam] = await db
       .insert(mockExams)
@@ -230,12 +237,14 @@ export async function createMock(
       })
       .returning({ id: mockExams.id });
 
-    // Satır başına 6 `?` — birleşik denemelerde ders sayısı arttıkça böl.
-    for (const part of chunkForD1(rows, 6)) {
-      await db
+    // Satır başına 6 `?` — birleşik denemelerde ders sayısı arttıkça böl;
+    // parçalar tek batch'te.
+    const [first, ...rest] = chunkForD1(rows, 6).map((part) =>
+      db
         .insert(mockExamResults)
-        .values(part.map((r) => ({ ...r, mockExamId: exam.id })));
-    }
+        .values(part.map((r) => ({ ...r, mockExamId: exam.id }))),
+    );
+    if (first) await db.batch([first, ...rest]);
 
     return { ok: true, data: { mockExamId: exam.id } };
   });
@@ -263,11 +272,20 @@ export async function updateMock(
     });
     if (!existing) return actionError("Deneme bulunamadı.");
     // Yetki denemenin KENDİ kaydından okunur — istemcinin gönderdiğinden değil.
-    await assertEnrollmentAccess(db, existing.enrollmentId, user);
+    const [, { anchorSectionId, rows }] = await Promise.all([
+      assertEnrollmentAccess(db, existing.enrollmentId, user),
+      prepareMock(db, v),
+    ]);
 
-    const { anchorSectionId, rows } = await prepareMock(db, v);
+    // Bölüm/kapsam değiştiyse eski konu-eksik analizi başka bir sınavın
+    // konularına aitti — yanlış veri taşımaktansa temizlenir.
+    const scopeChanged =
+      existing.examSectionId !== anchorSectionId ||
+      existing.isCombined !== v.combined;
 
-    await db
+    // Hepsi TEK batch (tek tur, tek işlem): yarıda kopan bir düzenleme artık
+    // sonuçları silinmiş bir deneme bırakamaz.
+    const update = db
       .update(mockExams)
       .set({
         examSectionId: anchorSectionId,
@@ -277,33 +295,28 @@ export async function updateMock(
         name: v.name?.trim() || null,
         takenOn: startOfTrtDay(v.takenOn),
         durationMinutes: v.durationMinutes ?? null,
+        ...(scopeChanged ? { analysisDone: false } : {}),
         updatedAt: new Date(),
       })
       .where(eq(mockExams.id, v.mockExamId));
-
-    await db
-      .delete(mockExamResults)
-      .where(eq(mockExamResults.mockExamId, v.mockExamId));
-    for (const part of chunkForD1(rows, 6)) {
-      await db
-        .insert(mockExamResults)
-        .values(part.map((r) => ({ ...r, mockExamId: v.mockExamId })));
-    }
-
-    // Bölüm/kapsam değiştiyse eski konu-eksik analizi başka bir sınavın
-    // konularına aitti — yanlış veri taşımaktansa temizlenir.
-    if (
-      existing.examSectionId !== anchorSectionId ||
-      existing.isCombined !== v.combined
-    ) {
-      await db
-        .delete(mockTopicErrors)
-        .where(eq(mockTopicErrors.mockExamId, v.mockExamId));
-      await db
-        .update(mockExams)
-        .set({ analysisDone: false })
-        .where(eq(mockExams.id, v.mockExamId));
-    }
+    await db.batch([
+      update,
+      db
+        .delete(mockExamResults)
+        .where(eq(mockExamResults.mockExamId, v.mockExamId)),
+      ...chunkForD1(rows, 6).map((part) =>
+        db
+          .insert(mockExamResults)
+          .values(part.map((r) => ({ ...r, mockExamId: v.mockExamId }))),
+      ),
+      ...(scopeChanged
+        ? [
+            db
+              .delete(mockTopicErrors)
+              .where(eq(mockTopicErrors.mockExamId, v.mockExamId)),
+          ]
+        : []),
+    ]);
 
     return { ok: true, data: { mockExamId: v.mockExamId } };
   });
