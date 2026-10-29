@@ -18,6 +18,7 @@ import {
 } from "@/components/app/google-tag-manager";
 import { LazyToaster } from "@/components/app/lazy-toaster";
 import { StaleVersionWatch } from "@/components/app/stale-version-watch";
+import { RequestStallGuard } from "@/components/app/request-stall-guard";
 import { ThemeProvider } from "@/components/theme-provider";
 import { OG_IMAGE, SITE_LOCALE, SITE_NAME, SITE_URL } from "@/lib/seo";
 
@@ -115,6 +116,7 @@ export default function RootLayout({
           {children}
           <LazyToaster />
           <StaleVersionWatch />
+          <RequestStallGuard />
         </ThemeProvider>
         <GoogleAnalytics />
         <GoogleTagManager />

@@ -3,6 +3,7 @@
 import { unstable_isUnrecognizedActionError } from "next/navigation";
 
 import type { ActionResult } from "@/actions/_guard";
+import { isStallError } from "@/lib/request-stall-guard";
 
 /**
  * Server Action'ın TAŞIMA katmanı hataları sunucudaki `guarded`'a HİÇ ulaşmaz —
@@ -61,12 +62,20 @@ const OFFLINE_ERROR =
 const NETWORK_ERROR =
   "Sunucuya ulaşılamadı — kaydedilemedi. Birkaç saniye sonra tekrar dene.";
 
+/**
+ * İstek askıda kaldı ve `request-stall-guard` iptal etti. Sunucu yazmış da
+ * olabilir, yazmamış da — kullanıcı ekranı kontrol edip tekrar dener.
+ */
+export const STALLED_ERROR =
+  "Bağlantı yanıt vermedi — kayıt tamamlanmamış olabilir. Kontrol edip tekrar dene.";
+
 const GENERIC_ERROR =
   "Kaydedilemedi — beklenmeyen bir hata oluştu. Lütfen tekrar dene.";
 
 /** Taşıma hatasını kullanıcıya gösterilecek Türkçe mesaja çevirir. */
 export function actionErrorMessage(err: unknown): string {
   if (isStaleVersionError(err)) return STALE_VERSION_ERROR;
+  if (isStallError(err)) return STALLED_ERROR;
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     return OFFLINE_ERROR;
   }

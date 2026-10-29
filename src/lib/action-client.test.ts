@@ -103,3 +103,17 @@ describe("isStaleVersionError", () => {
     expect(isStaleVersionError(null)).toBe(false);
   });
 });
+
+describe("askıda kalan istek", () => {
+  it("koruma iptal ettiğinde formu kilitli bırakmaz, Türkçe mesaj döner", async () => {
+    const { STALLED_ERROR } = await import("@/lib/action-client");
+    const stalled = new DOMException("İstek yanıt vermedi", "TimeoutError");
+    const action = vi.fn(async () => {
+      throw stalled;
+    });
+    await expect(callAction(action)).resolves.toEqual({
+      ok: false,
+      error: STALLED_ERROR,
+    });
+  });
+});
