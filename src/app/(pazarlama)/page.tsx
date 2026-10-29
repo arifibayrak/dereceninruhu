@@ -29,6 +29,7 @@ import { ExamCountdownStrip } from "@/components/marketing/exam-countdown-strip"
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { HeroCarousel } from "@/components/marketing/hero-carousel";
 import { HeroReveal } from "@/components/marketing/hero-reveal";
+import { PanelScreens } from "@/components/marketing/panel-screens";
 import { ProofStrip } from "@/components/marketing/proof-strip";
 import { ScarcityBadge } from "@/components/marketing/scarcity-badge";
 import { SectionHeading } from "@/components/brand/section-heading";
@@ -227,6 +228,9 @@ export default async function HomePage() {
 
       {/* ------------------------- AI destekli sistem ------------------------ */}
       <AiSystemSection />
+
+      {/* ---------------------------- Panelin içinden ------------------------ */}
+      <PanelScreens />
 
       {/* ------------------------------ Koç kartı ---------------------------- */}
       <section className="flex flex-col gap-8">

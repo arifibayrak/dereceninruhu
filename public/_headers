@@ -13,3 +13,8 @@
 # dosyayı almazdı. 30 gün doğru denge.
 /fonts/*
   Cache-Control: public,max-age=2592000
+
+# Panel ekran görüntüleri (`panel-screens.tsx`): adlar sabit, içerik hash'i yok
+# → fontlarla aynı gerekçe, `immutable` değil, 30 gün.
+/ekran/*
+  Cache-Control: public,max-age=2592000
