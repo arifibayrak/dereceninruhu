@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { withD1Retry } from "@/lib/d1-retry";
 import { drizzle } from "drizzle-orm/d1";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import * as schema from "@/db/schema";
@@ -23,7 +24,7 @@ export { normalizePhone, phoneToEmail } from "@/lib/phone";
  */
 export function getAuth() {
   const { env } = getCloudflareContext();
-  const db = drizzle(env.DB, { schema });
+  const db = drizzle(withD1Retry(env.DB), { schema });
 
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,

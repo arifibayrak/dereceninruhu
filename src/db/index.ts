@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/d1";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import * as schema from "./schema";
+import { withD1Retry } from "@/lib/d1-retry";
 
 /**
  * DB handle bound to the D1 binding `DB`.
@@ -8,7 +9,7 @@ import * as schema from "./schema";
  */
 export function getDb() {
   const { env } = getCloudflareContext();
-  return drizzle(env.DB, { schema });
+  return drizzle(withD1Retry(env.DB), { schema });
 }
 
 /**
@@ -17,7 +18,7 @@ export function getDb() {
  */
 export async function getDbAsync() {
   const { env } = await getCloudflareContext({ async: true });
-  return drizzle(env.DB, { schema });
+  return drizzle(withD1Retry(env.DB), { schema });
 }
 
 export type DB = ReturnType<typeof getDb>;
