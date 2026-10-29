@@ -28,19 +28,9 @@ const SCREENS = [
     body: "Her deneme için süre, soru başına tempo, net ve analiz durumu.",
   },
   {
-    slug: "ogrenci-ozeti",
-    title: "Öğrenci özeti",
-    body: "Toplam soru, çalışma süresi, son net ve net gelişimi bir bakışta.",
-  },
-  {
     slug: "ders-ders-soru",
     title: "Ders ders soru",
     body: "Son 8 haftada hangi dersten kaç soru çözüldüğü.",
-  },
-  {
-    slug: "calisma-suresi",
-    title: "Çalışma süresi",
-    body: "Kronometre ve elle girilen süreler, hafta hafta.",
   },
   {
     slug: "kaynaklar",

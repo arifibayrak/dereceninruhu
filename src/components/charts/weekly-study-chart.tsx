@@ -39,6 +39,9 @@ export function WeeklyStudyChart({ points }: { points: StudyPoint[] }) {
             tickLine={false}
             width={44}
             allowDecimals={false}
+            // Ham dakika (ör. 2.500) 44 px'e sığmıyor, baştan kırpılıp "500"
+            // görünüyordu. Eksen saat cinsinden: kısa ve okunur.
+            tickFormatter={(m: number) => (m < 60 ? `${m}dk` : `${Math.round(m / 60)}s`)}
           />
           <Tooltip
             cursor={{ fill: "color-mix(in oklab, var(--muted) 60%, transparent)" }}
