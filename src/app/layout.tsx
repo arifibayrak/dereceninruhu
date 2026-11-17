@@ -53,6 +53,12 @@ export const metadata: Metadata = {
       "LGS, YKS ve KPSS için birebir online sınav koçluğu; netlerini artır, hedefine ulaş.",
     images: [OG_IMAGE],
   },
+  // Tarayıcının otomatik çevirisini kapat. Site baştan sona Türkçe; ama koçların
+  // yazdığı "Problem", "Test", "Final" gibi İngilizce'de de geçen kısa görev
+  // metinleri Chrome/Samsung çevirisine "İngilizce" görünüp "Sorun"a çevriliyordu
+  // (DB'de "Problem" yazarken tablette "Sorun" göründü). `translate="no"` ile
+  // birlikte çalışır: meta çeviri önerisini, öznitelik çevirinin kendisini durdurur.
+  other: { google: "notranslate" },
 };
 
 export const viewport: Viewport = {
@@ -70,6 +76,7 @@ export default function RootLayout({
   return (
     <html
       lang="tr"
+      translate="no"
       suppressHydrationWarning
       className={`${GeistSans.variable} h-full antialiased`}
     >
